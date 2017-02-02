@@ -1,0 +1,4 @@
+#!/bin/bash
+# gh-octocat
+
+curl https://api.github.com/octocat

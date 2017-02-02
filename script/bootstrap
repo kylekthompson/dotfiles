@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Run all installers and symlink dotfiles
+
+set -e
+
+echo "Bootstrapping"
+
+script/homebrew
+script/platform
+script/symlinks
+script/generic

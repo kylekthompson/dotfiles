@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Install homebrew
+if [[ ! $(which brew | grep -v "not found") ]]; then
+  /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+fi
+
+# Taps
+brew tap neovim/neovim
+brew tap Goles/battery
+
+# Installs
+brew install battery
+brew install diff-so-fancy
+brew install elixir
+brew install git
+brew install heroku
+brew install hub
+brew install neovim
+brew install node
+brew install postgresql
+brew install python
+brew install python3
+brew install rbenv
+brew install reattach-to-user-namespace
+brew install redis
+brew install ruby-build
+brew install sqlite
+brew install the_silver_searcher
+brew install tmux
+brew install vim
+brew install wifi-password
+brew install yarn
+brew install zsh
+brew install zsh-completions
+
+# Casks
+brew cask install 1password
+brew cask install alfred
+brew cask install atom
+brew cask install bartender
+brew cask install dropbox
+brew cask install firefox
+brew cask install github-desktop
+brew cask install google-chrome
+brew cask install gpgtools
+brew cask install iterm2
+brew cask install ngrok
+brew cask install paw
+brew cask install postman
+brew cask install slack
+brew cask install virtualbox
+brew cask install vlc
+brew cask install vmware-fusion
