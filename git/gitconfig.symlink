@@ -1,0 +1,92 @@
+[user]
+  name = Kyle Thompson
+  email = kyle@kylekthompson.com
+  username = kylekthompson
+  signingkey = 8ACC76081E6BCF84
+
+[alias]
+  a             = add
+  amend         = commit --amend --reuse-message=HEAD
+  br            = branch
+  branches      = branch -a
+  c             = commit
+  ci            = !git add -A && git commit -am
+  cl            = clone --recursive
+  co            = checkout
+  cob           = checkout -b
+  contributors  = shortlog -n -s --no-merges
+  cleanup       = !git remote prune origin && git gc && git clean -dfx && git stash clear
+  ls            = !git log --graph --oneline --decorate
+  po            = !git push origin $(git branch | cut -d' ' -f2)
+  remotes       = remote -v
+  st            = status -sb
+  tags          = tag -l
+  today         = log --since=midnight --author='Kyle Thompson' --oneline
+
+[apply]
+  whitespace = fix
+
+[color]
+  ui = auto
+
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red
+  new = green
+
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+
+[github]
+  user = kylekthompson
+
+[credential]
+  whitespace = trailing-space,space-before-tab,indent-with-non-tab
+  editor = vim
+  helper = osxkeychain
+
+[core]
+  editor = vim
+  excludesfile = ~/.gitignore
+  attributesfile = ~/.gitattributes
+  whitespace = trailing-space,space-before-tab,indent-with-non-tab
+  pager = diff-so-fancy | less --tabs=1,5 -R
+  trustctime = false
+  precomposeunicode = false
+
+[push]
+  default = current
+
+[merge]
+  log = true
+
+[diff]
+  compactionHeuristic = true
+  tool = vimdiff
+  renames = copies
+
+[difftool]
+  prompt = false
+
+[help]
+  autocorrect = 1
+
+[filter "media"]
+  clean = git-media-clean %f
+  smudge = git-media-smudge %f
+
+[filter "lfs"]
+  clean = git lfs clean %f
+  smudge = git lfs smudge %f
+  required = true
+
+[commit]
+  gpgsign = true
