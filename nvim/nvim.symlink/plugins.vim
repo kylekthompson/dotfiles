@@ -7,7 +7,6 @@ call plug#begin('~/.config/nvim/bundle')
 " Directory tree
 Plug 'scrooloose/nerdtree'
 Plug 'Xuyuanp/nerdtree-git-plugin'
-Plug 'octref/RootIgnore'
 
 " Linting
 Plug 'neomake/neomake'
@@ -19,7 +18,10 @@ Plug 'tpope/vim-surround'
 Plug 'ctrlpvim/ctrlp.vim'
 
 " Keyword completion
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+function! DoRemote(arg)
+  UpdateRemotePlugins
+endfunction
+Plug 'Shougo/deoplete.nvim', { 'do': function('DoRemote') }
 
 " Airline!
 Plug 'vim-airline/vim-airline'

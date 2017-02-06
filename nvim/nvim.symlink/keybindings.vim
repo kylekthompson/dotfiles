@@ -13,12 +13,6 @@ nmap <Leader>ss :wa<cr>
 nmap go o<esc>
 nmap gO O<esc>
 
-" mapping the jumping between splits. Hold control while using vim nav.
-nmap <C-J> <C-W>j
-nmap <C-K> <C-W>k
-nmap <C-H> <C-W>h
-nmap <C-L> <C-W>l
-
 " Yank from the cursor to the end of the line, to be consistent with C and D.
 nnoremap Y y$
 
@@ -39,11 +33,14 @@ map L $
 map H ^
 
 " Reload vimrc
-map <silent> <leader>vs :source ~/.vimrc<CR>:filetype detect<CR>:exe ":echo 'vimrc reloaded!'"<CR>
+map <silent> <leader>vs :source ~/.config/nvim/init.vim<CR>:filetype detect<CR>:exe ":echo 'vimrc reloaded!'"<CR>
 
 " Fast saving
-map <Esc><Esc> :w<CR>
-map <leader>w :w<CR>
+map <Esc><Esc> :update<CR>
+map <Leader>w :update<CR>
+
+" Close the quickfix window
+map <Leader>cl :cclose<CR>
 
 " Fast access to : commands
 nnoremap <Space> :
