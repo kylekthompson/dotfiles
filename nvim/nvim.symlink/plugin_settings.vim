@@ -43,33 +43,14 @@ let g:neomake_ruby_enabled_makers = ['rubocop']
 let g:neomake_error_sign = { 'text': 'E>', 'texthl': 'ErrorMsg' }
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ctrlp.vim
+" fzf.vim
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-nmap <leader>t :CtrlP<CR>
-nmap <leader>b :CtrlPBuffer<CR>
-nmap <leader>r :CtrlPMRU<CR>
-nmap <leader>T :CtrlPClearCache<CR>:CtrlP<CR>
+nmap <leader>t :Files<CR>
+nmap <leader>b :Buffers<CR>
 
 " Find the word under the cursor
 nnoremap <Leader>F :grep! "\b<C-R><C-W>\b"<CR>:cw<CR>
-
-let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
-let g:ctrlp_working_path_mode = 'r'
-
-if executable('ag')
-  " Use Ag over Grep
-  set grepprg=ag\ --nogroup\ --nocolor
-
-  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
-  let g:ctrlp_user_command = 'ag -Q -l --nocolor --hidden -g "%s"'
-
-  " ag is fast enough that CtrlP doesn't need to cache
-  let g:ctrlp_use_caching = 0
-else
-  "ctrl+p ignore files in .gitignore
-  let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files . -co --exclude-standard', 'find %s -type f']
-endif
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " deoplete.nvim
@@ -109,15 +90,6 @@ autocmd VimEnter * call CustomTabularPatterns()
 
 " shortcut to align text with Tabular
 map <Leader>a :Tabularize<space>
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ack.vim
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-if executable('ag')
-  let g:ackprg = 'ag --vimgrep'
-endif
-
-nnoremap \ :Ack<SPACE>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " rainbow_parentheses.vim

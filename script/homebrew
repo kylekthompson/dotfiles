@@ -13,6 +13,7 @@ brew tap Goles/battery
 brew install battery
 brew install diff-so-fancy
 brew install elixir
+brew install fzf
 brew install git
 brew install heroku
 brew install hub

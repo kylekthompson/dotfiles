@@ -15,7 +15,7 @@ Plug 'neomake/neomake'
 Plug 'tpope/vim-surround'
 
 " Fuzzy file search
-Plug 'ctrlpvim/ctrlp.vim'
+Plug '/usr/local/opt/fzf' | Plug 'junegunn/fzf.vim'
 
 " Keyword completion
 function! DoRemote(arg)
@@ -54,9 +54,6 @@ Plug 'tpope/vim-repeat'
 
 " Cool abbreviations and substitutions
 Plug 'tpope/vim-abolish'
-
-" Ack for the_silver_searcher
-Plug 'mileszs/ack.vim'
 
 " Tmux navigation
 Plug 'christoomey/vim-tmux-navigator'
