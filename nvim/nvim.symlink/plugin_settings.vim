@@ -50,7 +50,7 @@ nmap <leader>t :Files<CR>
 nmap <leader>b :Buffers<CR>
 
 " Find the word under the cursor
-nnoremap <Leader>F :grep! "\b<C-R><C-W>\b"<CR>:cw<CR>
+nnoremap <Leader>F :Ag <C-R><C-W><CR>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " deoplete.nvim
