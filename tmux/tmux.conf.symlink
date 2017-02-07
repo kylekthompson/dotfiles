@@ -9,6 +9,9 @@ set -g base-index 1
 set -g default-terminal "tmux-256color"
 set -as terminal-overrides ',xterm*:sitm=\E[3m'
 
+# Use reattach-to-user-namespace to fix copy/paste
+set -g default-command "reattach-to-user-namespace -l zsh"
+
 # Faster key repeat
 set -g escape-time 0
 
@@ -69,36 +72,24 @@ setw -g pane-base-index 1
 bind a send-prefix
 
 # Send input to all panes in the current window
-bind C-s setw synchronize-panes \; display "Synchronize mode switched!"
+bind s setw synchronize-panes \; display "Synchronize mode switched!"
 
 # Pane splitting
-bind | split-window -h
+bind \ split-window -h
 bind - split-window -v
 
-# Vim-like pane movement
-bind h select-pane -L
-bind j select-pane -D
-bind k select-pane -U
-bind l select-pane -R
-
-# Resize panes
-bind H resize-pane -L 5
-bind J resize-pane -D 5
-bind K resize-pane -U 5
-bind L resize-pane -R 5
-
 # Switch windows with arrow keys
-bind Left previous-window
-bind Right next-window
+bind h previous-window
+bind l next-window
 
 # New window creation
-bind C-n command-prompt -p "Name of new window: " "new-window -n '%%'"
+bind n command-prompt -p "Name of new window: " "new-window -n '%%'"
 
 # Rename a window
-bind C-r command-prompt -p "New name of window: " "rename-window '%%'"
+bind r command-prompt -p "New name of window: " "rename-window '%%'"
 
 # Reload config file
-bind r source ~/.tmux.conf \; display "Reloaded Tmux!"
+bind C-r source ~/.tmux.conf \; display "Reloaded Tmux!"
 
 # tmux / vim stuff
 is_vim="ps -o state= -o comm= -t '#{pane_tty}' \
