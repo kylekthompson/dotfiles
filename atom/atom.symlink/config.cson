@@ -1,4 +1,7 @@
 "*":
+  "atom-beautify":
+    general:
+      _analyticsUserId: "a9876252-da08-4005-9ab4-18114c60271b"
   core:
     projectHome: "/Users/kylekthompson/src/kylekthompson"
     telemetryConsent: "no"
