@@ -11,6 +11,7 @@ atom/atom.symlink/init.coffee
 atom/atom.symlink/keymap.cson
 atom/atom.symlink/snippets.cson
 atom/atom.symlink/styles.less
+atom/atom.symlink/package-deps-state.json
 
 nvim/nvim.symlink/autoload
 nvim/nvim.symlink/bundle
