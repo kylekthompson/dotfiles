@@ -49,7 +49,7 @@
   user = kylekthompson
 
 [credential]
-  whitespace = trailing-space,space-before-tab,indent-with-non-tab
+  whitespace = blank-at-eol,blank-at-eof,space-before-tab
   editor = vim
   helper = osxkeychain
 
