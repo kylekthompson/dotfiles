@@ -25,6 +25,7 @@ source $ZSH/oh-my-zsh.sh
 ####
 
 export EDITOR=nvim
+export NVM_DIR="$HOME/.nvm"
 
 export PATH=$PATH:~/src/kylekthompson/dotfiles/bin
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH
@@ -75,6 +76,9 @@ export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 # better search through history with up and down arrows
 bindkey "^[[A" history-beginning-search-backward
 bindkey "^[[B" history-beginning-search-forward
+
+# nvm
+. "/usr/local/opt/nvm/nvm.sh"
 
 # always start tmux
 if which tmux 2>&1 >/dev/null; then

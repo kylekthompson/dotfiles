@@ -17,6 +17,9 @@
     tabType: "soft"
   "exception-reporting":
     userId: "f4eb2b8c-4039-d590-b7c5-d5a78d643a77"
+  "linter-eslint": {}
+  "linter-ui-default":
+    showPanel: true
   minimap:
     plugins:
       "split-diff": true

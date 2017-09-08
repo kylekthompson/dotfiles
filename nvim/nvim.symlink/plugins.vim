@@ -38,6 +38,11 @@ Plug 'pangloss/vim-javascript'
 " JSX syntax highlighting
 Plug 'mxw/vim-jsx'
 
+" Typescript
+Plug 'leafgarland/typescript-vim'
+Plug 'mhartington/nvim-typescript'
+Plug 'peitalin/vim-jsx-typescript'
+
 " Super cool motions
 Plug 'easymotion/vim-easymotion'
 
