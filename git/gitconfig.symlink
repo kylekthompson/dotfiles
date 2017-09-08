@@ -49,7 +49,7 @@
   user = kylekthompson
 
 [credential]
-  whitespace = blank-at-eol,blank-at-eof,space-before-tab
+  whitespace = trailing-space,space-before-tab
   editor = vim
   helper = osxkeychain
 
@@ -57,7 +57,7 @@
   editor = vim
   excludesfile = ~/.gitignore
   attributesfile = ~/.gitattributes
-  whitespace = trailing-space,space-before-tab,indent-with-non-tab
+  whitespace = trailing-space,space-before-tab
   pager = diff-so-fancy | less -EFRX -x2
   trustctime = false
   precomposeunicode = false
