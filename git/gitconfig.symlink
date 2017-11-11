@@ -16,6 +16,8 @@
   cob           = checkout -b
   contributors  = shortlog -n -s --no-merges
   cleanup       = !git remote prune origin && git gc && git clean -dfx && git stash clear
+  d             = diff
+  ds            = diff --staged
   ls            = !git log --graph --oneline --decorate
   po            = !git push origin $(git branch | cut -d' ' -f2)
   remotes       = remote -v

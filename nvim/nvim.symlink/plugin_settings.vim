@@ -8,20 +8,6 @@
 " Nerdtree
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" Open NERDTree when vim starts up
-autocmd vimenter * NERDTree
-
-" Even when there are no files chosen
-autocmd StdinReadPre * let s:std_in=1
-autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
-
-" And when opening a directory
-autocmd StdinReadPre * let s:std_in=1
-autocmd VimEnter * if argc() == 1 && isdirectory(argv()[0]) && !exists("s:std_in") | exe 'NERDTree' argv()[0] | wincmd p | ene | endif
-
-" But close vim if this is all that is left
-autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
-
 " Keymappings
 map <Leader>gt :NERDTreeToggle<CR>
 
@@ -48,9 +34,7 @@ let g:neomake_error_sign = { 'text': 'E>', 'texthl': 'ErrorMsg' }
 
 nmap <leader>t :Files<CR>
 nmap <leader>b :Buffers<CR>
-
-" Find the word under the cursor
-nnoremap <Leader>F :Ag <C-R><C-W><CR>
+nnoremap <Leader>f :Ag<CR>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " deoplete.nvim
@@ -70,26 +54,6 @@ let g:airline_theme = "gruvbox"
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 let g:javascript_plugin_jsdoc = 1
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" tabular
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function! CustomTabularPatterns()
-  if exists('g:tabular_loaded')
-    AddTabularPattern! symbols         / :/l0
-    AddTabularPattern! hash            /^[^>]*\zs=>/
-    AddTabularPattern! chunks          / \S\+/l0
-    AddTabularPattern! assignment      / = /l0
-    AddTabularPattern! comma           /^[^,]*,/l1
-    AddTabularPattern! colon           /:\zs /l0
-    AddTabularPattern! options_hashes  /:\w\+ =>/
-  endif
-endfunction
-
-autocmd VimEnter * call CustomTabularPatterns()
-
-" shortcut to align text with Tabular
-map <Leader>a :Tabularize<space>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " rainbow_parentheses.vim
