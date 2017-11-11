@@ -4,82 +4,42 @@
 
 call plug#begin('~/.config/nvim/bundle')
 
-" Directory tree
-Plug 'scrooloose/nerdtree'
-Plug 'Xuyuanp/nerdtree-git-plugin'
-
-" Linting
-Plug 'neomake/neomake'
-
-" Better surroundings (cs"')
-Plug 'tpope/vim-surround'
-
-" Fuzzy file search
+" File stuff
 Plug '/usr/local/opt/fzf' | Plug 'junegunn/fzf.vim'
+Plug 'danro/rename.vim'
 
-" Keyword completion
-function! DoRemote(arg)
-  UpdateRemotePlugins
-endfunction
-Plug 'Shougo/deoplete.nvim', { 'do': function('DoRemote') }
-
-" Airline!
-Plug 'vim-airline/vim-airline'
-
-" Better commenting
-Plug 'tomtom/tcomment_vim'
-
-" Git info in the gutter
-Plug 'airblade/vim-gitgutter'
-
-" Javascript syntax highlighting
-Plug 'pangloss/vim-javascript'
-
-" JSX syntax highlighting
+" Language stuff
+Plug 'othree/yajs.vim'
+Plug 'othree/es.next.syntax.vim'
 Plug 'mxw/vim-jsx'
-
-" Typescript
-Plug 'leafgarland/typescript-vim'
-Plug 'mhartington/nvim-typescript'
-Plug 'peitalin/vim-jsx-typescript'
-
-" Super cool motions
-Plug 'easymotion/vim-easymotion'
-
-" Rails stuff
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rake'
 Plug 'vim-ruby/vim-ruby'
+Plug 'elixir-lang/vim-elixir'
+Plug 'HerringtonDarkholme/yats.vim'
+Plug 'mhartington/nvim-typescript'
 
-" Cool tabbing
-Plug 'godlygeek/tabular'
-
-" Allow repeating plugins
-Plug 'tpope/vim-repeat'
-
-" Cool abbreviations and substitutions
-Plug 'tpope/vim-abolish'
-
-" Tmux navigation
+" Utility stuff
+Plug 'vim-airline/vim-airline'
+Plug 'airblade/vim-gitgutter'
+Plug 'scrooloose/nerdtree'
+Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'christoomey/vim-tmux-navigator'
 
-" Elixir support
-Plug 'elixir-lang/vim-elixir'
-
-" Pretty parens
+" Style stuff
 Plug 'kien/rainbow_parentheses.vim'
-
-" Rename files easily
-Plug 'danro/rename.vim'
-
-" gruvbox styles
 Plug 'morhetz/gruvbox'
-
-" Custom text objects
-Plug 'kana/vim-textobj-user'
-
-" Show trailing whitespace
 Plug 'ntpeters/vim-better-whitespace'
+
+" Editor stuff
+Plug 'neomake/neomake'
+Plug 'tpope/vim-surround'
+Plug 'tomtom/tcomment_vim'
+Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+
+" Miscellaneous stuff
+Plug 'easymotion/vim-easymotion'
+Plug 'tpope/vim-repeat'
 
 call plug#end()
 

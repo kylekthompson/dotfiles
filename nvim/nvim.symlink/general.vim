@@ -38,9 +38,6 @@ set hlsearch
 " searching is case insensitive when all lowercase
 set ignorecase smartcase
 
-" assume the /g flag on substitutions to replace all matches in a line
-set gdefault
-
 " set temporary directory (don't litter local dir with swp/tmp files)
 set directory=/tmp/
 
@@ -92,3 +89,6 @@ autocmd BufWritePre * StripWhitespace
 " When the type of shell script is /bin/sh, assume a POSIX-compatible
 " shell for syntax highlighting purposes.
 let g:is_posix = 1
+
+" Use the macOS clipboard
+set clipboard=unnamed
