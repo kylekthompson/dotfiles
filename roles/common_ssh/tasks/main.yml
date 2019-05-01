@@ -1,0 +1,6 @@
+- name: Symlink ssh config
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.ssh/config"
+    src: "{{ role_path }}/files/config"
+    state: link
+    force: true

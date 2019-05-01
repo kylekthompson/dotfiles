@@ -1,0 +1,36 @@
+- name: Symlink ruby configs
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.{{ item }}"
+    src: "{{ role_path }}/files/{{ item }}"
+    state: link
+    force: true
+  with_items:
+    - gemrc
+    - irbrc
+    - pryrc
+    - rspec
+    - default-gems
+
+- name: Check if the ruby asdf plugin is installed
+  shell: asdf plugin-list | grep ruby
+  register: ruby_plugin_check
+  ignore_errors: true
+
+- name: Setup asdf ruby
+  command: asdf plugin-add ruby
+  when: ruby_plugin_check.stdout == ""
+
+- name: Update adsf ruby
+  command: asdf plugin-update ruby
+
+- name: Check if ruby is installed
+  shell: asdf where ruby 2.6.3 | grep "not installed"
+  register: ruby_version_check
+  ignore_errors: true
+
+- name: Install ruby
+  command: asdf install ruby 2.6.3
+  when: ruby_version_check.stdout != ""
+
+- name: Set global ruby version
+  command: asdf global ruby 2.6.3

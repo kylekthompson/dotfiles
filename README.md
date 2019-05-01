@@ -2,19 +2,24 @@
 
 These are my dotfiles! They are an always-changing WIP, so feel free to use them, but be careful!
 
-## Install
-3 Easy steps:
+## For a new mac
 
-```
+```bash
 git clone https://github.com/kylekthompson/dotfiles ~/.dotfiles
 cd ~/.dotfiles
 
-script/bootstrap
+xcode-select --install
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python get-pip.py --user
+rm get-pip.py
+pip install ansible
+
+./apply new_mac
+./apply personal
 ```
 
-And that's it! This will symlink any .symlink file into your home directory
+## For subsequent updates
 
-## Thanks
-
-* [Mark Tareshawty](https://github.com/tarebyte/dotfiles)
-
+```bash
+./apply personal
+```
