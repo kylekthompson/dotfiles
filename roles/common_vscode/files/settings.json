@@ -1,0 +1,17 @@
+{
+    "workbench.startupEditor": "newUntitledFile",
+    "editor.fontFamily": "Dank Mono",
+    "editor.fontSize": 14,
+    "editor.tabSize": 2,
+    "editor.renderWhitespace": "boundary",
+    "editor.rulers": [120],
+    "window.zoomLevel": 0,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "gitlens.defaultDateStyle": "absolute",
+    "explorer.confirmDragAndDrop": false,
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "workbench.colorTheme": "Gruvbox Dark (Medium)"
+}

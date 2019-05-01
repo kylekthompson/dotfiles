@@ -1,0 +1,12 @@
+begin
+  require 'rails/console/app'
+  extend Rails::ConsoleMethods
+rescue LoadError => e
+end
+
+begin
+  require 'pry'
+  Pry.start
+  exit
+rescue LoadError => e
+end

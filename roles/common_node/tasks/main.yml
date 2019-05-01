@@ -1,0 +1,32 @@
+- name: Check if the nodejs asdf plugin is installed
+  shell: asdf plugin-list | grep nodejs
+  register: nodejs_plugin_check
+  ignore_errors: true
+
+- name: Setup asdf nodejs
+  command: asdf plugin-add nodejs
+  when: nodejs_plugin_check.stdout == ""
+
+- name: Update adsf nodejs
+  command: asdf plugin-update nodejs
+
+- name: Check if nodejs is installed
+  shell: asdf where nodejs 10.15.3 | grep "not installed"
+  register: nodejs_version_check
+  ignore_errors: true
+
+- name: Set up the node gnupg keyrings
+  file:
+    path: "$GNUPGHOME"
+    state: directory
+    mode: 0700
+
+- name: Import the node release team's OpenPGP keys
+  command: bash "~/.asdf/plugins/nodejs/bin/import-release-team-keyring"
+
+- name: Install nodejs
+  command: asdf install nodejs 10.15.3
+  when: nodejs_version_check.stdout != ""
+
+- name: Set global nodejs version
+  command: asdf global nodejs 10.15.3

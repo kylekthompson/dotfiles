@@ -1,0 +1,25 @@
+- name: Ensure fish is a valid shell
+  lineinfile:
+    path: /etc/shells
+    line: /usr/local/bin/fish
+    state: present
+  become: true
+
+- name: Change default shell to fish
+  command: chsh -s /usr/local/bin/fish
+  when: lookup('env', 'SHELL') != '/usr/local/bin/fish'
+
+- name: Remove existing fish config
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.config/fish"
+    state: absent
+
+- name: Symlink fish config
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.config/fish"
+    src: "{{ role_path }}/files/config/fish"
+    state: link
+    force: true
+
+- name: Source fish config
+  command: source ~/.config/fish/config.fish
