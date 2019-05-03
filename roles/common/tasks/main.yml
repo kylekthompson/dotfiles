@@ -20,3 +20,5 @@
     name: common_node
 - include_role:
     name: common_vscode
+- include_role:
+    name: common_tmux
