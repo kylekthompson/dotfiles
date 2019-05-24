@@ -26,11 +26,16 @@
       - hub
       - mas
       - neovim
+      - openssl
+      - readline
       - reattach-to-user-namespace
       - ripgrep
+      - sqlite3
       - tmux
       - vim
       - wifi-password
+      - xz
+      - zlib
     state: latest
 
 - homebrew_cask:

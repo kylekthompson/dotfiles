@@ -45,8 +45,8 @@ set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 source "$ASDF_DIR/asdf.fish"
 
 # always start tmux
-# if which tmux 2>&1 >/dev/null
-#   if not set -q TMUX
-#     tmux attach -t fish || tmux new -s fish; exit
-#   end
-# end
+if which tmux 2>&1 >/dev/null
+  if not set -q TMUX
+    exec tmux new -As fish
+  end
+end

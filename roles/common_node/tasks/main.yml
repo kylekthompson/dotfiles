@@ -1,3 +1,10 @@
+- name: Symlink python default packages
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.default-npm-packages"
+    src: "{{ role_path }}/files/default-npm-packages"
+    state: link
+    force: true
+
 - name: Check if the nodejs asdf plugin is installed
   shell: asdf plugin-list | grep nodejs
   register: nodejs_plugin_check
