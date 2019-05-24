@@ -42,6 +42,3 @@ Plug 'easymotion/vim-easymotion'
 Plug 'tpope/vim-repeat'
 
 call plug#end()
-
-" Required:
-filetype plugin indent on
