@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -euxo pipefail
+
+ansible laptop \
+    --ask-become-pass \
+    --inventory inventory \
+    --connection local \
+    --module-name include_role \
+    --args "name=$1"
