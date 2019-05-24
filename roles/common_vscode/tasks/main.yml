@@ -1,0 +1,32 @@
+- name: Install extensions
+  command: code --install-extension {{ item }}
+  with_items:
+    - castwide.solargraph
+    - dbaeumer.vscode-eslint
+    - eamodio.gitlens
+    - kaiwood.endwise
+    - mjmcloug.vscode-elixir
+    - noku.rails-run-spec-vscode
+    - PeterJausovec.vscode-docker
+    - rebornix.ruby
+    - silvenon.mdx
+    - tomphilbin.gruvbox-themes
+    - ziyasal.vscode-open-in-github
+
+- name: Remove existing vscode configs
+  file:
+    path: "{{ lookup('env', 'HOME') }}/Library/Application Support/Code/User/{{ item }}"
+    state: absent
+  with_items:
+    - keybindings.json
+    - settings.json
+
+- name: Symlink vscode configs
+  file:
+    path: "{{ lookup('env', 'HOME') }}/Library/Application Support/Code/User/{{ item }}"
+    src: "{{ role_path }}/files/{{ item }}"
+    state: link
+    force: true
+  with_items:
+    - keybindings.json
+    - settings.json

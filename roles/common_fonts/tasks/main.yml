@@ -1,0 +1,7 @@
+- name: Install fonts
+  copy:
+    dest: "{{ lookup('env', 'HOME') }}/Library/Fonts/{{ item }}"
+    src: "{{ role_path }}/files/{{ item }}"
+  with_items:
+    - DankMono-Italic.otf
+    - DankMono-Regular.otf

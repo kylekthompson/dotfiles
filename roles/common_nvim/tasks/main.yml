@@ -1,0 +1,44 @@
+- name: Ensure plug directory exists
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.local/share/nvim/site/autoload"
+    state: directory
+
+- name: Download plug
+  get_url:
+    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    dest: "{{ lookup('env', 'HOME') }}/.local/share/nvim/site/autoload/plug.vim"
+    mode: 0755
+
+- name: Ensure nvim directory exists
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.config/nvim"
+    state: directory
+
+- name: Symlink nvim configs
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.config/nvim/{{ item }}"
+    src: "{{ role_path }}/files/{{ item }}"
+    state: link
+    force: true
+  with_items:
+    - file_types.vim
+    - general.vim
+    - init.vim
+    - keybindings.vim
+    - plugin_settings.vim
+    - plugins.vim
+
+- name: Upgrade plug
+  command: nvim --headless +PlugUpgrade +qa
+
+- name: Install plugins
+  command: nvim --headless +PlugInstall +qa
+
+- name: Update plugins
+  command: nvim --headless +PlugUpdate +qa
+
+- name: Cleanup
+  command: nvim --headless +PlugClean! +qa
+
+- name: Update remote plugins
+  command: nvim --headless +UpdateRemotePlugins +qa
