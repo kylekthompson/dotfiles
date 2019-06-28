@@ -27,6 +27,7 @@
       - mas
       - neovim
       - openssl
+      - postgresql
       - readline
       - reattach-to-user-namespace
       - ripgrep
@@ -46,10 +47,12 @@
       - 1password
       - alfred
       - bartender
-      - gpg-suite
       - dash
+      - docker
       - google-chrome
+      - gpg-suite
       - iterm2
+      - keybase
       - slack
       - visual-studio-code
     state: upgraded
