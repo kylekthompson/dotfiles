@@ -3,5 +3,9 @@
   {
     "key": "ctrl+cmd+r",
     "command": "extension.runSpecLine"
+  },
+  {
+    "key": "shift+cmd+t",
+    "command": "-extension.runFileSpecs"
   }
 ]
