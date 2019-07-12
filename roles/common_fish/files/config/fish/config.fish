@@ -44,6 +44,11 @@ set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 # Setup asdf
 source "$ASDF_DIR/asdf.fish"
 
+# Source additional configuration
+if test -e ~/.config/fish/override.fish
+  source ~/.config/fish/override.fish
+end
+
 # always start tmux
 if which tmux 2>&1 >/dev/null
   if not set -q TMUX

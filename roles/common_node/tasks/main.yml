@@ -1,4 +1,4 @@
-- name: Symlink python default packages
+- name: Symlink node default packages
   file:
     path: "{{ lookup('env', 'HOME') }}/.default-npm-packages"
     src: "{{ role_path }}/files/default-npm-packages"
