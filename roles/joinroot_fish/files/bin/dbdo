@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+databases=""
+
+for database in "$@"; do
+  if [[ "$databases" == "" ]]; then
+    databases="$database"
+  else
+    databases="$databases,$database"
+  fi
+done
+
+bundle exec rake db:do_over["$databases"]

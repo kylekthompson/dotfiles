@@ -22,6 +22,11 @@ pip install ansible
 ./apply personal
 ```
 
+### By hand
+
+1. Set up Magnet, Amphetamine, Airmail, Slack, Chrome, Dash, Docker, Alfred, Bartender, 1Password, and Keybase
+1. Set up SSH and GPG keys for GitHub
+
 ## For subsequent updates
 
 ```bash

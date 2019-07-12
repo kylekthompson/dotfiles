@@ -1,0 +1,27 @@
+- homebrew:
+    update_homebrew: true
+    upgrade_all: true
+
+- homebrew:
+    name:
+      - awscli
+      - graphviz
+      - grep
+      - heroku/brew/heroku
+      - imagemagick
+      - parallel
+      - r
+      - watchman
+    state: latest
+
+- homebrew_cask:
+    upgrade_all: true
+
+- homebrew_cask:
+    name:
+      - 1password-cli
+      - licecap
+      - jet
+      - reactotron
+      - react-native-debugger
+    state: upgraded

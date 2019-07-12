@@ -1,0 +1,11 @@
+- git:
+    repo: git@github.com:Root-App/{{ item }}.git
+    dest: "{{ lookup('env', 'HOME') }}/code/{{ item }}"
+    accept_hostkey: true
+    update: false
+  with_items:
+    - root-engineering-docs
+    - root-infrastructure
+    - root-mobile
+    - root-server
+    - root-web

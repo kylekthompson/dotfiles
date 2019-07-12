@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+require "json"
+require "open3"
+
+APP_IDENTIFIER = 'com.joinroot.joinROOTdev'
+TERMINATION_COMMAND = "xcrun simctl terminate booted #{APP_IDENTIFIER}"
+
+def print_help_message
+  puts 'Usage: ios-reset'
+  puts 'Description: Closes Root app on simulator if running and recursively deletes the apps data directory.'
+end
+
+def print_and_run(command, name="")
+  puts "#{name} '#{command}'"
+  `#{command}`
+end
+
+def valid_path?(path)
+  path =~ /CoreSimulator/
+end
+
+def main
+  output, error, status = Open3.capture3("xcrun simctl get_app_container booted #{APP_IDENTIFIER} data")
+  case status.exitstatus
+  when 0
+    raise 'Unexpected path to app directory, possibly due to a change in xcrun' unless valid_path?(output)
+    path = "#{output.strip}/*"
+    remove_command = "rm -rf #{path}"
+    print_and_run(TERMINATION_COMMAND, 'terminating')
+    print_and_run(remove_command, 'deleting documents')
+  when 2
+    puts 'Root app not installed'
+  else
+    puts error unless error.empty?
+    puts output unless output.empty?
+  end
+end
+
+case ARGV[0]
+when '-h', '--help'
+  print_help_message
+when nil
+  main
+else
+  print_help_message
+end

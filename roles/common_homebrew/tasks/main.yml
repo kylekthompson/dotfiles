@@ -14,6 +14,7 @@
       - fzf
       - git
       - hub
+      - jq
       - mas
       - neovim
       - openssl
