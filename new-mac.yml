@@ -1,0 +1,6 @@
+---
+- hosts: laptop
+  roles:
+    - mac_bootstrap
+    - common_install_homebrew
+    - common_fish
