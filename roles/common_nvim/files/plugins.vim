@@ -17,7 +17,6 @@ Plug 'tpope/vim-rake'
 Plug 'vim-ruby/vim-ruby'
 Plug 'elixir-lang/vim-elixir'
 Plug 'HerringtonDarkholme/yats.vim'
-Plug 'mhartington/nvim-typescript'
 
 " Utility stuff
 Plug 'vim-airline/vim-airline'

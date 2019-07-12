@@ -9,6 +9,11 @@
   command: chsh -s /usr/local/bin/fish
   when: lookup('env', 'SHELL') != '/usr/local/bin/fish'
 
+- name: Ensure the .config directory exists
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.config"
+    state: directory
+
 - name: Remove existing fish config
   file:
     path: "{{ lookup('env', 'HOME') }}/.config/fish"
