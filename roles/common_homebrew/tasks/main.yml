@@ -5,7 +5,9 @@
   no_log: true
 
 - name: Install Homebrew
-  command: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
+  shell: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
+  args:
+    executable: /bin/bash
   when: not homebrew_presence.stat.exists
 
 - homebrew_tap:
