@@ -22,12 +22,6 @@
   register: nodejs_version_check
   ignore_errors: true
 
-- name: Set up the node gnupg keyrings
-  file:
-    path: "$GNUPGHOME"
-    state: directory
-    mode: 0700
-
 - name: Import the node release team's OpenPGP keys
   command: bash "~/.asdf/plugins/nodejs/bin/import-release-team-keyring"
 

@@ -19,3 +19,4 @@
     - joinroot_ruby
     - joinroot_repos
     - joinroot_fish
+    - joinroot_terraform
