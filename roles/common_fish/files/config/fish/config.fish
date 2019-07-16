@@ -6,7 +6,6 @@ set -x EDITOR code
 set -x PATH "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH"
 set -x PATH "$PATH:/usr/local/opt/fzf/bin"
 set -x ASDF_DIR "/usr/local/opt/asdf"
-set -x GNUPGHOME "$ASDF_DIR/keyrings/nodejs"
 set -x GPG_TTY (tty)
 
 ####
