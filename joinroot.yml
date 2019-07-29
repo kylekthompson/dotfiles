@@ -18,5 +18,6 @@
     - joinroot_node
     - joinroot_ruby
     - joinroot_repos
+    - joinroot_root_server
     - joinroot_fish
     - joinroot_terraform
