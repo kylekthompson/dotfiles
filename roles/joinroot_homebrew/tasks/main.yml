@@ -12,6 +12,14 @@
       - parallel
       - r
       - watchman
+      - pkg-config
+      - cairo
+      - pango
+      - libffi
+      - libpng
+      - jpeg
+      - giflib
+      - librsvg
     state: latest
 
 - homebrew_cask:
