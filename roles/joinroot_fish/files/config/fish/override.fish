@@ -8,6 +8,8 @@ set -x ROOT_REACT_NATIVE_DIR "$HOME/code/root-mobile"
 set -x ROOT_SERVER_DIR "$HOME/code/root-server"
 set -x ROOT_MOBILE_DIR "$HOME/code/root-mobile"
 
+set -x JAVA_HOME "/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home/"
+
 set -x PKG_CONFIG_PATH "/usr/local/opt/libffi/lib/pkgconfig"
 
 set -x PATH "$PATH:$HOME/code/root-infrastructure/bin"

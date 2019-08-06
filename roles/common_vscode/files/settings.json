@@ -13,5 +13,6 @@
     "explorer.confirmDragAndDrop": false,
     "workbench.editor.enablePreview": false,
     "workbench.editor.enablePreviewFromQuickOpen": false,
-    "workbench.colorTheme": "Gruvbox Dark (Medium)"
+    "workbench.colorTheme": "Gruvbox Dark (Medium)",
+    "terminal.integrated.rendererType": "dom"
 }
