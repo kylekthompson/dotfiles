@@ -2,13 +2,13 @@
   command: asdf plugin-update ruby
 
 - name: Check if ruby is installed
-  shell: asdf where ruby 2.5.1 | grep "not installed"
+  shell: asdf where ruby 2.5.5 | grep "not installed"
   register: ruby_version_check
   ignore_errors: true
 
 - name: Install ruby
-  command: asdf install ruby 2.5.1
+  command: asdf install ruby 2.5.5
   when: ruby_version_check.stdout != ""
 
 - name: Set global ruby version
-  command: asdf global ruby 2.5.1
+  command: asdf global ruby 2.5.5
