@@ -5,6 +5,7 @@
 - homebrew:
     name:
       - awscli
+      - dnsmasq
       - graphviz
       - grep
       - heroku/brew/heroku

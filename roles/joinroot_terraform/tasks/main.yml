@@ -23,16 +23,16 @@
     path: /usr/local/bin/terraform
     state: absent
 
-- name: Ensure /usr/local/opt/terraform/bin exists
+- name: Ensure ~/.local/bin exists
   file:
-    path: /usr/local/opt/terraform/bin
+    path: ~/.local/bin
     state: directory
     mode: '0755'
 
 - name: Unpackage terraform binary
   unarchive:
     src: "{{ terraform_zip_download.dest }}"
-    dest: /usr/local/opt/terraform/bin
+    dest: ~/.local/bin
     remote_src: no
 
 - name: Cleanup downloads

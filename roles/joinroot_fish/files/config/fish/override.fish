@@ -15,7 +15,7 @@ set -x PKG_CONFIG_PATH "/usr/local/opt/libffi/lib/pkgconfig"
 set -x PATH "$PATH:$HOME/code/root-infrastructure/bin"
 set -x PATH "$PATH:$HOME/code/root-infrastructure/sbin"
 set -x PATH "$PATH:$HOME/src/kylekthompson/dotfiles/roles/joinroot_fish/files/bin"
-set -x PATH "$PATH:/usr/local/opt/terraform/bin"
+set -x PATH "$PATH:$HOME/.local/bin"
 
 ####
 #### Aliases
