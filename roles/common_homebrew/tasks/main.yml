@@ -17,6 +17,7 @@
       - git
       - hub
       - jq
+      - ledger
       - mas
       - neovim
       - openssl
