@@ -5,7 +5,7 @@
 set -x ROOT_IOS_DIR "$HOME/code/root-mobile/ios"
 set -x ROOT_ANDROID_DIR "$HOME/code/root-mobile/android"
 set -x ROOT_REACT_NATIVE_DIR "$HOME/code/root-mobile"
-set -x ROOT_SERVER_DIR "$HOME/code/root-server"
+set -x ROOT_SERVER_DIR "$HOME/code/root-monorepo/server"
 set -x ROOT_MOBILE_DIR "$HOME/code/root-mobile"
 
 set -x JAVA_HOME "/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home/"
