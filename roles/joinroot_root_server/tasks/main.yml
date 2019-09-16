@@ -1,5 +1,5 @@
 - name: Install R packages
-  shell: cd ~/code/root-server && r --no-save --file=init.r
+  shell: cd ~/code/root-monorepo/server && r --no-save --file=init.r
   args:
     executable: /bin/sh
     creates: /Library/Frameworks/R.framework/Resources/library/randomForest
