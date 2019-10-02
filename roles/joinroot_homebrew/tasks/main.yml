@@ -4,6 +4,7 @@
 
 - homebrew:
     name:
+      - aws-okta
       - awscli
       - dnsmasq
       - graphviz
