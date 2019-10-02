@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+AWS_CONFIG_FILE=~/code/root-infrastructure/.aws-config aws-okta env $1
+
+if [[ $? -eq 1 ]]; then
+  echo "Login failed. Please check to make sure the profile $1 exists."
+  return
+else
+  eval $(AWS_CONFIG_FILE=~/code/root-infrastructure/.aws-config aws-okta env --assume-role-ttl=12h --session-ttl=12h $1)
+  echo ""
+  echo "Successfully exported the above variables and logged in as $1"
+fi
