@@ -7,6 +7,7 @@
       - aws-okta
       - awscli
       - dnsmasq
+      - gnu-tar
       - graphviz
       - grep
       - heroku/brew/heroku
