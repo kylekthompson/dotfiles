@@ -1,15 +1,24 @@
-- name: Set terraform version
+- name: Set terraform facts
   set_fact:
-    tf_version: "0.11.13"
+    tf_version: "0.12.13"
+    terraform_plugin_path: "{{ ansible_env.HOME }}/.terraform.d/plugins/"
+    terraform_plugins:
+      - desired_file_name: "terraform-provider-okta_v3.0.38_x4"
+        url: "https://github.com/articulate/terraform-provider-okta/releases/download/v3.0.38/terraform-provider-okta-{{ ansible_system | lower }}-amd64.zip"
+      - desired_file_name: "terraform-provider-artifactory_v2.0.0-alpha1_x5"
+        url: "https://github.com/atlassian/terraform-provider-artifactory/releases/download/v2.0.0-alpha1/terraform-provider-artifactory_2.0.0-alpha1_{{ ansible_system | lower }}_x86_64.tar.gz"
+      - desired_file_name: "terraform-provider-sumologic_v2.0.0"
+        url: "https://github.com/SumoLogic/sumologic-terraform-provider/releases/download/v2.0.0/sumologic-terraform-provider_2.0.0_{{ 'macOS' if (ansible_system | lower) == 'darwin' else 'Linux' }}_64-bit.zip"
 
-- name: Determine terraform filename
+- name: Determine terraform binary download name
   set_fact:
-    tf_binary_download_name: "terraform_{{ tf_version }}_darwin_amd64.zip"
+    tf_binary_download_name: "terraform_{{ tf_version }}_{{ ansible_system | lower }}_amd64.zip"
 
-- name: Set terraform urls
+- name: Set terraform download urls
   set_fact:
     tf_download_url: "https://releases.hashicorp.com/terraform/{{ tf_version }}/{{ tf_binary_download_name }}"
     tf_sha_sum_url: "https://releases.hashicorp.com/terraform/{{ tf_version }}/terraform_{{ tf_version }}_SHA256SUMS"
+    tf_install_path: ~/.local/bin
 
 - name: Download terraform
   get_url:
@@ -23,19 +32,97 @@
     path: /usr/local/bin/terraform
     state: absent
 
-- name: Ensure ~/.local/bin exists
+- name: "Ensure {{ tf_install_path }} exists"
   file:
-    path: ~/.local/bin
+    path: "{{ tf_install_path }}"
     state: directory
     mode: '0755'
 
 - name: Unpackage terraform binary
   unarchive:
     src: "{{ terraform_zip_download.dest }}"
-    dest: ~/.local/bin
+    dest: "{{ tf_install_path }}"
     remote_src: no
+
+- name: Find old binaries
+  find:
+    patterns:
+      - '^terraform-\d\d$'
+    paths:
+      - ~/.local/bin
+    use_regex: 'yes'
+  register: old_binaries
+
+- name: Remove old binaries
+  file:
+    state: absent
+    path: "{{ item['path'] }}"
+  with_items:
+    - "{{ old_binaries['files'] }}"
 
 - name: Cleanup downloads
   file:
     state: absent
     path: "{{ terraform_zip_download.dest }}"
+
+- name: Ensure dnsmasq config directory exists
+  file:
+    path: /usr/local/etc/dnsmasq.d
+    state: directory
+    mode: '0755'
+
+- name: Local config for dnsmasq
+  file:
+    path: /usr/local/etc/dnsmasq.d/local.conf
+    src: "{{ role_path }}/files/local.conf"
+    state: link
+    force: true
+
+- name: Config dir for dnsmasq
+  copy:
+    dest: /usr/local/etc/dnsmasq.conf
+    content: "conf-dir=/usr/local/etc/dnsmasq.d"
+
+- name: Ensure dnsmasq start
+  shell: "brew services list | grep 'dnsmasq.*started' || sudo brew services start dnsmasq"
+
+- name: "Create {{ terraform_plugin_path }}"
+  file:
+    path: "{{ terraform_plugin_path }}"
+    state: directory
+    recurse: yes
+
+- name: Check if Terraform provider installed
+  stat:
+    path: "{{ terraform_plugin_path }}{{ item.desired_file_name }}"
+  with_items: "{{ terraform_plugins }}"
+  register: installed_plugins
+
+- set_fact:
+    installed_plugin_list: "{{ installed_plugins.results | map(attribute='stat') | map(attribute='path') | list }}"
+
+- name: Download additional Terraform providers
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ terraform_plugin_path }}"
+  with_items: "{{ terraform_plugins }}"
+  when: terraform_plugin_path + item.desired_file_name not in installed_plugin_list
+
+- name: Unzip additional Terraform providers
+  unarchive:
+    src: "{{ terraform_plugin_path }}{{ item.url.split('/')[-1] }}"
+    dest: "{{ terraform_plugin_path }}"
+  with_items: "{{ terraform_plugins }}"
+  when: terraform_plugin_path + item.desired_file_name not in installed_plugin_list
+
+- name: Remove additional Terraform provider archives
+  file:
+    state: absent
+    path: "{{ terraform_plugin_path }}{{ item.url.split('/')[-1] }}"
+  with_items: "{{ terraform_plugins }}"
+  when: terraform_plugin_path + item.desired_file_name not in installed_plugin_list
+
+- name: Rename providers
+  shell: "mv {{ terraform_plugin_path }}{{ item.desired_file_name.split('_')[0] }}* {{ terraform_plugin_path }}{{ item.desired_file_name }}"
+  with_items: "{{ terraform_plugins }}"
+  when: terraform_plugin_path + item.desired_file_name not in installed_plugin_list
