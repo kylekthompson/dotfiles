@@ -1,5 +1,2 @@
 - name: Apply macOS defaults
   command: "{{ role_path }}/files/macos.sh"
-
-- name: Install SDK headers
-  command: open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
