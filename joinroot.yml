@@ -1,23 +1,23 @@
 ---
 - hosts: laptop
   roles:
-    # - common_homebrew
-    # - common_mac_app_store
-    # - common_ssh
-    # - common_fonts
-    # - common_iterm
-    # - common_git
-    # - common_psql
-    # - common_ruby
-    # - common_python
-    # - common_node
-    # - common_vscode
-    # - common_tmux
-    # - common_nvim
-    # - joinroot_homebrew
-    # - joinroot_node
-    # - joinroot_ruby
-    # - joinroot_repos
-    # - joinroot_root_server
-    # - joinroot_fish
+    - common_homebrew
+    - common_mac_app_store
+    - common_ssh
+    - common_fonts
+    - common_iterm
+    - common_git
+    - common_psql
+    - common_ruby
+    - common_python
+    - common_node
+    - common_vscode
+    - common_tmux
+    - common_nvim
+    - joinroot_homebrew
+    - joinroot_node
+    - joinroot_ruby
+    - joinroot_repos
+    - joinroot_root_server
+    - joinroot_fish
     - joinroot_terraform
