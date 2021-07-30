@@ -18,7 +18,7 @@
   command: asdf plugin-update nodejs
 
 - name: Check if nodejs is installed
-  shell: asdf where nodejs 10.15.3 | grep "not installed"
+  shell: asdf where nodejs 16.6.0 | grep "not installed"
   register: nodejs_version_check
   ignore_errors: true
 
@@ -26,8 +26,8 @@
   command: bash "~/.asdf/plugins/nodejs/bin/import-release-team-keyring"
 
 - name: Install nodejs
-  command: asdf install nodejs 10.15.3
+  command: asdf install nodejs 16.6.0
   when: nodejs_version_check.stdout != ""
 
 - name: Set global nodejs version
-  command: asdf global nodejs 10.15.3
+  command: asdf global nodejs 16.6.0

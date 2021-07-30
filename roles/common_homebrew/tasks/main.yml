@@ -41,10 +41,10 @@
       - 1password
       - alfred
       - bartender
-      - dash
-      - docker
       - google-chrome
       - gpg-suite
+      - homebrew/cask/dash
+      - homebrew/cask/docker
       - iterm2
       - keybase
       - slack

@@ -18,22 +18,22 @@
   command: asdf plugin-update python
 
 - name: Check if python 2 is installed
-  shell: asdf where python 2.7.15 | grep "not installed"
+  shell: asdf where python 2.7.18 | grep "not installed"
   register: python2_version_check
   ignore_errors: true
 
 - name: Check if python 3 is installed
-  shell: asdf where python 3.7.2 | grep "not installed"
+  shell: asdf where python 3.9.6 | grep "not installed"
   register: python3_version_check
   ignore_errors: true
 
 - name: Install python 2
-  command: asdf install python 2.7.15
+  command: asdf install python 2.7.18
   when: python2_version_check.stdout != ""
 
 - name: Install python 3
-  command: asdf install python 3.7.2
+  command: asdf install python 3.9.6
   when: python3_version_check.stdout != ""
 
 - name: Set global python version
-  command: asdf global python 3.7.2 2.7.15
+  command: asdf global python 3.9.6 2.7.18
