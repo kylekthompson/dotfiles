@@ -1,14 +1,12 @@
 - name: Set terraform facts
   set_fact:
-    tf_version: "0.12.13"
+    tf_version: "0.14.7"
     terraform_plugin_path: "{{ ansible_env.HOME }}/.terraform.d/plugins/"
     terraform_plugins:
       - desired_file_name: "terraform-provider-okta_v3.0.38_x4"
         url: "https://github.com/articulate/terraform-provider-okta/releases/download/v3.0.38/terraform-provider-okta-{{ ansible_system | lower }}-amd64.zip"
       - desired_file_name: "terraform-provider-artifactory_v2.0.0-alpha1_x5"
         url: "https://github.com/atlassian/terraform-provider-artifactory/releases/download/v2.0.0-alpha1/terraform-provider-artifactory_2.0.0-alpha1_{{ ansible_system | lower }}_x86_64.tar.gz"
-      - desired_file_name: "terraform-provider-sumologic_v2.0.0"
-        url: "https://github.com/SumoLogic/sumologic-terraform-provider/releases/download/v2.0.0/sumologic-terraform-provider_2.0.0_{{ 'macOS' if (ansible_system | lower) == 'darwin' else 'Linux' }}_64-bit.zip"
 
 - name: Determine terraform binary download name
   set_fact:

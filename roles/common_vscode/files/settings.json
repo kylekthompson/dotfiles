@@ -4,8 +4,9 @@
     "editor.fontSize": 14,
     "editor.tabSize": 2,
     "editor.renderWhitespace": "boundary",
-    "editor.rulers": [120],
-    "window.zoomLevel": 0,
+    "editor.rulers": [
+        120
+    ],
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
@@ -14,5 +15,6 @@
     "workbench.editor.enablePreview": false,
     "workbench.editor.enablePreviewFromQuickOpen": false,
     "workbench.colorTheme": "Gruvbox Dark (Medium)",
-    "terminal.integrated.rendererType": "dom"
+    "terminal.integrated.rendererType": "dom",
+    "workbench.editor.untitled.hint": "hidden"
 }
