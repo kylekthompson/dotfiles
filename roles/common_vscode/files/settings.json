@@ -16,5 +16,6 @@
     "workbench.editor.enablePreviewFromQuickOpen": false,
     "workbench.colorTheme": "Gruvbox Dark (Medium)",
     "terminal.integrated.rendererType": "dom",
-    "workbench.editor.untitled.hint": "hidden"
+    "workbench.editor.untitled.hint": "hidden",
+    "git.path": "/usr/local/bin/git"
 }

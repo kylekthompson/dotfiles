@@ -14,8 +14,8 @@
       - elixir
       - fish
       - fzf
+      - gh
       - git
-      - hub
       - jq
       - ledger
       - mas
