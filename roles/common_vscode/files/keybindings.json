@@ -7,5 +7,17 @@
   {
     "key": "shift+cmd+t",
     "command": "-extension.runFileSpecs"
+  },
+  {
+    "key": "cmd+l",
+    "command": "-extension.runSpecLine"
+  },
+  {
+    "key": "cmd+y",
+    "command": "extension.runFileSpecs"
+  },
+  {
+    "key": "cmd+y",
+    "command": "-extension.runLastSpec"
   }
 ]
