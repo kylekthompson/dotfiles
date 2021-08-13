@@ -16,6 +16,7 @@
       - fzf
       - gh
       - git
+      - heroku/brew/heroku
       - jq
       - ledger
       - mas

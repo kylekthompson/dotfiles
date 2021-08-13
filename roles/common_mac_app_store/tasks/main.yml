@@ -3,8 +3,6 @@
   args:
     creates: "/Applications/{{item.name}}.app"
   with_items:
-    - name: Airmail 3
-      id: 918858936
     - name: Amphetamine
       id: 937984704
     - name: Magnet
