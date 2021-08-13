@@ -1,6 +1,0 @@
-- name: Symlink fish config override
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.config/fish/override.fish"
-    src: "{{ role_path }}/files/config/fish/override.fish"
-    state: link
-    force: true

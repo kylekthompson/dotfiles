@@ -1,0 +1,7 @@
+- git:
+    repo: git@github.com:Huckleberry/{{ item }}.git
+    dest: "{{ lookup('env', 'HOME') }}/code/{{ item }}"
+    accept_hostkey: true
+    update: false
+  with_items:
+    - huckleberry-app

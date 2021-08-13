@@ -17,15 +17,14 @@ pip install ansible
 
 ./apply new-mac
 
-# close and re-open your terminal
+# close and re-open your terminal, set up a GitHub SSH key
 
 ./apply personal
 ```
 
 ### By hand
 
-1. Set up Magnet, Amphetamine, Airmail, Slack, Chrome, Dash, Docker, Alfred, Bartender, 1Password, and Keybase
-1. Set up SSH and GPG keys for GitHub
+1. Set up GPG key for GitHub
 
 ## For subsequent updates
 
