@@ -2,11 +2,17 @@
   command: code --install-extension {{ item }}
   with_items:
     - castwide.solargraph
+    - connorshea.vscode-ruby-test-adapter
     - dbaeumer.vscode-eslint
     - eamodio.gitlens
+    - esbenp.prettier-vscode
+    - hbenl.vscode-test-explorer
+    - hbenl.vscode-test-explorer-liveshare
     - kaiwood.endwise
+    - kavod-io.vscode-jest-test-adapter
+    - misogi.ruby-rubocop
     - mjmcloug.vscode-elixir
-    - noku.rails-run-spec-vscode
+    - ms-vscode.test-adapter-converter
     - rebornix.ruby
     - silvenon.mdx
     - tomphilbin.gruvbox-themes
