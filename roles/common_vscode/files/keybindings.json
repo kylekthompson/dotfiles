@@ -1,10 +1,6 @@
 // Place your key bindings in this file to overwrite the defaultsauto[]
 [
   {
-    "key": "ctrl+cmd+r",
-    "command": "extension.runSpecLine"
-  },
-  {
     "key": "shift+cmd+t",
     "command": "-extension.runFileSpecs"
   },
@@ -14,10 +10,19 @@
   },
   {
     "key": "cmd+y",
-    "command": "extension.runFileSpecs"
+    "command": "-extension.runLastSpec"
   },
   {
-    "key": "cmd+y",
-    "command": "-extension.runLastSpec"
+    "key": "cmd+; c",
+    "command": "-testing.runAtCursor",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "ctrl+cmd+r",
+    "command": "test-explorer.run-test-at-cursor"
+  },
+  {
+    "key": "cmd+r",
+    "command": "test-explorer.run-file"
   }
 ]
