@@ -47,7 +47,6 @@
       - homebrew/cask/dash
       - homebrew/cask/docker
       - iterm2
-      - keybase
       - slack
       - visual-studio-code
     state: upgraded

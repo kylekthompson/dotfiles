@@ -5,7 +5,7 @@
 call plug#begin('~/.config/nvim/bundle')
 
 " File stuff
-Plug '/usr/local/opt/fzf' | Plug 'junegunn/fzf.vim'
+Plug '/opt/homebrew/bin/fzf' | Plug 'junegunn/fzf.vim'
 Plug 'danro/rename.vim'
 
 " Language stuff
