@@ -17,6 +17,6 @@
     "workbench.colorTheme": "Gruvbox Dark (Medium)",
     "terminal.integrated.rendererType": "dom",
     "workbench.editor.untitled.hint": "hidden",
-    "git.path": "/usr/local/bin/git",
+    "git.path": "/opt/homebrew/bin/git",
     "ruby.rubocop.useBundler": true
 }

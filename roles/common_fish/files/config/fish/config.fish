@@ -3,9 +3,8 @@
 ####
 
 set -x EDITOR code
-set -x PATH "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH"
-set -x PATH "$PATH:/usr/local/opt/fzf/bin"
-set -x ASDF_DIR "/usr/local/opt/asdf"
+set -x PATH "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH"
+set -x PATH "$PATH:/opt/homebrew/bin/fzf/bin"
 set -x GPG_TTY (tty)
 
 ####
@@ -34,14 +33,12 @@ alias finder="open ./"
 #### Miscellaneous
 ####
 
-eval (hub alias -s)
-
 # Setup fzf
 set -x FZF_DEFAULT_COMMAND 'rg --files --no-ignore-vcs --hidden'
 set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 
 # Setup asdf
-source "$ASDF_DIR/asdf.fish"
+source /opt/homebrew/opt/asdf/libexec/asdf.fish
 
 # Source additional configuration
 if test -e ~/.config/fish/override.fish
@@ -54,3 +51,6 @@ if which tmux 2>&1 >/dev/null
     exec tmux new -As fish
   end
 end
+
+# brew shellenv
+eval (/opt/homebrew/bin/brew shellenv)

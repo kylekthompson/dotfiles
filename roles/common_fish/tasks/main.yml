@@ -6,13 +6,13 @@
 - name: Ensure fish is a valid shell
   lineinfile:
     path: /etc/shells
-    line: /usr/local/bin/fish
+    line: /opt/homebrew/bin/fish
     state: present
   become: true
 
 - name: Change default shell to fish
-  command: chsh -s /usr/local/bin/fish
-  when: lookup('env', 'SHELL') != '/usr/local/bin/fish'
+  command: chsh -s /opt/homebrew/bin/fish
+  when: lookup('env', 'SHELL') != '/opt/homebrew/bin/fish'
 
 - name: Ensure the .config directory exists
   file:
