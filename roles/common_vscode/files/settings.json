@@ -18,5 +18,8 @@
     "terminal.integrated.rendererType": "dom",
     "workbench.editor.untitled.hint": "hidden",
     "git.path": "/opt/homebrew/bin/git",
-    "ruby.rubocop.useBundler": true
+    "ruby.rubocop.useBundler": true,
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
