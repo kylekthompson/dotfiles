@@ -18,13 +18,13 @@
   command: asdf plugin-update python
 
 - name: Check if python 3 is installed
-  shell: asdf where python 3.9.6 | grep "not installed"
+  shell: asdf where python 3.10.4 | grep "not installed"
   register: python3_version_check
   ignore_errors: true
 
 - name: Install python 3
-  command: asdf install python 3.9.6
+  command: asdf install python 3.10.4
   when: python3_version_check.stdout != ""
 
 - name: Set global python version
-  command: asdf global python 3.9.6
+  command: asdf global python 3.10.4

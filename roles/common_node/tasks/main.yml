@@ -22,9 +22,6 @@
   register: nodejs_version_check
   ignore_errors: true
 
-- name: Import the node release team's OpenPGP keys
-  command: bash "~/.asdf/plugins/nodejs/bin/import-release-team-keyring"
-
 - name: Install nodejs
   command: asdf install nodejs 16.6.0
   when: nodejs_version_check.stdout != ""
