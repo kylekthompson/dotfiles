@@ -3,7 +3,7 @@
 ####
 
 set -x EDITOR code
-set -x PATH "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH"
+set -x PATH "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/local/share/dotnet/x64:$PATH"
 set -x PATH "$PATH:/opt/homebrew/bin/fzf/bin"
 set -x GPG_TTY (tty)
 
