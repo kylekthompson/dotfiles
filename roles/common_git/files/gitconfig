@@ -2,7 +2,7 @@
   name = Kyle Thompson
   email = me@kkt.dev
   username = kylekthompson
-  signingkey = 8ACC76081E6BCF84
+  signingkey = A0C73FCA980EE3BA
 
 [alias]
   a             = add
