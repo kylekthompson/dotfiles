@@ -11,6 +11,7 @@
     - common_ruby
     - common_python
     - common_node
+    - common_rust
     - common_vscode
     - common_tmux
     - common_nvim
