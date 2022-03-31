@@ -2,10 +2,17 @@
 #### EXPORTS
 ####
 
-set -x EDITOR code
-set -x PATH "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/local/share/dotnet/x64:$PATH"
-set -x PATH "$PATH:/opt/homebrew/bin/fzf/bin"
+set -x EDITOR vim
 set -x GPG_TTY (tty)
+
+fish_add_path /usr/local/share/dotnet/x64
+fish_add_path ~/.cargo/bin
+
+# brew shellenv
+eval (/opt/homebrew/bin/brew shellenv)
+
+# Setup asdf
+source /opt/homebrew/opt/asdf/libexec/asdf.fish
 
 ####
 #### Aliases
@@ -37,9 +44,6 @@ alias finder="open ./"
 set -x FZF_DEFAULT_COMMAND 'rg --files --no-ignore-vcs --hidden'
 set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 
-# Setup asdf
-source /opt/homebrew/opt/asdf/libexec/asdf.fish
-
 # Source additional configuration
 if test -e ~/.config/fish/override.fish
   source ~/.config/fish/override.fish
@@ -51,6 +55,3 @@ if which tmux 2>&1 >/dev/null
     exec tmux new -As fish
   end
 end
-
-# brew shellenv
-eval (/opt/homebrew/bin/brew shellenv)
