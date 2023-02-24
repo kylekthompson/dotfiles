@@ -24,13 +24,13 @@
   command: asdf plugin-update ruby
 
 - name: Check if ruby is installed
-  shell: asdf where ruby 3.1.1 | grep "not installed"
+  shell: asdf where ruby 3.1.2 | grep "not installed"
   register: ruby_version_check
   ignore_errors: true
 
 - name: Install ruby
-  command: asdf install ruby 3.1.1
+  command: asdf install ruby 3.1.2
   when: ruby_version_check.stdout != ""
 
 - name: Set global ruby version
-  command: asdf global ruby 3.1.1
+  command: asdf global ruby 3.1.2
