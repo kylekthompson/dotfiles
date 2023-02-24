@@ -16,12 +16,14 @@
       - fzf
       - gh
       - git
+      - gnupg
       - heroku/brew/heroku
       - jq
       - ledger
       - mas
       - neovim
       - openssl
+      - pinentry-mac
       - postgresql
       - readline
       - reattach-to-user-namespace
@@ -43,7 +45,6 @@
       - alfred
       - bartender
       - google-chrome
-      - gpg-suite
       - homebrew/cask/dash
       - homebrew/cask/docker
       - iterm2

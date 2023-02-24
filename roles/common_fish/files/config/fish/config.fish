@@ -6,6 +6,7 @@ set -x EDITOR vim
 set -x GPG_TTY (tty)
 
 fish_add_path /usr/local/share/dotnet/x64
+fish_add_path /usr/local/share/dotnet
 fish_add_path ~/.cargo/bin
 
 # brew shellenv

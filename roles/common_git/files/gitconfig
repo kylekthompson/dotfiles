@@ -1,13 +1,13 @@
 [user]
-  name = Kyle Thompson
-  email = me@kkt.dev
+	name = Kyle Thompson
+	email = me@kkt.dev
   username = kylekthompson
   signingkey = A0C73FCA980EE3BA
 
 [alias]
   a             = add
   amend         = commit --amend --no-edit
-  br            = branch
+  br            = branch --sort -committerdate
   c             = commit
   co            = checkout
   cob           = checkout -b
@@ -79,9 +79,10 @@
   smudge = git-media-smudge %f
 
 [filter "lfs"]
-  clean = git lfs clean %f
-  smudge = git lfs smudge %f
-  required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	required = true
+	process = git-lfs filter-process
 
 [commit]
   gpgsign = true
