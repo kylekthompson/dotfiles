@@ -26,7 +26,6 @@
       - pinentry-mac
       - postgresql
       - readline
-      - reattach-to-user-namespace
       - ripgrep
       - sqlite3
       - tmux
