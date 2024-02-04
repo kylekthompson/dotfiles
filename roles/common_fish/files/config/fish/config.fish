@@ -5,15 +5,19 @@
 set -x EDITOR vim
 set -x GPG_TTY (tty)
 
-fish_add_path /usr/local/share/dotnet/x64
-fish_add_path /usr/local/share/dotnet
-fish_add_path ~/.cargo/bin
-
-# brew shellenv
-eval (/opt/homebrew/bin/brew shellenv)
+# homebrew
+if not contains /opt/homebrew/bin $PATH
+    set -gx --prepend PATH /opt/homebrew/bin
+end
+if not contains /opt/homebrew/sbin $PATH
+    set -gx --prepend PATH /opt/homebrew/sbin
+end
 
 # Setup asdf
 source /opt/homebrew/opt/asdf/libexec/asdf.fish
+
+# Setup golang
+source ~/.asdf/plugins/golang/set-env.fish
 
 ####
 #### Aliases

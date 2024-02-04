@@ -16,7 +16,6 @@
     "workbench.editor.enablePreviewFromQuickOpen": false,
     "workbench.colorTheme": "Gruvbox Dark (Medium)",
     "terminal.integrated.rendererType": "dom",
-    "workbench.editor.untitled.hint": "hidden",
     "git.path": "/opt/homebrew/bin/git",
     "[json]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -32,5 +31,6 @@
     "go.toolsManagement.autoUpdate": true,
     "[python]": {
         "editor.formatOnType": true
-    }
+    },
+    "workbench.editor.empty.hint": "hidden"
 }
