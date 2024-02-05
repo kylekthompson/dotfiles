@@ -21,16 +21,11 @@
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "editor.inlineSuggest.enabled": true,
-    "github.copilot.enable": {
-        "*": true,
-        "yaml": true,
-        "plaintext": true,
-        "markdown": false
-    },
-    "ruby.rubocop.useBundler": true,
     "go.toolsManagement.autoUpdate": true,
     "[python]": {
         "editor.formatOnType": true
     },
-    "workbench.editor.empty.hint": "hidden"
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "workbench.editor.empty.hint": "hidden",
+    "rubyLsp.rubyVersionManager": "asdf"
 }
