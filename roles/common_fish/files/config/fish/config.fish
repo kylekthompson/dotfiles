@@ -17,7 +17,9 @@ end
 source /opt/homebrew/opt/asdf/libexec/asdf.fish
 
 # Setup golang
-source ~/.asdf/plugins/golang/set-env.fish
+if test -e ~/.asdf/plugins/golang/set-env.fish
+  source ~/.asdf/plugins/golang/set-env.fish
+end
 
 ####
 #### Aliases
