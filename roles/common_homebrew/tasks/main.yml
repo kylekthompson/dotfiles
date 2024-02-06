@@ -9,6 +9,7 @@
 - homebrew:
     name:
       - asdf
+      - cleanshot
       - diff-so-fancy
       - erlang
       - elixir

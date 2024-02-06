@@ -27,5 +27,21 @@
     },
     "typescript.updateImportsOnFileMove.enabled": "always",
     "workbench.editor.empty.hint": "hidden",
+    "diffEditor.maxComputationTime": 0,
+    "[ruby]": {
+        "editor.defaultFormatter": "Shopify.ruby-lsp",
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "editor.rulers": [
+            120
+        ],
+        "editor.semanticHighlighting.enabled": true
+    },
+    "terminal.integrated.defaultProfile.osx": "fish",
     "rubyLsp.rubyVersionManager": "asdf"
 }
