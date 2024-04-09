@@ -42,6 +42,38 @@
         ],
         "editor.semanticHighlighting.enabled": true
     },
+    "rubyLsp.rubyVersionManager": "asdf",
+    "editor.stickyScroll.enabled": true,
     "terminal.integrated.defaultProfile.osx": "fish",
-    "rubyLsp.rubyVersionManager": "asdf"
+    "terminal.integrated.profiles.osx": {
+        "bash": {
+            "path": "bash",
+            "args": [
+                "-l"
+            ],
+            "icon": "terminal-bash"
+        },
+        "zsh": {
+            "path": "zsh",
+            "args": [
+                "-l"
+            ]
+        },
+        "fish": {
+            "path": "fish",
+            "args": [
+                "-l"
+            ]
+        },
+        "tmux": {
+            "path": "tmux",
+            "icon": "terminal-tmux"
+        },
+        "pwsh": {
+            "path": "pwsh",
+            "icon": "terminal-powershell"
+        }
+    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
 }

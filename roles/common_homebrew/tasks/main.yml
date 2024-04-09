@@ -18,6 +18,8 @@
       - gh
       - git
       - gnupg
+      - gnu-tar
+      - gnu-sed
       - heroku/brew/heroku
       - jq
       - ledger
