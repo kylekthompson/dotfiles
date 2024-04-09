@@ -12,6 +12,12 @@ end
 if not contains /opt/homebrew/sbin $PATH
     set -gx --prepend PATH /opt/homebrew/sbin
 end
+if not contains /opt/homebrew/opt/gnu-tar/libexec/gnubin $PATH
+    set -gx --prepend PATH /opt/homebrew/opt/gnu-tar/libexec/gnubin
+end
+if not contains /opt/homebrew/opt/gnu-sed/libexec/gnubin $PATH
+    set -gx --prepend PATH /opt/homebrew/opt/gnu-sed/libexec/gnubin
+end
 
 # Setup asdf
 source /opt/homebrew/opt/asdf/libexec/asdf.fish

@@ -16,3 +16,4 @@
     - common_tmux
     - common_nvim
     - common_gpg
+    - common_asdf
