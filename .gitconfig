@@ -1,0 +1,83 @@
+[user]
+  name = Kyle Thompson
+  email = me@kkt.dev
+  username = kylekthompson
+  signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBfLEuQrRtQwMF/vbQLp+zxAjSNDyuysujIGB8BkSKW/
+
+[github]
+  user = kylekthompson
+
+[alias]
+  a             = add
+  amend         = commit --amend --no-edit
+  br            = branch --sort -committerdate
+  c             = commit
+  co            = checkout
+  cob           = checkout -b
+  d             = diff
+  ds            = diff --staged
+  ls            = !git log --graph --oneline --decorate
+  po            = !git push origin $(git branch | cut -d' ' -f2)
+  st            = status -sb
+
+[apply]
+  whitespace = fix
+
+[credential]
+  whitespace = trailing-space,space-before-tab
+  editor = vim
+  helper = osxkeychain
+
+[core]
+  editor = vim
+  excludesfile = ~/.gitignore.core
+  attributesfile = ~/.gitattributes.core
+  whitespace = trailing-space,space-before-tab
+  trustctime = false
+  precomposeunicode = false
+  pager = delta
+
+[push]
+  default = current
+
+[pull]
+  ff = only
+
+[merge]
+  log = true
+
+[gpg]
+  format = ssh
+
+[gpg "ssh"]
+  program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
+[commit]
+  gpgsign = true
+
+[hub]
+  protocol = ssh
+
+[init]
+  defaultBranch = main
+
+[help]
+  autocorrect = 1
+
+[filter "lfs"]
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  required = true
+  process = git-lfs filter-process
+
+[interactive]
+  diffFilter = delta --color-only
+
+[delta]
+  navigate = true
+  side-by-side = true
+  line-numbers = true
+  syntax-theme = gruvbox-dark
+
+[merge]
+  conflictstyle = zdiff3
