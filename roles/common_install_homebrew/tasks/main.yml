@@ -1,9 +1,0 @@
-- name: Check if Homebrew is installed
-  stat:
-    path: /opt/homebrew/bin/brew
-  register: homebrew_presence
-  no_log: true
-
-- name: Install Homebrew
-  shell: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  when: not homebrew_presence.stat.exists

@@ -1,9 +1,0 @@
-- name: Symlink git configs
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.{{ item }}"
-    src: "{{ role_path }}/files/{{ item }}"
-    state: link
-    force: true
-  with_items:
-    - gitconfig
-    - gitignore

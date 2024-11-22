@@ -1,9 +1,0 @@
-- name: Install Mac App Store apps
-  command: mas install {{item.id}}
-  args:
-    creates: "/Applications/{{item.name}}.app"
-  with_items:
-    - name: Amphetamine
-      id: 937984704
-    - name: Magnet
-      id: 441258766
