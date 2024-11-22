@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+[ "$UID" -eq 0 ] || { echo "This script must be run as root."; exit 1;}
+
+echo
+echo "Ensuring fish is the default shell..."
+echo
+
+if cat /etc/shells | grep /opt/homebrew/bin/fish &>/dev/null; then
+  echo "Fish is already in /etc/shells"
+else
+  echo "Adding fish to /etc/shells..."
+  echo /opt/homebrew/bin/fish >> /etc/shells
+fi
+
+if [ "${SHELL}" == "/opt/homebrew/bin/fish" ]; then
+  echo "Fish is already your current \$SHELL"
+else
+  echo "Making fish your current \$SHELL..."
+  chsh -s /opt/homebrew/bin/fish
+fi
+
+echo
+echo "Insalling Mac App Store apps..."
+echo
+
+echo "Installing Amphetamine..."
+sudo -u kylekthompson mas install 937984704
+
+echo "Installing Magnet..."
+sudo -u kylekthompson mas install 441258766
+
+echo "Installing Clocker..."
+sudo -u kylekthompson mas install 1056643111
+
+echo
+echo "Updating and upgrading brew..."
+echo
+
+sudo -u kylekthompson brew update
+sudo -u kylekthompson brew upgrade
+
+echo
+echo "Installing global asdf tools..."
+echo
+
+pushd ~ &>/dev/null
+
+while read tool_version; do
+  tool=$(echo "${tool_version}" | cut -d' ' -f1)
+
+  if asdf plugin list | grep "${tool}" &>/dev/null; then
+    echo "Updating the asdf ${tool} plugin..."
+    echo
+    asdf plugin update "${tool}"
+    echo
+  else
+    echo "Adding the asdf ${tool} plugin..."
+    echo
+    asdf plugin add "${tool}"
+    echo
+  fi
+done < .tool-versions
+
+echo "Installing the tools in .tool-versions"
+asdf install
+
+popd &>/dev/null
