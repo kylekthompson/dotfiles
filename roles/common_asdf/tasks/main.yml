@@ -1,6 +1,0 @@
-- name: Symlink asdf config
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.asdfrc"
-    src: "{{ role_path }}/files/asdfrc"
-    state: link
-    force: true

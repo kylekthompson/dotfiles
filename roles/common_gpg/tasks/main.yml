@@ -1,6 +1,0 @@
-- name: Symlink psql config
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.gnupg/gpg-agent.conf"
-    src: "{{ role_path }}/files/gpg-agent.conf"
-    state: link
-    force: true

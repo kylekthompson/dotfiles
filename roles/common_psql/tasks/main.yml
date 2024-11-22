@@ -1,6 +1,0 @@
-- name: Symlink psql config
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.psqlrc"
-    src: "{{ role_path }}/files/psqlrc"
-    state: link
-    force: true
