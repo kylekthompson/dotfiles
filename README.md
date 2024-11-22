@@ -6,5 +6,5 @@ These are my dotfiles! They are an always-changing WIP, so feel free to use them
 git clone https://github.com/kylekthompson/dotfiles ~/
 cd ~/
 bin/dot-strap
-bin/setup
+bin/dot-setup
 ```
