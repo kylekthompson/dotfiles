@@ -15,12 +15,8 @@ else
   echo /opt/homebrew/bin/fish >> /etc/shells
 fi
 
-if [ "${SHELL}" == "/opt/homebrew/bin/fish" ]; then
-  echo "Fish is already your current \$SHELL"
-else
-  echo "Making fish your current \$SHELL..."
-  chsh -s /opt/homebrew/bin/fish
-fi
+echo "Making fish your current \$SHELL..."
+chsh -s /opt/homebrew/bin/fish
 
 echo
 echo "Insalling Mac App Store apps..."
