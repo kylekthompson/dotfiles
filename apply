@@ -1,8 +1,0 @@
-#!/bin/sh
-
-set -euxo pipefail
-
-ansible-playbook \
-    --ask-become-pass \
-    --inventory inventory \
-    $1.yml

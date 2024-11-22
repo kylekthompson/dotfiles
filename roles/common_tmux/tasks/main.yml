@@ -1,9 +1,0 @@
-- name: Compile the custom terminfo file
-  command: tic -x "{{ role_path }}/files/tmux.terminfo"
-
-- name: Symlink tmux configuration
-  file:
-    path: "{{ lookup('env', 'HOME') }}/.tmux.conf"
-    src: "{{ role_path }}/files/tmux.conf"
-    state: link
-    force: true

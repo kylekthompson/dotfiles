@@ -1,2 +1,0 @@
-- name: Apply macOS defaults
-  command: "{{ role_path }}/files/macos.sh"
