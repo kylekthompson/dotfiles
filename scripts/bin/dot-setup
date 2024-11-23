@@ -16,7 +16,9 @@ echo
 echo "==> Running stow..."
 echo
 
+pushd ~/.dotfiles &>/dev/null
 "$(brew --prefix)/bin/stow" --restow asdf brew editor fonts git psql ruby scripts ssh terminal
+popd &>/dev/null
 
 echo
 echo "==> Ensuring fish is the default shell..."
@@ -62,20 +64,23 @@ pushd ~ &>/dev/null
 while read tool_version; do
   tool=$(echo "${tool_version}" | cut -d' ' -f1)
 
-  if asdf plugin list | grep "${tool}" &>/dev/null; then
+  if sudo -u kylekthompson asdf plugin list | grep "${tool}" &>/dev/null; then
     echo "Updating the asdf ${tool} plugin..."
     echo
-    asdf plugin update "${tool}"
+    sudo -u kylekthompson asdf plugin update "${tool}"
     echo
   else
     echo "Adding the asdf ${tool} plugin..."
     echo
-    asdf plugin add "${tool}"
+    sudo -u kylekthompson asdf plugin add "${tool}"
     echo
   fi
 done < .tool-versions
 
+echo
 echo "==> Installing the tools in .tool-versions"
-asdf install
+echo
+
+sudo -u kylekthompson asdf install
 
 popd &>/dev/null
