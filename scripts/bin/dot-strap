@@ -334,37 +334,12 @@ else
   fi
 fi
 
-# Setup dotfiles
-if [ -d "$HOME/.dotfiles/.git" ]; then
-  logn "Updating ~/.dotfiles:"
-  (
-    cd ~/.dotfiles
-    git pull $Q --rebase --autostash
-  )
-  logk
-  run_dotfile_scripts script/setup script/bootstrap
-fi
+# Install from .dotfiles brewfile
+log "Installing from ~/.dotfiles/brew/.Brewfile:"
+brew bundle check --file ~/.dotfiles/brew/.Brewfile &>/dev/null || brew bundle --file ~/.dotfiles/brew/.Brewfile
+logk
 
-# Setup Brewfile
-if [ -d "$HOME/.homebrew-brewfile/.git" ]; then
-  log "Updating ~/.homebrew-brewfile:"
-  (
-    cd ~/.homebrew-brewfile
-    git pull $Q
-  )
-  ln -sf ~/.homebrew-brewfile/Brewfile ~/.Brewfile
-  logk
-fi
-
-# Install from local Brewfile
-if [ -f "$HOME/.Brewfile" ]; then
-  log "Installing from ~/.Brewfile:"
-  brew bundle check --global &>/dev/null || brew bundle --global
-  logk
-fi
-
-# Run post-install dotfiles script
-run_dotfile_scripts script/strap-after-setup
+scripts/bin/dot-stow
 
 STRAP_SUCCESS="1"
 log "Your system is now Strap'd!"

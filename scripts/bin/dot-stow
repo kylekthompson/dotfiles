@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+echo
+echo "==> Running stow..."
+echo
+
+pushd ~/.dotfiles &>/dev/null
+stow --restow asdf brew editor git psql ruby scripts ssh terminal
+
+# macOS can't follow symlinks for fonts, so we'll fake stowing them
+for font in $(ls fonts); do
+  cp "./fonts/${font}" "${HOME}/Library/Fonts/${font}"
+done
+
+popd &>/dev/null

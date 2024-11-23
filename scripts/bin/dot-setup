@@ -4,21 +4,7 @@ set -euo pipefail
 
 [ "$UID" -eq 0 ] || { echo "This script must be run as root."; exit 1;}
 
-echo
-echo "==> Installing stow..."
-echo
-
-if ! which stow &>/dev/null; then
-  brew install stow
-fi
-
-echo
-echo "==> Running stow..."
-echo
-
-pushd ~/.dotfiles &>/dev/null
-"$(brew --prefix)/bin/stow" --restow asdf brew editor fonts git psql ruby scripts ssh terminal
-popd &>/dev/null
+dot-stow
 
 echo
 echo "==> Ensuring fish is the default shell..."
@@ -32,7 +18,7 @@ else
 fi
 
 echo "Making fish your current \$SHELL..."
-chsh -s /opt/homebrew/bin/fish
+chsh -s /opt/homebrew/bin/fish -u kylekthompson
 
 echo
 echo "==> Insalling Mac App Store apps..."
