@@ -1,5 +1,6 @@
 brew "asdf"
 brew "awscli-local"
+brew "libpq"
 brew "fish"
 brew "fzf"
 brew "gh"

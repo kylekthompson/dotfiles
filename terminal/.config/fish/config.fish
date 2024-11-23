@@ -33,6 +33,11 @@ if test -e ~/.asdf/plugins/golang/set-env.fish
   source ~/.asdf/plugins/golang/set-env.fish
 end
 
+# Postgres
+if not contains /opt/homebrew/opt/libpq/bin $PATH
+  set -gx --prepend PATH /opt/homebrew/opt/libpq/bin
+end
+
 ####
 #### Aliases
 ####

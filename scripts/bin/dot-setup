@@ -17,8 +17,12 @@ else
   echo /opt/homebrew/bin/fish >> /etc/shells
 fi
 
-echo "Making fish your current \$SHELL..."
-sudo -u kylekthompson chsh -s /opt/homebrew/bin/fish
+if [ "${SHELL}" == "/opt/homebrew/bin/fish"]; then
+  echo "Fish is already your \$SHELL"
+else
+  echo "Making fish your current \$SHELL..."
+  sudo -u kylekthompson chsh -s /opt/homebrew/bin/fish
+fi
 
 echo
 echo "==> Insalling Mac App Store apps..."
