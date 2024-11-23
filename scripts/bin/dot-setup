@@ -18,7 +18,7 @@ else
 fi
 
 echo "Making fish your current \$SHELL..."
-chsh -s /opt/homebrew/bin/fish -u kylekthompson
+sudo -u kylekthompson chsh -s /opt/homebrew/bin/fish
 
 echo
 echo "==> Insalling Mac App Store apps..."
