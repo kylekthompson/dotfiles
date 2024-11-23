@@ -5,7 +5,21 @@ set -euo pipefail
 [ "$UID" -eq 0 ] || { echo "This script must be run as root."; exit 1;}
 
 echo
-echo "Ensuring fish is the default shell..."
+echo "==> Installing stow..."
+echo
+
+if ! which stow &>/dev/null; then
+  brew install stow
+fi
+
+echo
+echo "==> Running stow..."
+echo
+
+"$(brew --prefix)/bin/stow" --restow asdf brew editor fonts git psql ruby scripts ssh terminal
+
+echo
+echo "==> Ensuring fish is the default shell..."
 echo
 
 if cat /etc/shells | grep /opt/homebrew/bin/fish &>/dev/null; then
@@ -19,7 +33,7 @@ echo "Making fish your current \$SHELL..."
 chsh -s /opt/homebrew/bin/fish
 
 echo
-echo "Insalling Mac App Store apps..."
+echo "==> Insalling Mac App Store apps..."
 echo
 
 echo "Installing Amphetamine..."
@@ -32,14 +46,15 @@ echo "Installing Clocker..."
 sudo -u kylekthompson mas install 1056643111
 
 echo
-echo "Updating and upgrading brew..."
+echo "==> Updating and upgrading brew..."
 echo
 
+sudo -u kylekthompson brew bundle check --global &>/dev/null || sudo -u kylekthompson brew bundle --global
 sudo -u kylekthompson brew update
 sudo -u kylekthompson brew upgrade
 
 echo
-echo "Installing global asdf tools..."
+echo "==> Installing global asdf tools..."
 echo
 
 pushd ~ &>/dev/null
@@ -60,7 +75,7 @@ while read tool_version; do
   fi
 done < .tool-versions
 
-echo "Installing the tools in .tool-versions"
+echo "==> Installing the tools in .tool-versions"
 asdf install
 
 popd &>/dev/null
