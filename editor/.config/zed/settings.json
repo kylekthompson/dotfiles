@@ -13,5 +13,20 @@
   "buffer_font_features": {
     "calt": false
   },
-  "tab_size": 2
+  "tab_size": 2,
+  "languages": {
+    "Ruby": {
+      "language_servers": ["ruby-lsp", "rubocop", "!solargraph", "..."]
+    }
+  },
+  "lsp": {
+    "ruby-lsp": {
+      "initialization_options": {
+        "enabledFeatures": {
+          // This disables diagnostics
+          "diagnostics": false
+        }
+      }
+    }
+  }
 }
