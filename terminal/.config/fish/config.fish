@@ -23,14 +23,9 @@ if not contains /opt/homebrew/opt/gnu-sed/libexec/gnubin $PATH
   set -gx --prepend PATH /opt/homebrew/opt/gnu-sed/libexec/gnubin
 end
 
-# Setup asdf
-if test -e /opt/homebrew/opt/asdf/libexec/asdf.fish
-  source /opt/homebrew/opt/asdf/libexec/asdf.fish
-end
-
-# Setup golang
-if test -e ~/.asdf/plugins/golang/set-env.fish
-  source ~/.asdf/plugins/golang/set-env.fish
+# Setup mise
+if which mise &>/dev/null
+  mise activate fish | source
 end
 
 # Postgres
@@ -79,3 +74,7 @@ if which tmux 2>&1 >/dev/null
     exec tmux new -As fish
   end
 end
+
+# Added by OrbStack: command-line tools and integration
+# This won't be added again if you remove it.
+source ~/.orbstack/shell/init2.fish 2>/dev/null || :

@@ -17,7 +17,7 @@ else
   echo /opt/homebrew/bin/fish >> /etc/shells
 fi
 
-if [ "${SHELL}" == "/opt/homebrew/bin/fish"]; then
+if [ "${SHELL}" == "/opt/homebrew/bin/fish" ]; then
   echo "Fish is already your \$SHELL"
 else
   echo "Making fish your current \$SHELL..."
@@ -46,31 +46,11 @@ sudo -u kylekthompson brew update
 sudo -u kylekthompson brew upgrade
 
 echo
-echo "==> Installing global asdf tools..."
+echo "==> Installing default tools via mise"
 echo
 
 pushd ~ &>/dev/null
 
-while read tool_version; do
-  tool=$(echo "${tool_version}" | cut -d' ' -f1)
-
-  if sudo -u kylekthompson asdf plugin list | grep "${tool}" &>/dev/null; then
-    echo "Updating the asdf ${tool} plugin..."
-    echo
-    sudo -u kylekthompson asdf plugin update "${tool}"
-    echo
-  else
-    echo "Adding the asdf ${tool} plugin..."
-    echo
-    sudo -u kylekthompson asdf plugin add "${tool}"
-    echo
-  fi
-done < .tool-versions
-
-echo
-echo "==> Installing the tools in .tool-versions"
-echo
-
-sudo -u kylekthompson asdf install
+sudo -u kylekthompson mise install
 
 popd &>/dev/null

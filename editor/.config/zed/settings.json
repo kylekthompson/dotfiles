@@ -7,6 +7,21 @@
 // custom settings, run the `open default settings` command
 // from the command palette or from `Zed` application menu.
 {
+  "agent": {
+    "always_allow_tool_actions": false,
+    "default_model": {
+      "provider": "copilot_chat",
+      "model": "claude-3.7-sonnet"
+    },
+    "version": "2"
+  },
+  "edit_predictions": {
+    "mode": "subtle",
+    "enabled_in_text_threads": false
+  },
+  "features": {
+    "edit_prediction_provider": "copilot"
+  },
   "theme": "Gruvbox Dark Soft",
   "buffer_font_family": "MonaspiceNe Nerd Font Mono",
   "buffer_font_size": 14,
@@ -23,7 +38,7 @@
     "ruby-lsp": {
       "initialization_options": {
         "enabledFeatures": {
-          // This disables diagnostics
+          "onTypeFormatting": false,
           "diagnostics": false
         }
       }
