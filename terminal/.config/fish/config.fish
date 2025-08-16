@@ -9,6 +9,11 @@ if not contains ~/bin $PATH
   set -gx --prepend PATH ~/bin
 end
 
+# ~/.local/bin
+if not contains ~/.local/bin $PATH
+  set -gx --prepend PATH ~/.local/bin
+end
+
 # homebrew
 if not contains /opt/homebrew/bin $PATH
   set -gx --prepend PATH /opt/homebrew/bin
@@ -66,13 +71,6 @@ set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 # Source additional configuration
 if test -e ~/.config/fish/override.fish
   source ~/.config/fish/override.fish
-end
-
-# always start tmux
-if which tmux 2>&1 >/dev/null
-  if not set -q TMUX
-    exec tmux new -As fish
-  end
 end
 
 # Added by OrbStack: command-line tools and integration
