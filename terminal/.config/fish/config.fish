@@ -15,18 +15,25 @@ if not contains ~/.local/bin $PATH
 end
 
 # homebrew
-if not contains /opt/homebrew/bin $PATH
-  set -gx --prepend PATH /opt/homebrew/bin
+
+set -gx HOMEBREW_PREFIX /opt/homebrew
+if not contains $HOMEBREW_PREFIX/bin $PATH
+  set -gx --prepend PATH $HOMEBREW_PREFIX/bin
 end
-if not contains /opt/homebrew/sbin $PATH
-  set -gx --prepend PATH /opt/homebrew/sbin
+if not contains $HOMEBREW_PREFIX/sbin $PATH
+  set -gx --prepend PATH $HOMEBREW_PREFIX/sbin
 end
-if not contains /opt/homebrew/opt/gnu-tar/libexec/gnubin $PATH
-  set -gx --prepend PATH /opt/homebrew/opt/gnu-tar/libexec/gnubin
+if not contains $HOMEBREW_PREFIX/opt/gnu-tar/libexec/gnubin $PATH
+  set -gx --prepend PATH $HOMEBREW_PREFIX/opt/gnu-tar/libexec/gnubin
 end
-if not contains /opt/homebrew/opt/gnu-sed/libexec/gnubin $PATH
-  set -gx --prepend PATH /opt/homebrew/opt/gnu-sed/libexec/gnubin
+if not contains $HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin $PATH
+  set -gx --prepend PATH $HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin
 end
+
+# hacks to get postgres install working in mise
+
+set -gx PKG_CONFIG_PATH "/opt/homebrew/bin/pkg-config:$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig"
+set -gx MACOSX_DEPLOYMENT_TARGET "$(sw_vers -productVersion)"
 
 # Setup mise
 if which mise &>/dev/null
@@ -34,8 +41,8 @@ if which mise &>/dev/null
 end
 
 # Postgres
-if not contains /opt/homebrew/opt/libpq/bin $PATH
-  set -gx --prepend PATH /opt/homebrew/opt/libpq/bin
+if not contains $HOMEBREW_PREFIX/opt/libpq/bin $PATH
+  set -gx --prepend PATH $HOMEBREW_PREFIX/opt/libpq/bin
 end
 
 ####
