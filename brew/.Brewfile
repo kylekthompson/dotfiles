@@ -1,6 +1,7 @@
 tap "rwx-research/tap"
 
 brew "awscli-local"
+brew "codex"
 brew "fish"
 brew "fzf"
 brew "gh"
