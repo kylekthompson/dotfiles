@@ -1,7 +1,8 @@
+tap "anomalyco/tap"
 tap "rwx-research/tap"
 
+brew "anomalyco/tap/opencode"
 brew "awscli-local"
-brew "codex"
 brew "fish"
 brew "fzf"
 brew "gh"
