@@ -2,7 +2,7 @@
 #### EXPORTS
 ####
 
-set -x EDITOR "code -w"
+set -x EDITOR "zed --wait"
 
 # ~/bin
 if not contains ~/bin $PATH

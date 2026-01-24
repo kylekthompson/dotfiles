@@ -53,4 +53,12 @@ pushd ~ &>/dev/null
 
 sudo -u kylekthompson mise install
 
+if ! command -v claude &>/dev/null; then
+  echo
+  echo "==> Installing claude code"
+  echo
+
+  sudo -u kylekthompson curl -fsSL https://claude.ai/install.sh | sudo -u kylekthompson bash
+fi
+
 popd &>/dev/null

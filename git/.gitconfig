@@ -25,11 +25,11 @@
 
 [credential]
   whitespace = trailing-space,space-before-tab
-  editor = vim
+  editor = zed --wait
   helper = osxkeychain
 
 [core]
-  editor = vim
+  editor = zed --wait
   excludesfile = ~/.gitignore.core
   attributesfile = ~/.gitattributes.core
   whitespace = trailing-space,space-before-tab

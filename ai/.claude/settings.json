@@ -1,0 +1,23 @@
+{
+  "alwaysThinkingEnabled": true,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "defaultMode": "plan",
+    "allow": [
+      "Bash(git show:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git grep:*)",
+      "Bash(git status:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(which:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)"
+    ],
+    "deny": ["Bash(find*-exec*)", "Bash(find*-delete*)", "Bash(find*-execdir*)"]
+  }
+}

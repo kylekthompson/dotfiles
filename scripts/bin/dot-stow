@@ -7,7 +7,7 @@ echo "==> Running stow..."
 echo
 
 pushd ~/.dotfiles &>/dev/null
-stow --restow brew editor git mise nvim psql ruby scripts ssh terminal
+stow --restow ai brew editor git mise nvim psql ruby scripts ssh terminal
 
 # macOS can't follow symlinks for fonts, so we'll fake stowing them
 for font in $(ls fonts); do
