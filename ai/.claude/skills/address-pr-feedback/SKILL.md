@@ -4,7 +4,7 @@ description: Fetch unresolved PR review comments and address selected feedback b
 argument-hint: "[all | GitHub comment URL(s)]"
 disable-model-invocation: true
 allowed-tools:
-  - "Bash(~/.claude/skills/address-pr-feedback/*)"
+  - "Bash(~/.claude/skills/address-pr-feedback/scripts/*)"
 ---
 
 # Address PR Feedback
@@ -13,11 +13,11 @@ allowed-tools:
 
 **PR Info:**
 
-!`~/.claude/skills/address-pr-feedback/fetch-pr-info.sh`
+!`~/.claude/skills/address-pr-feedback/scripts/fetch-pr-info.sh`
 
 **Unresolved Review Threads:**
 
-!`~/.claude/skills/address-pr-feedback/fetch-review-threads.sh`
+!`~/.claude/skills/address-pr-feedback/scripts/fetch-review-threads.sh`
 
 ## Instructions
 
@@ -43,7 +43,7 @@ If there are no unresolved threads, inform the user and stop.
 ### 3. User Selection
 
 Check `$ARGUMENTS`:
-- If one or more **GitHub URLs** (containing `#discussion_r`, `#pullrequestreview-`, or `#issuecomment-`) — fetch each comment using `~/.claude/skills/address-pr-feedback/fetch-comment-by-url.sh <url>` and use those as the selected comments. Skip the numbered list display above — go straight to analysis.
+- If one or more **GitHub URLs** (containing `#discussion_r`, `#pullrequestreview-`, or `#issuecomment-`) — fetch each comment using `~/.claude/skills/address-pr-feedback/scripts/fetch-comment-by-url.sh <url>` and use those as the selected comments. Skip the numbered list display above — go straight to analysis.
 - If `all` — select all unresolved comments from the list above
 - If empty or not provided — use the AskUserQuestion tool to ask which comments to address (show the comment body and author)
 
