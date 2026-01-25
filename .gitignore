@@ -1,4 +1,5 @@
 ssh/.ssh/known_hosts*
+.claude/state/
 
 # Created by https://www.gitignore.io/api/macos,linux,windows
 
