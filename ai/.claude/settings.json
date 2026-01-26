@@ -17,7 +17,11 @@
       "Bash(which:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "Bash(head:*)",
+      "Bash(jq:*)"
     ],
     "deny": ["Bash(find*-exec*)", "Bash(find*-delete*)", "Bash(find*-execdir*)"]
   }

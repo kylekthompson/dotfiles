@@ -1,5 +1,5 @@
 tap "anomalyco/tap"
-tap "rwx-research/tap"
+tap "rwx-cloud/tap"
 
 brew "anomalyco/tap/opencode"
 brew "awscli-local"
@@ -42,3 +42,4 @@ cask "signal"
 cask "slack"
 cask "tailscale-app"
 cask "visual-studio-code"
+cask "zed"
