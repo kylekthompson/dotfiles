@@ -1,5 +1,5 @@
-ssh/.ssh/known_hosts*
-.claude/state/
+/ssh/.ssh/known_hosts*
+/terminal/.config/fish/override.fish
 
 # Created by https://www.gitignore.io/api/macos,linux,windows
 
