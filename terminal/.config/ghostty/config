@@ -4,5 +4,4 @@ font-feature = -calt
 font-feature = -liga
 font-feature = -dlig
 font-size = 14
-keybind = shift+enter=text:\x1b\r
 shell-integration-features = ssh-env,ssh-terminfo,sudo

@@ -1,0 +1,27 @@
+model = "gpt-5.3-codex"
+personality = "pragmatic"
+model_reasoning_effort = "xhigh"
+web_search = "live"
+ask_for_approval = "on-request"
+
+[projects."/Users/kylekthompson/src/rwx-cloud/*"]
+trust_level = "trusted"
+
+[projects."/Users/kylekthompson/src/rwx-research/*"]
+trust_level = "trusted"
+
+[projects."/Users/kylekthompson/src/kylekthompson/*"]
+trust_level = "trusted"
+
+[projects."/Users/kylekthompson/src/SomeSoftwareCompany/*"]
+trust_level = "trusted"
+
+[projects."/Users/kylekthompson/.dotfiles"]
+trust_level = "trusted"
+
+[sandbox_workspace_write]
+network_access = true
+
+[tui]
+notifications = true
+notification_method = "osc9"
