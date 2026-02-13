@@ -1,5 +1,6 @@
 /ssh/.ssh/known_hosts*
 /terminal/.config/fish/override.fish
+/editor/.config/zed/prompts
 
 # Created by https://www.gitignore.io/api/macos,linux,windows
 

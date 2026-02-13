@@ -15,7 +15,9 @@ network_access = true
 writable_roots = [
   "/Users/kylekthompson/.bundle",
   "/Users/kylekthompson/.cache",
-  "/Users/kylekthompson/.local/share/mise"
+  "/Users/kylekthompson/.local/share/mise",
+  "/Users/kylekthompson/.npm",
+  "/Users/kylekthompson/Library/Caches"
 ]
 
 [tui]
