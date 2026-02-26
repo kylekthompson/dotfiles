@@ -1,8 +1,7 @@
-tap "anomalyco/tap"
 tap "rwx-cloud/tap"
 
-brew "anomalyco/tap/opencode"
 brew "awscli-local"
+brew "codex"
 brew "fish"
 brew "fzf"
 brew "gh"
@@ -28,6 +27,7 @@ brew "vim"
 
 cask "1password"
 cask "cleanshot"
+cask "conductor"
 cask "dash"
 cask "discord"
 cask "figma"
