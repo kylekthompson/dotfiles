@@ -2,7 +2,11 @@ model = "gpt-5.3-codex"
 personality = "pragmatic"
 model_reasoning_effort = "high"
 web_search = "live"
-ask_for_approval = "on-request"
+profile = "full_auto"
+
+[profiles.full_auto]
+approval_policy = "on-request"
+sandbox_mode    = "workspace-write"
 
 [projects."/Users/kylekthompson/.dotfiles"]
 trust_level = "trusted"
