@@ -16,9 +16,11 @@ network_access = true
 writable_roots = [
   "/Users/kylekthompson/.bundle",
   "/Users/kylekthompson/.cache",
+  "/Users/kylekthompson/.config/rwx/sandboxes.json",
   "/Users/kylekthompson/.local/share/mise",
   "/Users/kylekthompson/.npm",
-  "/Users/kylekthompson/Library/Caches"
+  "/Users/kylekthompson/Library/Caches",
+  "/Users/kylekthompson/Library/pnpm"
 ]
 
 [tui]
