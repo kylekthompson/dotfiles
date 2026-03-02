@@ -33,10 +33,10 @@ Keep local execution for tasks that do not need sandbox command execution:
 
 If a sandbox command fails:
 
-1. Run:
-   - `rwx sandbox reset .rwx/sandbox.yml --wait`
-2. Retry the original sandbox command once.
-3. If it still fails, ask the user before any local fallback.
+1. Run `rwx results <run-id>` and try to diagnose the issue
+2. If that fails, run `rwx sandbox reset .rwx/sandbox.yml --wait`
+3. Retry the original sandbox command once.
+4. If it still fails, ask the user before any local fallback.
 
 Do not silently switch to local execution after repeated sandbox failures.
 
