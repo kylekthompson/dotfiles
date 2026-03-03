@@ -50,6 +50,7 @@ Use these when managing sandbox sessions:
 - Warm/start a sandbox: `rwx sandbox start .rwx/sandbox.yml --wait`
 - Recover sandbox state: `rwx sandbox reset .rwx/sandbox.yml --wait`
 - Stop sandbox sessions: `rwx sandbox stop` (or `rwx sandbox stop --id <run-id>`)
+  - Use this whenever you hand your changes back off to the user to cleanup and to optimize compute spend
 
 ## Sync Behavior
 
