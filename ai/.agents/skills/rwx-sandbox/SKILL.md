@@ -15,6 +15,8 @@ Use sandbox-first command routing for project command execution.
 3. If it does not exist, run commands locally and note that sandbox setup is available with:
    - `rwx sandbox init .rwx/sandbox.yml`
 
+Make sure to run `rwx sandbox` commands serially. It does not yet handle parallel invocations.
+
 Prefer sandbox execution for fast iterative loops and environment-dependent commands, especially:
 - tests
 - linters and format checks
