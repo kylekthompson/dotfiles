@@ -11,7 +11,7 @@ Use sandbox-first command routing for project command execution.
 
 1. Check whether `.rwx/sandbox.yml` exists at the project root.
 2. If it exists, run project commands with:
-   - `rwx sandbox exec .rwx/sandbox.yml -- <command>`
+   - `rwx sandbox exec -- <command>`
 3. If it does not exist, run commands locally and note that sandbox setup is available with:
    - `rwx sandbox init .rwx/sandbox.yml`
 
@@ -36,7 +36,7 @@ Keep local execution for tasks that do not need sandbox command execution:
 If a sandbox command fails:
 
 1. Run `rwx results <run-id>` and try to diagnose the issue
-2. If that fails, run `rwx sandbox reset .rwx/sandbox.yml --wait`
+2. If that fails, run `rwx sandbox reset --wait`
 3. Retry the original sandbox command once.
 4. If it still fails, ask the user before any local fallback.
 
@@ -47,8 +47,8 @@ Do not silently switch to local execution after repeated sandbox failures.
 Use these when managing sandbox sessions:
 
 - Inspect sessions: `rwx sandbox list`
-- Warm/start a sandbox: `rwx sandbox start .rwx/sandbox.yml --wait`
-- Recover sandbox state: `rwx sandbox reset .rwx/sandbox.yml --wait`
+- Warm/start a sandbox: `rwx sandbox start --wait`
+- Recover sandbox state: `rwx sandbox reset --wait`
 - Stop sandbox sessions: `rwx sandbox stop` (or `rwx sandbox stop --id <run-id>`)
   - Use this whenever you hand your changes back off to the user to cleanup and to optimize compute spend
 
