@@ -4,6 +4,7 @@ model_reasoning_effort = "high"
 web_search = "live"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
+model_context_window = 1000000
 
 [projects."/Users/kylekthompson/.dotfiles"]
 trust_level = "trusted"
@@ -27,3 +28,9 @@ writable_roots = [
 notifications = true
 notification_method = "osc9"
 status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "weekly-limit", "context-window-size", "used-tokens"]
+
+[features]
+experimental_use_rmcp_client = true
+
+[mcp_servers.linear]
+url = "https://mcp.linear.app/mcp"
