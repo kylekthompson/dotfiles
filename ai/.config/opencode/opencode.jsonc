@@ -49,6 +49,8 @@
       "git show-ref *": "allow",
       "git status": "allow",
       "git status *": "allow",
+      "git switch": "allow",
+      "git switch *": "allow",
       "git push": "ask",
       "git push *": "ask",
 
@@ -81,7 +83,7 @@
 
       "find *-delete*": "deny",
       "find *-exec*": "deny",
-      "find *-execdir*": "deny"
-    }
+      "find *-execdir*": "deny",
+    },
   },
 }

@@ -25,6 +25,7 @@
       "Bash(git show *)",
       "Bash(git show-ref *)",
       "Bash(git status *)",
+      "Bash(git switch *)",
       "Bash(grep *)",
       "Bash(head *)",
       "Bash(jq *)",
