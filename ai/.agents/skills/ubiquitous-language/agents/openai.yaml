@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ubiquitous Language"
+  short_description: "Consult and maintain DOMAIN.md terms"
+  default_prompt: "Use $ubiquitous-language to align names and DOMAIN.md terminology in this project."
