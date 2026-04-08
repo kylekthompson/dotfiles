@@ -13,9 +13,11 @@ Interrogate the user's plan until it is ready to build. Stay relentless. Do not 
    - Inspect the codebase, configs, schemas, and existing patterns for anything discoverable before asking.
    - If a question can be answered by exploration, do the exploration instead.
 
-2. Ask one high-signal question at a time.
-   - Target the next unresolved decision that would materially affect implementation.
-   - Avoid batching unrelated questions unless they are tightly coupled.
+2. Ask the largest useful batch of unblocked questions each round.
+   - Identify which unresolved decisions materially affect implementation.
+   - Ask every high-signal question whose answer does not depend on another unanswered question.
+   - Separate blocked questions from unblocked ones and hold the blocked set for later rounds.
+   - Only ask one question at a time when the rest genuinely depend on its answer.
 
 3. Provide a recommendation with every question.
    - State the answer you currently recommend.
