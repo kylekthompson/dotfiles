@@ -1,5 +1,7 @@
+tap "ampcode/tap"
 tap "rwx-cloud/tap"
 
+brew "ampcode/tap/ampcode"
 brew "awscli-local"
 brew "codex"
 brew "fish"

@@ -1,0 +1,10 @@
+{
+  "amp.git.commit.ampThread.enabled": false,
+  "amp.git.commit.coauthor.enabled": false,
+  "amp.mcpServers": {
+    "linear": {
+      "url": "https://mcp.linear.app/mcp"
+    }
+  },
+  "amp.notifications.enabled": true
+}
