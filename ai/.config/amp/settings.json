@@ -1,5 +1,5 @@
 {
-  "amp.git.commit.ampThread.enabled": false,
+  "amp.git.commit.ampThread.enabled": true,
   "amp.git.commit.coauthor.enabled": false,
   "amp.mcpServers": {
     "linear": {
