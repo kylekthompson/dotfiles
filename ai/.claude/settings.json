@@ -12,20 +12,7 @@
       "Bash(find *)",
       "Bash(gh pr view *)",
       "Bash(gh repo view *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git diff *)",
-      "Bash(git grep *)",
-      "Bash(git log *)",
-      "Bash(git merge-base *)",
-      "Bash(git mv *)",
-      "Bash(git restore *)",
-      "Bash(git rev-list *)",
-      "Bash(git rev-parse *)",
-      "Bash(git show *)",
-      "Bash(git show-ref *)",
-      "Bash(git status *)",
-      "Bash(git switch *)",
+      "Bash(git *)",
       "Bash(grep *)",
       "Bash(head *)",
       "Bash(jq *)",
@@ -47,7 +34,7 @@
       "Bash(find * -exec *)",
       "Bash(find * -execdir *)"
     ],
-    "defaultMode": "plan"
+    "defaultMode": "auto"
   },
   "statusLine": {
     "type": "command",
@@ -55,5 +42,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "skipWorkflowUsageWarning": true
 }
