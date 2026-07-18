@@ -6,5 +6,7 @@
       "url": "https://mcp.linear.app/mcp"
     }
   },
-  "amp.notifications.enabled": true
+  "amp.notifications.enabled": true,
+  "amp.remoteThreadCreation.enabled": true,
+  "amp.updates.mode": "warn"
 }
