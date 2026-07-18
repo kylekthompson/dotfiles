@@ -2,8 +2,8 @@
 
 - Break your work into small, incremental pieces that and commit that. Small, focused commits are easier to review.
 - Prefer colocating tests with their implementation when possible.
-- Include any important diagnostic, debugging, and research context in your commit messages and pull request bodies, but be terse. No need to include excessive detail.
-- Do not put escaped newline sequences (for example `\n`) inside commit message text. They will be committed literally. For multiline commit bodies, either use multiple `-m` flags or write an actual multiline commit message.
+- Commit messages should be sufficiently detailed to explain the why and reasoning behind a change, but avoid excessive detail.
+- Do not put escaped newline sequences (for example `\n`) inside commit message text. They will be committed literally. Prefer using a temporary file and providing that to the `gh` cli.
 - When opening PRs, always start with a draft PR.
 
 # Code Style & Quality

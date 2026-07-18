@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Interrogate the user's plan or design until it is implementation-ready. Use when the user says "grill me", wants to stress-test an approach, or needs a plan pushed into a decision-complete PRD.
+description: Interrogate the user's plan or design until it is implementation-ready. Use when the user says "grill me", wants to stress-test an approach, or needs a plan pushed into a decision-complete design doc.
 ---
 
 # Grill Me
@@ -31,13 +31,13 @@ Interrogate the user's plan until it is ready to build. Stay relentless. Do not 
    - Convert abstract ideas into concrete behavior, APIs, inputs and outputs, validation rules, and acceptance criteria.
    - Prefer decisions over open questions. If the user is unsure, recommend a default and move forward.
 
-6. Finish only when the PRD is decision-complete.
-   - End with a detailed portable Markdown PRD.
+6. Finish only when the design doc is decision-complete.
+   - End with a detailed portable Markdown design doc.
    - Do not stop at shared understanding, a short recap, or a lightweight implementation plan.
 
 ## Output
 
-Produce a final Markdown PRD with:
+Produce a final Markdown design doc with:
 
 - A clear title
 - An executive summary

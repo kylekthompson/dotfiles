@@ -9,7 +9,7 @@ Use sandbox-first command routing for project command execution.
 
 ## Routing Rules
 
-1. Check whether `.rwx/sandbox.yml` exists at the project root.
+1. Check whether `.rwx/sandbox.yml` exists at the project root. Use hidden-aware file discovery, such as `rg --hidden --files -g '.rwx/sandbox.yml'`, so `.rwx` is not missed.
 2. If it exists, run project commands with:
    - `rwx sandbox exec -- <command>`
 3. If it does not exist, run commands locally and note that sandbox setup is available with:
@@ -57,5 +57,3 @@ Use these when managing sandbox sessions:
 When using `rwx sandbox exec`:
 - local uncommitted changes are synced to sandbox before execution
 - sandbox file changes are synced back locally after execution (even on non-zero exit)
-
-Use `--no-sync` only when intentionally running against unsynced sandbox state.
