@@ -11,11 +11,15 @@
     {
       "tool": "shell_command",
       "matches": {
-        "command": ["terraform", "terraform *"]
+        "command": [
+          "terraform",
+          "terraform *"
+        ]
       },
       "action": "ask"
     }
   ],
   "amp.remoteThreadCreation.enabled": true,
-  "amp.updates.mode": "warn"
+  "amp.updates.mode": "warn",
+  "amp.gauge": "cost"
 }
