@@ -7,6 +7,15 @@
     }
   },
   "amp.notifications.enabled": true,
+  "amp.permissions": [
+    {
+      "tool": "shell_command",
+      "matches": {
+        "command": ["terraform", "terraform *"]
+      },
+      "action": "ask"
+    }
+  ],
   "amp.remoteThreadCreation.enabled": true,
   "amp.updates.mode": "warn"
 }
