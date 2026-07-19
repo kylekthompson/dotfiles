@@ -7,35 +7,7 @@
     }
   },
   "amp.notifications.enabled": true,
-  "amp.permissions": [
-    {
-      "tool": "shell_command",
-      "matches": {
-        "command": [
-          "rwx artifacts",
-          "rwx artifacts *",
-          "rwx logs",
-          "rwx logs *",
-          "rwx results",
-          "rwx results *",
-          "rwx sandbox",
-          "rwx sandbox *"
-        ]
-      },
-      "action": "allow"
-    },
-    {
-      "tool": "shell_command",
-      "matches": {
-        "command": [
-          "terraform",
-          "terraform *"
-        ]
-      },
-      "action": "ask"
-    }
-  ],
   "amp.remoteThreadCreation.enabled": true,
   "amp.updates.mode": "warn",
-  "amp.gauge": "cost"
+  "amp.gauge": "tokens"
 }
