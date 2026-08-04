@@ -5,7 +5,7 @@ description: Consult a configured read-only GPT-5.6 Sol Oracle for an independen
 
 # Consult Oracle
 
-Use the Oracle as an adviser after gathering enough evidence for a useful consultation. Keep ownership of decisions, implementation, and validation in the coordinating thread. Implementation workers must not invoke an Oracle or spawn more agents.
+Use this skill only in the coordinating thread. Use the Oracle as an adviser after gathering enough evidence for a useful consultation. Keep ownership of decisions, implementation, and validation in the coordinating thread. Implementation workers and Oracle agents must not invoke this skill or spawn more agents. An Oracle must answer its assigned question directly as the terminal consultant.
 
 ## Select the Oracle
 
