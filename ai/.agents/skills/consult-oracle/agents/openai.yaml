@@ -1,0 +1,4 @@
+interface:
+  display_name: "Consult Oracle"
+  short_description: "Get a read-only expert second opinion"
+  default_prompt: "Use $consult-oracle to get a read-only second opinion on this decision."
