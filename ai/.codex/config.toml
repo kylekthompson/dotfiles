@@ -1,6 +1,6 @@
-model = "gpt-5.6-sol"
+model = "gpt-5.6-luna"
 personality = "pragmatic"
-model_reasoning_effort = "high"
+model_reasoning_effort = "max"
 web_search = "live"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
@@ -38,6 +38,7 @@ status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-use
 
 [features]
 experimental_use_rmcp_client = true
+fast_mode = true
 multi_agent = true
 
 [mcp_servers.linear]
