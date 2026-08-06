@@ -1,4 +1,0 @@
-interface:
-  display_name: "Consult Oracle"
-  short_description: "Review plans and results with an Oracle"
-  default_prompt: "Use $consult-oracle to review this plan and verify the implementation."
