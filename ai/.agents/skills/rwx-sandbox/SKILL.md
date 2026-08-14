@@ -1,59 +1,49 @@
 ---
 name: rwx-sandbox
-description: Use when executing project shell commands and `.rwx/sandbox.yml` is present. Prefer `rwx sandbox` for tests, linters, builds, migrations, codegen, package manager scripts, database commands, and other iterative in-project command execution that should run in the configured development environment.
+description: Routes environment-dependent project commands through an existing RWX cloud sandbox. Use when `.rwx/sandbox.yml` exists and a task runs tests, checks, builds, package scripts, migrations, code generation, or database commands.
 ---
 
 # RWX Sandbox
 
-Use sandbox-first command routing for project command execution.
+Run environment-dependent project commands in the repository's configured persistent sandbox. Keep inspection and editing on the host.
 
-## Routing Rules
+## Choose the Execution Boundary
 
-1. Check whether `.rwx/sandbox.yml` exists at the project root. Use hidden-aware file discovery, such as `rg --hidden --files -g '.rwx/sandbox.yml'`, so `.rwx` is not missed.
-2. If it exists, run project commands with:
-   - `rwx sandbox exec -- <command>`
-3. If it does not exist, run commands locally and note that sandbox setup is available with:
-   - `rwx sandbox init .rwx/sandbox.yml`
+1. Identify the active worktree root and check for `.rwx/sandbox.yml`. Do not rely on file searches that omit hidden directories.
+2. Use the sandbox for commands whose result depends on the configured runtime, dependencies, tools, services, or setup state. This includes tests, linters, formatters, type checks, builds, package scripts, migrations, schema or code generation, and database commands.
+3. Keep file reads, searches, edits, and lightweight Git inspection on the host. Run RWX lifecycle commands on the host too.
+4. If the config is absent, use the normal local workflow. Do not initialize or add sandbox configuration unless the user asks.
+5. If the config exists but RWX is unavailable or cannot authenticate, report the blocker. Ask before running an environment-dependent command locally because that result might not represent the configured environment.
 
-Make sure to run `rwx sandbox` commands serially. It does not yet handle parallel invocations.
+## Execute Commands
 
-Prefer sandbox execution for fast iterative loops and environment-dependent commands, especially:
-- tests
-- linters and format checks
-- builds
-- migrations and schema generation
-- code generation
-- package manager scripts (`npm`, `pnpm`, `yarn`, `bun`, `make`, etc.)
-- database commands
+- Run a simple command directly: `rwx sandbox exec -- npm test`.
+- Put shell syntax inside the sandbox. For pipelines, redirections, variable expansion, or command chains, use `rwx sandbox exec -- sh -lc '<command>'`; do not let the host shell run part of the project command.
+- Run from the intended worktree and let RWX resolve the default config. Specify a config path only for a non-default config.
+- Let `exec` lazily start or reuse the sandbox. Do not run `start` or `reset` before every command.
+- Run commands against one sandbox serially because they share state and synchronize files. Separate Git worktrees have isolated sandboxes and can execute in parallel.
 
-Keep local execution for tasks that do not need sandbox command execution:
-- reading files
-- editing files
-- lightweight git metadata checks (`git status`, `git diff`, `git log`, `git show`)
+Before each command, RWX syncs staged, unstaged, and untracked local files into the sandbox. After it completes, RWX syncs command changes back. The first command in a new sandbox can also return files created by setup tasks. Inspect returned changes and do not overwrite unrelated work. Git LFS objects do not sync; account for any warning in the result.
 
-## Failure and Recovery
+## Diagnose Failures
 
-If a sandbox command fails:
+Do not treat every nonzero exit as a sandbox failure.
 
-1. Run `rwx results <run-id>` and try to diagnose the issue
-2. If that fails, run `rwx sandbox reset --wait`
-3. Retry the original sandbox command once.
-4. If it still fails, ask the user before any local fallback.
+1. Read the command output first. If the project command ran and failed, fix the project issue and rerun the smallest relevant command in the same sandbox. Do not reset it.
+2. If setup fails, use the diagnostic summary in the CLI output. Fix the config, dependency, or project input, then run `rwx sandbox exec --reset -- <command>` so setup runs again.
+3. Reset only when setup inputs changed or evidence shows stale or damaged sandbox state. Use `exec --reset` when a command is ready, or `rwx sandbox reset --wait` when only a fresh environment is needed.
+4. If the output supplies a run ID and more task detail is useful, inspect it with `rwx results <run-id>`. Do not reset for authentication, authorization, quota, or network errors.
+5. Retry once only when the failure can be transient. If the sandbox remains blocked, report the evidence and ask before any local fallback.
 
-Do not silently switch to local execution after repeated sandbox failures.
+## Manage the Lifecycle
 
-## Operational Commands
+- Inspect sessions with `rwx sandbox list`.
+- Pre-warm a complex environment with `rwx sandbox start --wait` only when lazy startup is not suitable.
+- After final verification, stop the current worktree's sandbox with `rwx sandbox stop` unless more commands will use it soon.
+- Use `rwx sandbox stop --id <run-id>` only for a session that you identified. Do not use `--all` unless the user asks because it can stop other work.
 
-Use these when managing sandbox sessions:
+## Report Results
 
-- Inspect sessions: `rwx sandbox list`
-- Warm/start a sandbox: `rwx sandbox start --wait`
-- Recover sandbox state: `rwx sandbox reset --wait`
-- Stop sandbox sessions: `rwx sandbox stop` (or `rwx sandbox stop --id <run-id>`)
-  - Use this whenever you hand your changes back off to the user to cleanup and to optimize compute spend
-
-## Sync Behavior
-
-When using `rwx sandbox exec`:
-- local uncommitted changes are synced to sandbox before execution
-- sandbox file changes are synced back locally after execution (even on non-zero exit)
+- State which checks ran through RWX and give their result.
+- If a check ran locally as an approved fallback, say why and state the environment difference or remaining uncertainty.
+- Review files synced back from the sandbox before presenting them as intentional changes.
