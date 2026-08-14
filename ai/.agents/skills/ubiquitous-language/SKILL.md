@@ -1,60 +1,65 @@
 ---
 name: ubiquitous-language
-description: Use in projects that keep domain vocabulary in `DOMAIN.md` to apply the approved ubiquitous language during naming, refactoring, review, documentation, API or schema design, and terminology audits. Trigger when work introduces or changes domain terms, when active code or docs may drift from `DOMAIN.md`, or when the user wants to review, update, normalize, or bootstrap the glossary.
+description: Keeps domain vocabulary aligned with `DOMAIN.md`. Use during naming, implementation, refactoring, review, documentation, API or schema design, and explicit glossary audits or updates.
 ---
 
 # Ubiquitous Language
 
-Keep project language aligned with `DOMAIN.md`. Stay quiet during ordinary work, then switch into an explicit audit only when drift, gaps, or a direct terminology request make the language decision important.
+Use the same terms for the same domain concepts in conversation, code, contracts, and documentation. Apply the language quietly during normal work. Report terminology findings only when they affect the work or the user asks for an audit.
 
-## Workflow
+## Establish the Vocabulary
 
-1. Locate the glossary.
-   - Look for the nearest ancestor `DOMAIN.md` from the current workdir.
-   - If none exists there, fall back to a repo-root `DOMAIN.md`.
-   - If no `DOMAIN.md` exists anywhere, do nothing unless the user explicitly asks to bootstrap or document the ubiquitous language. For bootstrap work, read `references/domain-template.md`.
-2. Choose a mode.
-   - Use normal mode for naming, refactoring, review, documentation, API or schema work, and when the conversation introduces unfamiliar domain nouns.
-   - Use audit mode when the user explicitly asks to review or update terminology, or when the current conversation or touched code or docs show conflicts or missing concepts.
-   - Keep the default audit scope to the current conversation and active proposed or touched code or docs. Do not expand to a whole-repo sweep unless the user asks.
-3. Read `DOMAIN.md` conservatively.
-   - Treat `DOMAIN.md` as canonical.
-   - Prefer explicit approved terms, aliases, discouraged terms, and open questions over free-form interpretation.
-   - Tolerate minor formatting drift. If the file is too loose to parse confidently, propose normalizing it with `references/domain-template.md` instead of inventing policy.
-   - If a concept is unresolved in `DOMAIN.md`, avoid presenting a guessed term as settled. Surface the ambiguity and propose a pending entry.
-4. Apply terminology pressure.
-   - Use canonical terms in new prose, code, APIs, schemas, and review feedback.
-   - Enforce terminology across all identifiers in active scope, not just public surfaces.
-   - Allow explicit exceptions for vendor or third-party terms, compatibility shims, migration code, generated code, and obviously throwaway test fixtures.
-   - Prefer changes in already touched files. Do not chase terminology into untouched files unless the user explicitly asks for a broader refactor.
-5. Resolve issues.
-   - Classify mismatches as `drift`, `gap`, or `exception`.
-   - `drift`: a non-canonical or discouraged term conflicts with an approved term in `DOMAIN.md`.
-   - `gap`: a real concept is missing from `DOMAIN.md`.
-   - `exception`: local usage is acceptable because it falls into an allowed exception bucket; mention it only when the distinction matters.
-   - When a new concept is real, propose a pending glossary entry with canonical term, short definition, aliases or synonyms, discouraged terms, and open questions.
+1. Find the `DOMAIN.md` that governs the active files. Use the nearest ancestor file, then the repository-root file as a fallback. A nearer glossary governs its subtree; do not blend conflicting scopes.
+2. If no glossary exists, stay quiet during ordinary work. Create or propose one only when the user asks to bootstrap or document the language.
+3. Read the glossary before endorsing a domain-significant term. Treat explicit entries as the source of truth even when the document format is informal:
+   - **Canonical term:** the default term for project language.
+   - **Alias:** a recognized synonym, not the default unless its notes allow that use.
+   - **Discouraged term:** a known source of drift that should be replaced in active scope.
+   - **Open question:** an unresolved decision, not permission to guess.
+4. Do not infer approval from common usage or the current implementation. If entries conflict or a concept is unresolved, state the ambiguity and propose a pending decision.
 
-## Defaults
+## Apply the Language
 
-- Optimize for quiet guidance first. Do not turn normal implementation work into a glossary lecture.
-- Prefer the canonical domain term even when an implementation synonym feels shorter or more familiar.
-- Treat code, docs, review comments, and architecture language as one vocabulary system.
-- If `DOMAIN.md` is absent, stay silent unless the user explicitly asks to create or maintain it.
-- If the conversation introduces a term that looks domain-significant but not obviously canonical, check `DOMAIN.md` before endorsing it.
+- Use canonical terms in active conversation, prose, identifiers, types, APIs, schemas, events, and tests. Apply the rule to internal and public names, not only documentation.
+- Keep the default scope to proposed or touched files and nearby text needed for consistency. Do not start a repository-wide rename unless the user asks.
+- Check meaning before replacing text. The same word can name different concepts, and similar words can mark important lifecycle or responsibility boundaries.
+- Do not police ordinary technical language merely because it is absent from `DOMAIN.md`. The glossary governs domain concepts.
+- Preserve required vendor, protocol, generated, migration, and compatibility terms. Translate them at an adapter boundary and use canonical language inside that boundary.
+- Do not rename public, persisted, or serialized identifiers without accounting for compatibility and migration.
+- When active work introduces a stable concept that the glossary does not define, propose a glossary update instead of silently declaring a canonical term.
+
+## Resolve Findings
+
+Classify a terminology issue by the decision it needs:
+
+- **`drift`:** active usage conflicts with an approved canonical or discouraged term. Replace it where the meaning is equivalent.
+- **`gap`:** the glossary lacks a real concept or a distinction needed by the work. Propose a pending entry; do not present it as approved.
+- **`exception`:** non-canonical wording is required at an external or compatibility boundary. Keep it local and map it to the canonical term.
+
+In an audit, inspect the requested scope and report exact occurrences. Do not report every accepted exception. Findings are guidance, not blockers, unless the user asks for enforcement.
+
+## Maintain `DOMAIN.md`
+
+When the user asks to add or normalize terms, use the existing structure when it is clear. Otherwise, use concise records:
+
+```md
+### Canonical Term
+Definition: What the concept means and how it differs from nearby concepts.
+Aliases: Recognized synonyms, if any.
+Discouraged terms: Terms that cause ambiguity or drift, if any.
+Notes: Scope, lifecycle, or boundary details needed for correct use.
+```
+
+Keep unresolved decisions under `Open Questions`. Do not move a proposed term into the approved vocabulary until the user or project authority resolves it.
 
 ## Response Shape
 
-- In normal mode, adopt the canonical language and mention terminology only when it affects the recommendation or edit.
-- In audit mode, emit structured findings using this shape:
+- During normal work, use canonical language and mention terminology only when it changes the recommendation or edit.
+- For an audit, emit one actionable record per issue:
   - `type`: `drift` | `gap` | `exception`
+  - `location`: exact file, symbol, or prose occurrence
   - `canonical`: approved term, if one exists
   - `observed`: conflicting or new term
-  - `why`: one short rationale tied to `DOMAIN.md`
+  - `why`: one short explanation tied to the glossary meaning
   - `action`: exact replacement or `DOMAIN.md` update to make
-- For `gap`, include a pending glossary entry with canonical term, definition, aliases, discouraged terms, and open questions.
-- Treat findings as actionable guidance, not hard blockers, unless the user explicitly asks for gatekeeping.
-
-## References
-
-- Read `references/domain-template.md` when bootstrapping a missing `DOMAIN.md`, normalizing an existing one, or drafting a pending glossary entry.
-- Read `references/findings.md` when you need concrete examples of `drift`, `gap`, or `exception` outputs.
+- For a `gap`, include the proposed term, definition, aliases, discouraged terms, and open questions.
