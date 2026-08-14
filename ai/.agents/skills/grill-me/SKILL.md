@@ -1,51 +1,68 @@
 ---
 name: grill-me
-description: Interrogate the user's plan or design until it is implementation-ready. Use when the user says "grill me", wants to stress-test an approach, or needs a plan pushed into a decision-complete design doc.
+description: Interrogates a plan until its material product and technical decisions are ready for implementation. Use when the user says "grill me", wants to stress-test an approach, or needs a decision-complete implementation brief.
 ---
 
 # Grill Me
 
-Interrogate the user's plan until it is ready to build. Stay relentless. Do not settle for partial understanding, vague tradeoffs, or hand-wavy edges.
+Turn a rough plan into a decision-complete implementation brief. Investigate facts, expose consequential unknowns, recommend concrete defaults, and record the decisions without turning the process into an exhaustive questionnaire.
 
-## Workflow
+## Establish the Decision Space
 
-1. Explore first.
-   - Inspect the codebase, configs, schemas, and existing patterns for anything discoverable before asking.
-   - If a question can be answered by exploration, do the exploration instead.
+1. Inspect the codebase, documentation, configuration, schemas, and existing patterns before asking questions. If exploration can answer a question, do the exploration instead.
+2. Restate the intended outcome and active scope. Separate:
+   - **Facts:** supported by the available evidence.
+   - **Decisions:** choices the user or project has made.
+   - **Assumptions:** defaults that still need confirmation.
+   - **Unknowns:** missing information that can change the implementation.
+3. Identify the decisions that are material now. A decision is material when its answer can change observable behavior, scope, responsibility or interface boundaries, data compatibility, safety, delivery, or acceptance criteria.
+4. Scale the interrogation to the risk. A local and reversible change needs fewer decisions than a public contract, persisted-data change, security boundary, migration, or operational rollout.
 
-2. Ask the largest useful batch of unblocked questions each round.
-   - Identify which unresolved decisions materially affect implementation.
-   - Ask every high-signal question whose answer does not depend on another unanswered question.
-   - Separate blocked questions from unblocked ones and hold the blocked set for later rounds.
-   - Only ask one question at a time when the rest genuinely depend on its answer.
+## Ask Material Questions
 
-3. Provide a recommendation with every question.
-   - State the answer you currently recommend.
-   - Explain the tradeoff briefly enough that the user can accept, reject, or refine it quickly.
+- Ask one coherent batch of unblocked questions at a time. Group independent questions, but sequence questions when one answer changes the next question.
+- Keep each batch small enough for direct answers. Prefer a few high-impact questions over a long inventory of possible concerns.
+- With each question, give the recommended answer or default and the main tradeoff. Make it easy to accept, reject, or refine the recommendation.
+- Use concrete choices when they are real. Do not force a false binary when the design space has another viable option.
+- Do not ask about implementation details that are safely reversible, follow a settled project convention, or can wait without blocking the design.
 
-4. Walk the full decision tree.
-   - Keep drilling until goals, constraints, scope, interfaces, data flow, state management, edge cases, failure modes, testing, rollout, and operational concerns are resolved.
-   - Challenge weak assumptions directly. If something is underspecified, say so and keep pushing.
+Use this question shape when it helps:
 
-5. Keep the conversation implementation-oriented.
-   - Convert abstract ideas into concrete behavior, APIs, inputs and outputs, validation rules, and acceptance criteria.
-   - Prefer decisions over open questions. If the user is unsure, recommend a default and move forward.
+```md
+1. **Decision:** What must be chosen?
+   **Recommend:** The current best answer and why.
+   **Tradeoff:** What this choice gains or gives up.
+```
 
-6. Finish only when the design doc is decision-complete.
-   - End with a detailed portable Markdown design doc.
-   - Do not stop at shared understanding, a short recap, or a lightweight implementation plan.
+Probe these areas only when they can change the work:
 
-## Output
+- desired behavior, users, workflows, scope, and non-goals
+- ownership, interfaces, data flow, state, and compatibility
+- validation, edge cases, failure behavior, security, and privacy
+- migration, rollout, observability, recovery, and operational ownership
+- test strategy, acceptance criteria, and delivery sequence
 
-Produce a final Markdown design doc with:
+## Converge on Decisions
 
-- A clear title
-- An executive summary
-- The problem, goals, and non-goals
-- Users, use cases, and workflows
-- Functional requirements
-- Key decisions made and the rationale for each
-- Interfaces, data flow, and operational constraints
-- Edge cases, risks, and mitigations
-- Test scenarios and acceptance criteria
-- Explicit assumptions and chosen defaults
+- After each answer, update the working decisions and their consequences. Resolve contradictions and do not ask a settled question again unless new evidence invalidates its answer.
+- Challenge weak assumptions and conflicts with repository evidence directly, without becoming combative. Explain what fails and recommend a stronger alternative.
+- Convert abstract preferences into observable behavior, contracts, validation rules, failure handling, and acceptance checks.
+- When the user is unsure, recommend a default. Record it as an assumption until the user accepts it; do not present silence as agreement.
+- Keep future possibilities out of the active design unless they change a boundary that is expensive to revise later.
+- If the user stops the interrogation early, honor that request and return the current decisions, assumptions, and remaining blockers. Do not claim the plan is ready.
+
+The plan is implementation-ready when no unresolved question can materially change the implementation path. Remaining uncertainty must be an explicit non-blocking assumption or a deferred decision with a clear trigger. Do not require every topic above to appear when it is irrelevant.
+
+## Final Artifact
+
+Return a self-contained Markdown implementation brief that does not depend on the conversation transcript. Scale its depth to the work and omit empty sections. Include, when relevant:
+
+- outcome, scope, and non-goals
+- required behavior and acceptance criteria
+- decisions, chosen defaults, and concise rationale
+- interfaces, data, state, and failure behavior
+- compatibility, migration, rollout, and operations
+- verification strategy and first safe implementation steps
+- explicit assumptions, deferred decisions, and blockers
+
+State whether the plan is ready for implementation. If it is not ready, identify the decisions that still block it instead of filling the gaps with invented certainty.
