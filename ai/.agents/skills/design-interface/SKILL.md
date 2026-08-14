@@ -1,60 +1,51 @@
 ---
 name: design-interface
-description: Design or review interfaces between modules, bounded contexts, services, adapters, and public APIs. Use when shaping a new boundary, comparing interface options, reducing coupling, preserving domain language, deciding whether similar workflows deserve one abstraction, or pushing policy away from I/O and framework details.
+description: Designs and reviews interfaces between modules, bounded contexts, services, adapters, and public APIs. Use when assigning responsibilities, comparing boundary options, reducing coupling, preserving domain language, or deciding whether workflows share an abstraction.
 ---
 
-# Design Interface
+# Design Interfaces
 
-## Workflow
+Choose where knowledge, decisions, invariants, and effects belong so that change stays local.
 
-1. Interrogate before designing.
-   - Ask one high-signal question at a time until the actors, domain terms, invariants, lifecycle, and failure modes are explicit.
-   - Refuse to polish an interface built on fuzzy language like "service," "manager," or "handler" when the real responsibility is still unclear.
-2. Model the boundary.
-   - State who calls whom, which side owns policy, which side owns side effects, and what change pressure the boundary should absorb.
-   - Prefer commands, queries, and events in domain language over storage, transport, or framework language.
-3. Produce 2-3 viable options.
-   - Vary responsibility placement and how much the caller must know.
-   - Keep at least one option conservative and one option more opinionated.
-4. Evaluate the options in this order.
-   - Ease of change: localize volatility and minimize how many places must change together.
-   - Semantic clarity: preserve ubiquitous language and avoid leaking implementation terms.
-   - Boundary purity: keep decision-making separate from I/O, persistence, and framework concerns whenever practical.
-   - Connascence: prefer coupling by meaning and stable names over coupling by position, timing, algorithm, or internal shape.
-   - Abstraction fit: share an interface only when the candidates enforce the same domain invariant or clearly change together.
-5. Recommend one interface.
-   - Pick a concrete design rather than ending with a menu of tradeoffs.
-   - Explain why the rejected options are weaker.
-   - If the request starts from existing code, include the first safe refactor step.
+## Define the Boundary
 
-## Design Defaults
+1. Inspect existing callers, implementations, domain terms, and change patterns before asking questions. Ask only about unknowns that can change the design.
+2. State the caller, the boundary, the business capability, and the key invariant. Assign each decision and effect to one owner.
+3. Name the change that the boundary must absorb. Separate changes that should stay local from changes that must cross the boundary.
+4. Sketch concrete contracts with names, inputs, outcomes, and failures. Use signatures, request and response shapes, or event schemas as appropriate.
+5. When responsibility placement is not clear, present 2-3 viable options. Vary what each side knows and owns; do not create options that differ only in syntax.
+6. Recommend one design. Explain the main tradeoff, the strongest rejected alternative, and the first safe migration step for an existing boundary.
 
-- Optimize for ease of change first.
-- Prefer small, explicit interfaces over wide convenience surfaces.
-- Prefer domain-command interfaces over generic CRUD or resource-shaped contracts when behavior matters.
-- Keep policy in the domain and push I/O, persistence, framework code, and vendor APIs to the edge.
-- Preserve domain semantics at external boundaries; adapt transport shape without flattening the meaning.
-- Treat similar payloads or argument lists as weak evidence for abstraction.
-- Accept duplication until shared meaning or shared invariants are obvious.
+## Place Responsibilities
 
-## Red Flags
+- Give each business invariant one owner. Do not make both sides coordinate the same rule.
+- Keep contracts small and explicit. Accept inputs at the caller's level of knowledge. Let the boundary own call order, retries, timing, and lifecycle transitions that protect its invariant.
+- Use domain actions for commands, domain facts for events, and explicit business concepts for queries. Return business outcomes instead of internal state.
+- Keep policy and classification separate from I/O where practical. Put database, framework, transport, queue, and vendor details behind adapters at the edge.
+- Make invalid states hard to express. Define preconditions, postconditions, idempotency, and failure ownership when they affect correct use.
+- Preserve domain meaning at external boundaries. Adapt transport shapes without letting them define the internal model.
+- Share an interface only when cases enforce the same invariant or change together. Similar fields, signatures, or current implementations are not enough; accept duplication until the shared meaning is clear.
 
-- Push back hardest when the interface leaks implementation terms such as table names, ORM models, HTTP verbs, queue topics, framework types, or vendor request objects.
-- Push back next when the abstraction names are generic enough to hide the real behavior: `Manager`, `Service`, `Processor`, `Handler`, `Util`.
-- Push back next when the caller must choreograph order, retries, timing, lifecycle transitions, or multi-step protocols that the boundary should own.
-- Also watch for wide DTOs, positional argument lists, and outputs that expose internal state instead of business outcomes.
+Prefer `Inventory.reserve(orderId, lines) -> ReservationOutcome` over `InventoryService.updateStock(productId, delta)` when inventory owns the reservation rule.
+
+## Compare Options
+
+Evaluate options in this order:
+
+1. **Ease of change:** Which design keeps likely changes on one side?
+2. **Semantic clarity:** Does the contract use precise domain language instead of storage, transport, framework, or vendor terms?
+3. **Knowledge and coupling:** Does either side know field order, call order, timing, algorithms, or internal shapes that it should not know?
+4. **Invariant and failure ownership:** Is one side clearly responsible for valid transitions, partial failure, and recovery?
+5. **Abstraction fit:** Do shared cases have the same meaning and reasons to change?
+
+Reject generic names such as `Manager`, `Service`, `Processor`, or `Handler` when they hide behavior. Also challenge generic CRUD operations, wide DTOs, positional argument lists, vendor objects, and interfaces that make callers run a multi-step protocol.
 
 ## Response Shape
 
-- Frame the boundary in one short paragraph: caller, callee, owned decisions, owned effects, and the key invariant.
-- Present 2-3 interface options with concrete names and signatures or contract sketches.
+- Frame the caller, boundary, owned decisions, owned effects, and key invariant in one short paragraph.
+- Present concrete options only when there is a material responsibility tradeoff.
 - Recommend one interface and explain why it best localizes change.
-- Spell out responsibility split: what the caller knows, what the boundary owns, and what must stay hidden.
-- State invariants, preconditions, postconditions, and failure-handling expectations.
+- State what the caller knows, what the boundary owns, and what stays hidden.
+- Show the contract and relevant invariants, preconditions, postconditions, and failure behavior.
 - Name the most important rejected alternative and why it is worse.
-- If the boundary already exists, end with the first safe refactor or migration step.
-
-## References
-
-- Read `references/heuristics.md` when tradeoffs are unclear or the interface feels plausible in multiple ways.
-- Read `references/examples.md` when the user needs concrete boundary patterns for module seams, bounded-context APIs, or third-party adapters.
+- For an existing boundary, end with the first safe refactor or migration step.
