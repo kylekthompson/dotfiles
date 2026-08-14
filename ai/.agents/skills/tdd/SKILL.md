@@ -1,60 +1,41 @@
 ---
 name: tdd
-description: Use during implementation work to drive changes test-first, choose the right mix of module, integration, and user-facing tests, and decide when mocking is acceptable, especially for features, bugfixes, storage or async behavior, and test-strategy requests.
+description: Guides test-first implementation with red-green-refactor and characterization-first refactoring. Use for features, bug fixes, behavior-preserving refactors, and test-strategy decisions.
 ---
 
 # TDD
 
-Drive implementation from tests. Push back when code is being written before the next failing test is clear.
+Use tests to control one small behavior change at a time.
 
-## Workflow
+## Red-Green-Refactor
 
-1. Classify the change before coding.
-   - Pure logic inside a stable module or domain boundary
-   - Storage or async behavior
-   - User-facing feature or request flow
-   - Bugfix or hostile legacy change
-   - If the classification or best starting seam is unclear, interrogate that before proposing code.
-2. Pick the first failing test at the highest fast seam.
-   - Default to the module or domain seam through a public API.
-   - For bugfixes or legacy code, start with a failing regression test at the highest reliable seam.
-3. Run a strict red-green-refactor loop.
-   - Name the next failing test before proposing implementation.
-   - Make the smallest change that turns that test green.
-   - Refactor only while the suite stays green.
-4. Prove upward before declaring the change complete.
-   - Add infra-backed integration coverage for any storage or async touch.
-   - Add a user-facing test for most features: happy path plus one key failure.
-5. Challenge weak testing plans.
-   - Push back on code-first implementation.
-   - Push back on mock-heavy tests that freeze internal structure.
-   - Push back on slow top-level-only suites when a faster module test should drive the design first.
+For new or changed behavior:
 
-## Defaults
+1. **Red:** Name the next observable behavior. Write the smallest test for it, run the test, and confirm that it fails for the expected reason. A setup or compilation error is not a useful red.
+2. **Green:** Make the smallest production change that passes the test. Do not add untested behavior.
+3. **Refactor:** Improve names, duplication, and design without changing behavior. Keep tests green after each small step.
+4. Repeat with the next behavior.
 
-- Optimize for fast feedback first, then add higher-fidelity proof where the boundary semantics matter.
-- Prefer module or domain tests that exercise behavior through public entrypoints, not private helpers.
-- For storage or async changes, require both module-level behavior tests and integration tests against real local infrastructure when practical.
-- For user-facing features, keep most combinatorics below the entrypoint and use the user-facing layer to prove wiring and critical behavior.
-- For legacy work, capture the bug first, then narrow the seam only if it makes the fix safer or easier to evolve.
+For a bug, first reproduce it with a failing regression test. Push back on production changes made before a meaningful red.
 
-## Mocking
+## What to Test
 
-- Default to almost no mocks.
-- Accept mocks or controllable doubles for clocks, randomness, filesystem, subprocesses, and similar nondeterministic or process-boundary dependencies.
-- Prefer fakes for vendor boundaries when practical, but mocking vendors is acceptable.
-- Prefer real local databases, queues, and workers when they can run locally.
-- Allow interaction tests at external boundaries and at major internal architectural seams when the coordination itself is intentional behavior.
+- Test observable outcomes through the smallest stable public boundary that proves the behavior. Give each test one reason to fail.
+- Start with the fastest test that gives useful design feedback. Add another layer only for a distinct risk:
+  - Use module or domain tests for logic and edge cases.
+  - Use integration tests for database, queue, filesystem, framework, serialization, or protocol semantics. Prefer real local infrastructure.
+  - Use a small number of user-facing tests for critical journeys and wiring.
+- Test representative boundaries and failures. Do not repeat the same combinations at every layer.
+- Do not test private methods or incidental call sequences. Assert interactions only when the interaction or protocol is the behavior.
+- Keep cheap, deterministic collaborators real. Use fakes or mocks for nondeterminism and remote, slow, or unavailable boundaries.
 
-## Response Shape
+## Refactoring Existing Behavior
 
-- Start with the next test to write and why that seam is the right starting point.
-- State which additional test layers are required before the change is done.
-- Name any acceptable doubles and any collaborators that should stay real.
-- If the proposed plan is code-first or over-mocked, say so directly and redirect to a better test sequence.
+A behavior-preserving refactor is green-green, not red-green:
 
-## References
+1. Find tests at a stable boundary. If coverage is insufficient, add focused characterization tests that pass against current behavior, including quirks that are not approved to change.
+2. If a test's protection is uncertain, make a temporary deliberate break, confirm that the test fails, then undo the break.
+3. Refactor in small steps and run the focused tests after each step. Change tests only when structure, not behavior, requires it.
+4. If the desired outcome changes behavior, stop refactoring and start a red-green-refactor loop for that change.
 
-- Read `references/test-selection.md` when deciding which test layers to add.
-- Read `references/mock-policy.md` when the right double or interaction assertion is unclear.
-- Read `references/examples.md` when you need concrete examples of feature work, storage-touching changes, or legacy bugfixes.
+Before completion, run the relevant broader suite. State the next test and why its boundary is appropriate when the test sequence is not obvious.
