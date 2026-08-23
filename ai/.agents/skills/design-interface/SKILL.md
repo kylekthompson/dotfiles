@@ -1,11 +1,22 @@
 ---
 name: design-interface
-description: Designs and reviews interfaces between modules, bounded contexts, services, adapters, and public APIs. Use when assigning responsibilities, comparing boundary options, reducing coupling, preserving domain language, or deciding whether workflows share an abstraction.
+description: Designs and reviews interfaces between modules, bounded contexts, services, adapters, and public APIs. Use when assigning responsibilities, comparing boundary options, reducing coupling, judging whether a boundary smell warrants refactoring, preserving domain language, or deciding whether workflows share an abstraction.
 ---
 
 # Design Interfaces
 
 Choose where knowledge, decisions, invariants, and effects belong so that change stays local.
+
+## Assess Before Redesigning
+
+Treat a smell as evidence to inspect, not proof that the design must change.
+
+1. Inspect the surrounding behavior, callers, domain language, and likely change. Do not diagnose from a pattern in isolation.
+2. Name the concrete cost: an obscured invariant, unclear ownership, invalid state, difficult change, hidden effect, coupling, or excess conceptual weight.
+3. Find the smallest design that reduces that cost. Do not prescribe a pattern merely because it can fit.
+4. Decide whether improvement belongs in the current scope. Fix it when it protects correctness, enables the requested change, or materially simplifies the touched boundary. Otherwise, contain it and proceed.
+
+Prefer correct behavior and explicit invariants, then locality of change, clear ownership, and conceptual simplicity. Accept duplication or a larger cohesive unit when either makes ownership clearer.
 
 ## Define the Boundary
 
@@ -40,8 +51,11 @@ Evaluate options in this order:
 
 Reject generic names such as `Manager`, `Service`, `Processor`, or `Handler` when they hide behavior. Also challenge generic CRUD operations, wide DTOs, positional argument lists, vendor objects, and interfaces that make callers run a multi-step protocol.
 
+Reject pass-through layers, ports, repositories, factories, or events that own no decision or invariant and isolate no effect or source of change. Do not pay now for a hypothetical future requirement.
+
 ## Response Shape
 
+- For a review, name each material smell, its concrete cost, the smallest useful improvement, and whether to fix it now. State when no smell warrants a change.
 - Frame the caller, boundary, owned decisions, owned effects, and key invariant in one short paragraph.
 - Present concrete options only when there is a material responsibility tradeoff.
 - Recommend one interface and explain why it best localizes change.
