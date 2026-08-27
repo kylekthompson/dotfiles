@@ -5,6 +5,7 @@ export interface WorkItemDefinition {
 	id: string
 	outcome: string
 	project: string
+	baseBranch: string
 	repository?: string
 	basedOn?: string
 	rolloutAfter: string[]
@@ -168,7 +169,17 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 			item.details = event.details
 
 			if (event.pullRequest) {
-				if (
+				const otherOwner = [...state.workItems.values()].find(
+					(other) =>
+						other.id !== item.id &&
+						other.pullRequest?.url === event.pullRequest?.url,
+				)
+				if (otherOwner) {
+					addViolation(
+						state.violations,
+						`Pull request ${event.pullRequest.url} is assigned to more than one work item.`,
+					)
+				} else if (
 					item.pullRequest &&
 					item.pullRequest.url !== event.pullRequest.url
 				) {

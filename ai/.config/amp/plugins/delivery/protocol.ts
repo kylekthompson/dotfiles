@@ -1,7 +1,9 @@
 import type {
 	DeliveryEvent,
 	DeliveryLimits,
+	PullRequestReport,
 	WorkItemDefinition,
+	WorkItemStatus,
 } from './workflow'
 
 export const COORDINATOR_MARKER = 'AMP_DELIVERY_COORDINATOR_V1'
@@ -58,6 +60,7 @@ function parseWorkItem(value: unknown): WorkItemDefinition | undefined {
 		typeof value.id !== 'string' ||
 		typeof value.outcome !== 'string' ||
 		typeof value.project !== 'string' ||
+		typeof value.baseBranch !== 'string' ||
 		(value.repository !== undefined && typeof value.repository !== 'string') ||
 		(value.basedOn !== undefined && typeof value.basedOn !== 'string') ||
 		(value.rolloutAfter !== undefined && !isStringArray(value.rolloutAfter))
@@ -69,9 +72,61 @@ function parseWorkItem(value: unknown): WorkItemDefinition | undefined {
 		id: value.id,
 		outcome: value.outcome,
 		project: value.project,
+		baseBranch: value.baseBranch,
 		...(value.repository ? { repository: value.repository } : {}),
 		...(value.basedOn ? { basedOn: value.basedOn } : {}),
 		rolloutAfter: value.rolloutAfter ?? [],
+	}
+}
+
+function parseReport(value: unknown): WorkItemReport | undefined {
+	if (
+		!isRecord(value) ||
+		value.type !== 'work-item-reported' ||
+		typeof value.workItemId !== 'string' ||
+		typeof value.childThreadId !== 'string' ||
+		!['working', 'pr-opened', 'review-ready', 'rebase-completed', 'blocked'].includes(
+			String(value.status),
+		) ||
+		(value.requestKey !== undefined && typeof value.requestKey !== 'string') ||
+		(value.details !== undefined && typeof value.details !== 'string')
+	) {
+		return undefined
+	}
+
+	let pullRequest: PullRequestReport | undefined
+	if (value.pullRequest !== undefined) {
+		if (
+			!isRecord(value.pullRequest) ||
+			typeof value.pullRequest.url !== 'string' ||
+			typeof value.pullRequest.headBranch !== 'string' ||
+			typeof value.pullRequest.baseBranch !== 'string' ||
+			typeof value.pullRequest.headSha !== 'string' ||
+			(value.pullRequest.baseHeadSha !== undefined &&
+				typeof value.pullRequest.baseHeadSha !== 'string')
+		) {
+			return undefined
+		}
+
+		pullRequest = {
+			url: value.pullRequest.url,
+			headBranch: value.pullRequest.headBranch,
+			baseBranch: value.pullRequest.baseBranch,
+			headSha: value.pullRequest.headSha,
+			...(value.pullRequest.baseHeadSha
+				? { baseHeadSha: value.pullRequest.baseHeadSha }
+				: {}),
+		}
+	}
+
+	return {
+		type: 'work-item-reported',
+		workItemId: value.workItemId,
+		childThreadId: value.childThreadId,
+		status: value.status as WorkItemStatus,
+		...(pullRequest ? { pullRequest } : {}),
+		...(value.requestKey ? { requestKey: value.requestKey } : {}),
+		...(value.details ? { details: value.details } : {}),
 	}
 }
 
@@ -116,9 +171,10 @@ export function createWorkItemPrompt(
 		`${WORK_ITEM_MARKER} ${JSON.stringify(role)}`,
 		'',
 		`Own exactly one pull request that delivers this outcome: ${item.outcome}`,
+		`Work in ${item.project}. Start the pull request from ${item.baseBranch}.`,
 		'Create the pull request as a draft. You own its branch and may force-push it when a coordinator rebase request requires that.',
 		'Do not merge the pull request, deploy it, or delegate another pull-request-sized task.',
-		'Use delivery_report for working, pull-request, review, rebase, and blocker updates.',
+		'Use delivery_report for working, pull-request, review, rebase, and blocker updates. Pull-request reports must include its URL, head and base branches, head SHA, and the current remote base-head SHA when this is a stacked PR.',
 	].join('\n')
 }
 
@@ -209,18 +265,8 @@ export function extractDeliveryEvents(
 	}
 
 	for (const text of textBlocks(messages)) {
-		const report = markerPayload(text, EVENT_MARKER)
-		if (
-			isRecord(report) &&
-			report.type === 'work-item-reported' &&
-			typeof report.workItemId === 'string' &&
-			typeof report.childThreadId === 'string' &&
-			['working', 'pr-opened', 'review-ready', 'rebase-completed', 'blocked'].includes(
-				String(report.status),
-			)
-		) {
-			events.push(report as unknown as WorkItemReport)
-		}
+		const report = parseReport(markerPayload(text, EVENT_MARKER))
+		if (report) events.push(report)
 	}
 
 	return events

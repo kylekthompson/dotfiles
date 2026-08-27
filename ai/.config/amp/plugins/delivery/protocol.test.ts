@@ -20,6 +20,7 @@ const item: WorkItemDefinition = {
 	id: 'api-reader',
 	outcome: 'Deploy the backward-compatible API reader.',
 	project: 'example/api',
+	baseBranch: 'schema-expand',
 	repository: 'example/api',
 	basedOn: 'schema-expand',
 	rolloutAfter: ['schema-expand'],
@@ -132,6 +133,23 @@ describe('delivery event extraction', () => {
 			extractDeliveryEvents(
 				[textMessage('AMP_DELIVERY_EVENT_V1 {not-json}')],
 				calls,
+			),
+		).toEqual([])
+	})
+
+	test('ignores report events with malformed pull-request data', () => {
+		const malformed = {
+			type: 'work-item-reported',
+			workItemId: item.id,
+			childThreadId: 'T-worker',
+			status: 'pr-opened',
+			pullRequest: { url: 12 },
+		}
+
+		expect(
+			extractDeliveryEvents(
+				[textMessage(`AMP_DELIVERY_EVENT_V1 ${JSON.stringify(malformed)}`)],
+				[],
 			),
 		).toEqual([])
 	})

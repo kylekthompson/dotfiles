@@ -13,6 +13,7 @@ const add = (id: string, basedOn?: string): DeliveryEvent => ({
 		id,
 		outcome: `Deliver ${id}`,
 		project: 'example/project',
+		baseBranch: id === 'a' ? 'main' : String.fromCharCode(id.charCodeAt(0) - 1),
 		basedOn,
 		rolloutAfter: [],
 	},
@@ -75,6 +76,20 @@ describe('reduceDeliveryEvents', () => {
 
 		expect(state.violations).toContain(
 			'Work item a reported more than one pull request.',
+		)
+	})
+
+	test('rejects one pull request owned by two work items', () => {
+		const url = 'https://github.com/example/repo/pull/1'
+		const state = reduceDeliveryEvents([
+			add('a'),
+			add('b'),
+			report('a', url),
+			report('b', url),
+		])
+
+		expect(state.violations).toContain(
+			`Pull request ${url} is assigned to more than one work item.`,
 		)
 	})
 })
