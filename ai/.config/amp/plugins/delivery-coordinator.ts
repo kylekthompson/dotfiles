@@ -30,7 +30,7 @@ export default function (amp: PluginAPI) {
 		},
 		async execute(_input, ctx) {
 			const planningThreadId = ctx.thread.id
-			const agent = await ctx.thread.agent()
+			const agent = amp.getBuiltinAgent('medium')
 			const coordinator = await agent.createThread({ executor: 'orb', show: true })
 
 			await coordinator.appendUserMessage({
