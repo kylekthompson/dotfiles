@@ -1,7 +1,7 @@
 ---
 name: coordinating-deliveries
-description: Starts and guides a top-level delivery coordinator for a completed planning thread. Use only when the user explicitly invokes this skill or explicitly asks to start or spin up a coordinator thread from the current planning thread. Do not use for ordinary planning, implementation, delegation, shipping, or rollout requests.
-compatibility: Requires the start_delivery_coordinator tool from the delivery-coordinator Amp plugin and authenticated GitHub access for pull-request checks.
+description: Starts and guides a delivery coordinator child thread for a completed planning thread. Use only when the user explicitly invokes this skill or explicitly asks to start or spin up a coordinator thread from the current planning thread. Do not use for ordinary planning, implementation, delegation, shipping, or rollout requests.
+compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
 # Coordinate Deliveries
@@ -16,7 +16,13 @@ Move a completed plan through implementation, review, merge, and verified rollou
 ## Start the Coordinator
 
 1. Confirm that the current thread contains the plan to deliver. If the plan is not ready, state what blocks delivery instead of starting a coordinator.
-2. Call `start_delivery_coordinator` exactly once. Do not use `create_thread`: it would make the coordinator a child instead of a top-level thread.
+2. Call `create_thread` exactly once with `executor: orb`, the current Amp `project`, and `agent_mode: high`. In the kickoff prompt:
+   - identify the new thread as the delivery coordinator for the current planning thread
+   - include the planning thread ID or URL
+   - tell it to read the complete planning thread, load this skill, and follow **Run the Delivery**
+   - give it ownership through completed pull requests and verified rollout
+   - tell it not to start another coordinator
+   - require progress and completion reports to the planning thread with `send_thread_message`
 3. Return the new coordinator thread ID or link. Do not also implement or delegate the plan from this planning thread.
 
 ## Run the Delivery
