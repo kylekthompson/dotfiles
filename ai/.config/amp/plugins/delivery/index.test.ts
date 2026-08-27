@@ -23,13 +23,14 @@ interface RegisteredCommand {
 }
 
 interface CompletedCall {
+	toolUseID: string
 	name: string
 	input: Record<string, unknown>
 	status?: 'done' | 'error' | 'cancelled'
 }
 
 interface ExtractedToolCall {
-	call: { tool: string; input: Record<string, unknown> }
+	call: { toolUseID: string; tool: string; input: Record<string, unknown> }
 	result: { status: 'done' | 'error' | 'cancelled' }
 }
 
@@ -70,7 +71,11 @@ function completedAddMessage(id: number): unknown {
 		id,
 		content: [],
 		completedCall: {
-			call: { tool: 'delivery_add_work_item', input: item },
+			call: {
+				toolUseID: `tool-use-${id}`,
+				tool: 'delivery_add_work_item',
+				input: item,
+			},
 			result: { status: 'done' },
 		} satisfies ExtractedToolCall,
 	}
@@ -121,7 +126,11 @@ async function loadPlugin(
 		helpers: {
 			toolCallsInMessages: (messages: unknown[]) => [
 					...completedCalls.map((entry) => ({
-						call: { tool: entry.name, input: entry.input },
+						call: {
+							toolUseID: entry.toolUseID,
+							tool: entry.name,
+							input: entry.input,
+						},
 						result: { status: entry.status ?? 'done' },
 					})),
 					...messages.flatMap((message) => {
@@ -193,14 +202,46 @@ describe('delivery ledger pagination', () => {
 		expect(status).toContain(`- ${item.id}: planned`)
 		expect(status).not.toContain(`Work item ${item.id} was added more than once.`)
 	})
+})
 
-	test('reports separate add calls for the same work-item ID', async () => {
-		const coordinator = paginatedThread('T-coordinator', [
-			coordinatorMessage,
-			completedAddMessage(2),
-			completedAddMessage(3),
-		])
-		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]))
+describe('delivery ledger tool calls', () => {
+	test('counts one completed invocation once when the helper repeats it', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const completedAdd: CompletedCall = {
+			toolUseID: 'tool-use-add',
+			name: 'delivery_add_work_item',
+			input: item,
+		}
+		const tools = await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[completedAdd, completedAdd],
+		)
+
+		const status = await tools
+			.get('delivery_reconcile')!
+			.execute({}, { thread: coordinator })
+
+		expect(status).toContain(`- ${item.id}: planned`)
+		expect(status).not.toContain(`Work item ${item.id} was added more than once.`)
+	})
+
+	test('reports separate add invocations for the same work-item ID', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const tools = await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[
+				{
+					toolUseID: 'tool-use-add-1',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+				{
+					toolUseID: 'tool-use-add-2',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+			],
+		)
 
 		const status = await tools
 			.get('delivery_reconcile')!
@@ -230,6 +271,7 @@ describe('delivery thread boundaries', () => {
 			]),
 			[
 				{
+					toolUseID: 'tool-use-add',
 					name: 'delivery_add_work_item',
 					input: item,
 				},
@@ -289,8 +331,9 @@ describe('delivery thread boundaries', () => {
 	test('lets the coordinator mark a stopped work item abandoned', async () => {
 		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
 		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]), [
-			{ name: 'delivery_add_work_item', input: item },
+			{ toolUseID: 'tool-use-add', name: 'delivery_add_work_item', input: item },
 			{
+				toolUseID: 'tool-use-register',
 				name: 'delivery_register_child',
 				input: { workItemId: item.id, childThreadId: 'T-worker' },
 			},

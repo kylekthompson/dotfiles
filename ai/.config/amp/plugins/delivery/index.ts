@@ -99,12 +99,20 @@ function transcriptMessages(messages: ThreadMessage[]) {
 }
 
 function completedToolCalls(amp: PluginAPI, messages: ThreadMessage[]) {
-	return amp.helpers.toolCallsInMessages(messages).map(
-		({ call, result }): CompletedToolCall => ({
-			call: { name: call.tool, input: call.input },
-			result: { status: result.status },
-		}),
-	)
+	const toolUseIDs = new Set<string>()
+	return amp.helpers
+		.toolCallsInMessages(messages)
+		.filter(({ call }) => {
+			if (toolUseIDs.has(call.toolUseID)) return false
+			toolUseIDs.add(call.toolUseID)
+			return true
+		})
+		.map(
+			({ call, result }): CompletedToolCall => ({
+				call: { name: call.tool, input: call.input },
+				result: { status: result.status },
+			}),
+		)
 }
 
 async function threadRole(thread: PluginThread): Promise<ThreadRole | undefined> {
