@@ -230,6 +230,17 @@ function formatDeliveryStatus(
 	if (violations.length) {
 		lines.push('', 'Problems:', ...violations.map((problem) => `- ${problem}`))
 	}
+	if (evaluation.threadsToArchive.length) {
+		lines.push(
+			'',
+			'Threads ready to archive:',
+			...evaluation.threadsToArchive.map(
+				(action) =>
+					`- ${action.childThreadId} (${action.workItemId}): ${action.reason}`,
+			),
+			'Call update_thread with archived true and the explicit thread ID for each entry, then reconcile again.',
+		)
+	}
 	if (evaluation.pendingRebase) {
 		lines.push(
 			'',
@@ -388,6 +399,9 @@ export default async function (amp: PluginAPI) {
 			const state = await deliveryState(amp, ctx.thread)
 			const item = state.workItems.get(workItemId)
 			if (!item) throw new Error(`Unknown work item ${workItemId}.`)
+			if (item.status === 'abandoned') {
+				throw new Error(`Work item ${workItemId} was abandoned.`)
+			}
 			if (item.childThreadId && item.childThreadId !== childThreadId) {
 				throw new Error(`Work item ${workItemId} already has a different child.`)
 			}
@@ -477,6 +491,36 @@ export default async function (amp: PluginAPI) {
 			})
 
 			return `Sent ${status} for ${role.item.id} to ${role.coordinatorThreadId}.`
+		},
+	})
+
+	amp.registerTool({
+		name: 'delivery_abandon_work_item',
+		description:
+			'Mark a delivery work item abandoned after its child has stopped. The coordinator must then archive its child thread.',
+		inputSchema: {
+			type: 'object',
+			properties: {
+				workItemId: { type: 'string' },
+				reason: { type: 'string', description: 'Why this work is no longer needed.' },
+			},
+			required: ['workItemId', 'reason'],
+			additionalProperties: false,
+		},
+		async execute(input, ctx) {
+			await requireRole(ctx.thread, 'coordinator')
+			const workItemId = requiredString(input, 'workItemId')
+			const reason = requiredString(input, 'reason')
+			if (reason.length > 2_000) throw new Error('reason must be at most 2000 characters.')
+
+			const state = await deliveryState(amp, ctx.thread)
+			const item = state.workItems.get(workItemId)
+			if (!item) throw new Error(`Unknown work item ${workItemId}.`)
+			if (item.status === 'abandoned') {
+				return `Work item ${workItemId} is already abandoned.`
+			}
+
+			return `Marked ${workItemId} abandoned. Run delivery_reconcile and archive its stopped child thread when listed.`
 		},
 	})
 

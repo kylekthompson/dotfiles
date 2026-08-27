@@ -249,6 +249,32 @@ export function extractDeliveryEvents(
 		}
 
 		if (
+			call.name === 'delivery_abandon_work_item' &&
+			typeof call.input.workItemId === 'string' &&
+			typeof call.input.reason === 'string'
+		) {
+			events.push({
+				type: 'work-item-abandoned',
+				workItemId: call.input.workItemId,
+				details: call.input.reason.trim().slice(0, 2_000),
+			})
+			continue
+		}
+
+		if (
+			call.name === 'update_thread' &&
+			typeof call.input.thread === 'string' &&
+			typeof call.input.archived === 'boolean'
+		) {
+			events.push({
+				type: 'thread-archive-changed',
+				childThreadId: call.input.thread,
+				archived: call.input.archived,
+			})
+			continue
+		}
+
+		if (
 			call.name === 'delivery_request_rebase' &&
 			typeof call.input.workItemId === 'string' &&
 			typeof call.input.requestKey === 'string' &&

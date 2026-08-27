@@ -5,6 +5,7 @@ compatibility: Requires an authenticated GitHub CLI for pull-request polling.
 builtin-tools:
   - delivery_add_work_item
   - delivery_register_child
+  - delivery_abandon_work_item
   - delivery_reconcile
   - delivery_request_rebase
 ---
@@ -32,6 +33,8 @@ For each work item:
 3. Pass the returned prompt unchanged to `create_thread`. Set its `project` to the work item's Amp project or repository. Ask the new thread to report through `delivery_report`; do not also wait for it.
 4. Call `delivery_register_child` with the returned thread ID.
 
+Registration sends the worker a readiness check. The worker must call `delivery_report` with `working` before it is operational. If the tool is absent on a long-lived runner, the worker must call `reload_plugins` once and retry. Do not create a replacement child while that reload is in progress.
+
 Independent work can run in parallel while the files, branches, and rollout effects do not conflict. Keep later planned work undispatched when it would exceed either limit.
 
 Each child owns exactly one branch and one draft pull request. The child can force-push its own branch. The coordinator and other children must not change it.
@@ -50,12 +53,26 @@ On each reconciliation:
 
 1. Check every tracked pull request through `delivery_reconcile`.
 2. Resolve reported violations before adding or promoting review work.
-3. If a rebase is pending, wait for its child report.
-4. If a next rebase is ready, call `delivery_request_rebase` with the exact returned fields.
-5. Dispatch only that direct successor.
-6. After it reports the new base and head SHAs, reconcile again. This advances a stack upward one edge at a time.
+3. Archive every child listed under `Threads ready to archive` by calling `update_thread` with its explicit thread ID and `archived: true`. Reconcile again so the ledger records the archive.
+4. If a rebase is pending, wait for its child report.
+5. If a next rebase is ready, call `delivery_request_rebase` with the exact returned fields.
+6. Dispatch only that direct successor.
+7. After it reports the new base and head SHAs, reconcile again. This advances a stack upward one edge at a time.
 
 Do not infer a merge from a child message. GitHub polling is authoritative.
+
+## Retire child threads
+
+Keep a worker available while its pull request is open because it can receive review or rebase work. Archive it when GitHub confirms that its pull request merged.
+
+To abandon work before merge:
+
+1. Send the child a stop request with `send_thread_message` and ask it to reply after it has stopped and cleaned up only its own work.
+2. Wait for that reply. Do not archive a running child.
+3. Call `delivery_abandon_work_item` with the reason.
+4. Reconcile and archive the listed child with `update_thread`.
+
+Do not archive the planning thread. Restoring an archived worker with `update_thread` makes it eligible for lifecycle checks again.
 
 ## Manage rollout
 
@@ -73,7 +90,8 @@ Complete only when:
 - Every work item has one owning child and no unhandled blocker.
 - Every required pull request is merged.
 - Every required deployment is verified in the intended order.
+- Every worker thread is archived.
 - The roadmap reflects the final result when one exists.
 - The polling schedule is cleared.
 
-Send the user one concise completion report with links, rollout evidence, and any remaining manual follow-up.
+After preparing the completion report, archive this coordinator with `update_thread`, then send the report with links, rollout evidence, and any remaining manual follow-up.

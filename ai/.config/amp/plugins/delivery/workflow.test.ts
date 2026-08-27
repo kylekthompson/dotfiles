@@ -113,6 +113,40 @@ describe('reduceDeliveryEvents', () => {
 			`Pull request ${url} is assigned to more than one work item.`,
 		)
 	})
+
+	test('tracks abandoned work and the latest child archive state', () => {
+		const events: DeliveryEvent[] = [
+			add('a'),
+			register('a'),
+			{
+				type: 'work-item-abandoned',
+				workItemId: 'a',
+				details: 'No longer required.',
+			},
+			{
+				type: 'thread-archive-changed',
+				childThreadId: 'T-a',
+				archived: true,
+			},
+		]
+		const archived = reduceDeliveryEvents(events)
+
+		expect(archived.workItems.get('a')).toMatchObject({
+			status: 'abandoned',
+			details: 'No longer required.',
+		})
+		expect(archived.archivedChildThreadIds.has('T-a')).toBeTrue()
+
+		const restored = reduceDeliveryEvents([
+			...events,
+			{
+				type: 'thread-archive-changed',
+				childThreadId: 'T-a',
+				archived: false,
+			},
+		])
+		expect(restored.archivedChildThreadIds.has('T-a')).toBeFalse()
+	})
 })
 
 describe('evaluateDelivery', () => {
@@ -226,5 +260,71 @@ describe('evaluateDelivery', () => {
 			targetBranch: 'b',
 			predecessorSha: 'b-2',
 		})
+	})
+
+	test('identifies merged and abandoned child threads that still need archival', () => {
+		const state = reduceDeliveryEvents([
+			add('a'),
+			add('b'),
+			register('a'),
+			register('b'),
+			report('a', 'https://github.com/example/repo/pull/97'),
+			{
+				type: 'work-item-abandoned',
+				workItemId: 'b',
+				details: 'Superseded.',
+			},
+		])
+		const observations = new Map([
+			[
+				state.workItems.get('a')!.pullRequest!.url,
+				observation('a', 'MERGED', { mergeSha: 'a-merge' }),
+			],
+		])
+
+		expect(evaluateDelivery(state, observations).threadsToArchive).toEqual([
+			{
+				workItemId: 'a',
+				childThreadId: 'T-a',
+				reason: 'Pull request for a merged.',
+			},
+			{
+				workItemId: 'b',
+				childThreadId: 'T-b',
+				reason: 'Work item b was abandoned.',
+			},
+		])
+
+		const archived = reduceDeliveryEvents([
+			add('a'),
+			register('a'),
+			report('a', 'https://github.com/example/repo/pull/97'),
+			{
+				type: 'thread-archive-changed',
+				childThreadId: 'T-a',
+				archived: true,
+			},
+		])
+		expect(evaluateDelivery(archived, observations).threadsToArchive).toEqual([])
+	})
+
+	test('flags a child archived before its work becomes terminal', () => {
+		const state = reduceDeliveryEvents([
+			add('a'),
+			register('a'),
+			report('a', 'https://github.com/example/repo/pull/97'),
+			{
+				type: 'thread-archive-changed',
+				childThreadId: 'T-a',
+				archived: true,
+			},
+		])
+		const observations = new Map([
+			[state.workItems.get('a')!.pullRequest!.url, observation('a', 'OPEN')],
+		])
+
+		expect(evaluateDelivery(state, observations).violations).toContain(
+			'Child thread T-a was archived before work item a became terminal.',
+		)
 	})
 })

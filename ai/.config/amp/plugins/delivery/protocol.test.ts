@@ -154,4 +154,40 @@ describe('delivery event extraction', () => {
 			),
 		).toEqual([])
 	})
+
+	test('extracts abandonment and thread archive changes', () => {
+		const calls: CompletedToolCall[] = [
+			{
+				call: {
+					name: 'delivery_abandon_work_item',
+					input: { workItemId: item.id, reason: 'Superseded by another change.' },
+				},
+				result: { status: 'done' },
+			},
+			{
+				call: {
+					name: 'update_thread',
+					input: { thread: 'T-worker', archived: true },
+				},
+				result: { status: 'done' },
+			},
+			{
+				call: {
+					name: 'update_thread',
+					input: { thread: 'T-worker', archived: false },
+				},
+				result: { status: 'done' },
+			},
+		]
+
+		expect(extractDeliveryEvents([], calls)).toEqual([
+			{
+				type: 'work-item-abandoned',
+				workItemId: item.id,
+				details: 'Superseded by another change.',
+			},
+			{ type: 'thread-archive-changed', childThreadId: 'T-worker', archived: true },
+			{ type: 'thread-archive-changed', childThreadId: 'T-worker', archived: false },
+		])
+	})
 })

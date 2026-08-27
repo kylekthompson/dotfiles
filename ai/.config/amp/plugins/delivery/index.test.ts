@@ -163,4 +163,22 @@ describe('delivery thread boundaries', () => {
 			content: expect.stringContaining('AMP_DELIVERY_EVENT_V1'),
 		})
 	})
+
+	test('lets the coordinator mark a stopped work item abandoned', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]), [
+			{ name: 'delivery_add_work_item', input: item },
+			{
+				name: 'delivery_register_child',
+				input: { workItemId: item.id, childThreadId: 'T-worker' },
+			},
+		])
+
+		await expect(
+			tools.get('delivery_abandon_work_item')!.execute(
+				{ workItemId: item.id, reason: 'Superseded by the new API.' },
+				{ thread: coordinator },
+			),
+		).resolves.toContain(`Marked ${item.id} abandoned`)
+	})
 })

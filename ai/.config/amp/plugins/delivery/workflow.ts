@@ -17,6 +17,7 @@ export type WorkItemStatus =
 	| 'review-ready'
 	| 'rebase-completed'
 	| 'blocked'
+	| 'abandoned'
 
 export interface PullRequestReport {
 	url: string
@@ -29,6 +30,8 @@ export interface PullRequestReport {
 export type DeliveryEvent =
 	| { type: 'work-item-added'; item: WorkItemDefinition }
 	| { type: 'child-registered'; workItemId: string; childThreadId: string }
+	| { type: 'work-item-abandoned'; workItemId: string; details: string }
+	| { type: 'thread-archive-changed'; childThreadId: string; archived: boolean }
 	| {
 			type: 'work-item-reported'
 			workItemId: string
@@ -64,6 +67,7 @@ export interface RebaseRequest {
 export interface DeliveryState {
 	workItems: Map<string, WorkItemState>
 	rebaseRequests: RebaseRequest[]
+	archivedChildThreadIds: Set<string>
 	violations: string[]
 }
 
@@ -90,9 +94,16 @@ export interface RebaseAction {
 	reason: string
 }
 
+export interface ArchiveAction {
+	workItemId: string
+	childThreadId: string
+	reason: string
+}
+
 export interface DeliveryEvaluation {
 	activeStackDepth: number
 	reviewablePullRequests: number
+	threadsToArchive: ArchiveAction[]
 	pendingRebase?: RebaseRequest
 	nextRebase?: RebaseAction
 	violations: string[]
@@ -106,6 +117,7 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 	const state: DeliveryState = {
 		workItems: new Map(),
 		rebaseRequests: [],
+		archivedChildThreadIds: new Set(),
 		violations: [],
 	}
 
@@ -124,6 +136,12 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 				rolloutAfter: [...event.item.rolloutAfter],
 				completedRebaseRequests: [],
 			})
+			continue
+		}
+
+		if (event.type === 'thread-archive-changed') {
+			if (event.archived) state.archivedChildThreadIds.add(event.childThreadId)
+			else state.archivedChildThreadIds.delete(event.childThreadId)
 			continue
 		}
 
@@ -152,7 +170,20 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 			continue
 		}
 
+		if (event.type === 'work-item-abandoned') {
+			item.status = 'abandoned'
+			item.details = event.details
+			continue
+		}
+
 		if (event.type === 'work-item-reported') {
+			if (item.status === 'abandoned') {
+				addViolation(
+					state.violations,
+					`Abandoned work item ${item.id} received a report.`,
+				)
+				continue
+			}
 			if (!item.childThreadId) {
 				addViolation(
 					state.violations,
@@ -262,6 +293,23 @@ export function evaluateDelivery(
 		return observation?.state === 'OPEN' && !observation.isDraft
 	}).length
 	const violations = [...state.violations]
+	for (const item of workItems) {
+		if (
+			!item.childThreadId ||
+			!state.archivedChildThreadIds.has(item.childThreadId)
+		) {
+			continue
+		}
+		const observation = observationFor(item)
+		const terminal = item.status === 'abandoned' || observation?.state === 'MERGED'
+		const terminalStateKnown = !item.pullRequest || observation !== undefined
+		if (!terminal && terminalStateKnown) {
+			addViolation(
+				violations,
+				`Child thread ${item.childThreadId} was archived before work item ${item.id} became terminal.`,
+			)
+		}
+	}
 
 	if (activeStackDepth > limits.maxStackDepth) {
 		addViolation(
@@ -276,14 +324,46 @@ export function evaluateDelivery(
 		)
 	}
 
+	const threadsToArchive = workItems.flatMap((item): ArchiveAction[] => {
+		if (
+			!item.childThreadId ||
+			state.archivedChildThreadIds.has(item.childThreadId)
+		) {
+			return []
+		}
+		if (item.status === 'abandoned') {
+			return [
+				{
+					workItemId: item.id,
+					childThreadId: item.childThreadId,
+					reason: `Work item ${item.id} was abandoned.`,
+				},
+			]
+		}
+		if (observationFor(item)?.state === 'MERGED') {
+			return [
+				{
+					workItemId: item.id,
+					childThreadId: item.childThreadId,
+					reason: `Pull request for ${item.id} merged.`,
+				},
+			]
+		}
+		return []
+	})
+
 	const pendingRebase = state.rebaseRequests.find((request) => {
 		const item = state.workItems.get(request.workItemId)
-		return !item?.completedRebaseRequests.includes(request.requestKey)
+		return (
+			item?.status !== 'abandoned' &&
+			!item?.completedRebaseRequests.includes(request.requestKey)
+		)
 	})
 	if (pendingRebase) {
 		return {
 			activeStackDepth,
 			reviewablePullRequests,
+			threadsToArchive,
 			pendingRebase,
 			violations,
 		}
@@ -291,10 +371,16 @@ export function evaluateDelivery(
 
 	for (const item of workItems) {
 		const observation = observationFor(item)
-		if (observation?.state !== 'OPEN' || !item.basedOn) continue
+		if (
+			item.status === 'abandoned' ||
+			observation?.state !== 'OPEN' ||
+			!item.basedOn
+		) {
+			continue
+		}
 
 		const predecessor = state.workItems.get(item.basedOn)
-		if (!predecessor) continue
+		if (!predecessor || predecessor.status === 'abandoned') continue
 		const predecessorObservation = observationFor(predecessor)
 		if (!predecessorObservation) continue
 
@@ -332,11 +418,12 @@ export function evaluateDelivery(
 			return {
 				activeStackDepth,
 				reviewablePullRequests,
+				threadsToArchive,
 				nextRebase,
 				violations,
 			}
 		}
 	}
 
-	return { activeStackDepth, reviewablePullRequests, violations }
+	return { activeStackDepth, reviewablePullRequests, threadsToArchive, violations }
 }
