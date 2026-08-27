@@ -28,6 +28,11 @@ interface CompletedCall {
 	status?: 'done' | 'error' | 'cancelled'
 }
 
+interface ExtractedToolCall {
+	call: { tool: string; input: Record<string, unknown> }
+	result: { status: 'done' | 'error' | 'cancelled' }
+}
+
 const item: WorkItemDefinition = {
 	id: 'api-reader',
 	outcome: 'Deliver the API reader.',
@@ -36,9 +41,9 @@ const item: WorkItemDefinition = {
 	rolloutAfter: [],
 }
 
-const textMessage = (text: string) => ({
+const textMessage = (text: string, id = 1) => ({
 	role: 'user',
-	id: 1,
+	id,
 	content: [{ type: 'text', text }],
 })
 
@@ -56,6 +61,32 @@ function fakeThread(id: string, marker: unknown): FakeThread {
 		messages: async () => [marker],
 		appendUserMessage: async () => {},
 		parentThreadID: async () => null,
+	}
+}
+
+function completedAddMessage(id: number): unknown {
+	return {
+		role: 'user',
+		id,
+		content: [],
+		completedCall: {
+			call: { tool: 'delivery_add_work_item', input: item },
+			result: { status: 'done' },
+		} satisfies ExtractedToolCall,
+	}
+}
+
+function paginatedThread(id: string, messages: unknown[]): FakeThread {
+	return {
+		...fakeThread(id, messages[0]),
+		messages: async (options) => {
+			const { offset = 0, limit = 10 } = options as {
+				offset?: number
+				limit?: number
+			}
+			const start = offset === 0 ? 0 : offset - 1
+			return messages.slice(start, start + limit)
+		},
 	}
 }
 
@@ -88,11 +119,17 @@ async function loadPlugin(
 			},
 		},
 		helpers: {
-			toolCallsInMessages: () =>
-				completedCalls.map((entry) => ({
-					call: { tool: entry.name, input: entry.input },
-					result: { status: entry.status ?? 'done' },
-				})),
+			toolCallsInMessages: (messages: unknown[]) => [
+					...completedCalls.map((entry) => ({
+						call: { tool: entry.name, input: entry.input },
+						result: { status: entry.status ?? 'done' },
+					})),
+					...messages.flatMap((message) => {
+						const completedCall = (message as { completedCall?: ExtractedToolCall })
+							.completedCall
+						return completedCall ? [completedCall] : []
+					}),
+				],
 		},
 	}
 
@@ -133,6 +170,43 @@ describe('delivery coordinator command', () => {
 				show: true,
 			},
 		])
+	})
+})
+
+describe('delivery ledger pagination', () => {
+	test('counts one add call once when transcript pages overlap', async () => {
+		const transcript = [
+			coordinatorMessage,
+			...Array.from({ length: 18 }, (_, index) =>
+				textMessage(`Filler ${index + 1}`, index + 2),
+			),
+			completedAddMessage(20),
+			textMessage('After the page boundary.', 21),
+		]
+		const coordinator = paginatedThread('T-coordinator', transcript)
+		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]))
+
+		const status = await tools
+			.get('delivery_reconcile')!
+			.execute({}, { thread: coordinator })
+
+		expect(status).toContain(`- ${item.id}: planned`)
+		expect(status).not.toContain(`Work item ${item.id} was added more than once.`)
+	})
+
+	test('reports separate add calls for the same work-item ID', async () => {
+		const coordinator = paginatedThread('T-coordinator', [
+			coordinatorMessage,
+			completedAddMessage(2),
+			completedAddMessage(3),
+		])
+		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]))
+
+		const status = await tools
+			.get('delivery_reconcile')!
+			.execute({}, { thread: coordinator })
+
+		expect(status).toContain(`Work item ${item.id} was added more than once.`)
 	})
 })
 

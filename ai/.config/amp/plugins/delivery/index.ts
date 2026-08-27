@@ -78,7 +78,7 @@ function isPullRequestURL(value: string) {
 }
 
 async function readAllMessages(thread: PluginThread): Promise<ThreadMessage[]> {
-	const messages: ThreadMessage[] = []
+	const messages = new Map<ThreadMessage['id'], ThreadMessage>()
 	let offset = 0
 
 	while (true) {
@@ -88,8 +88,8 @@ async function readAllMessages(thread: PluginThread): Promise<ThreadMessage[]> {
 			offset,
 			limit: PAGE_SIZE,
 		})
-		messages.push(...page)
-		if (page.length < PAGE_SIZE) return messages
+		for (const message of page) messages.set(message.id, message)
+		if (page.length < PAGE_SIZE) return [...messages.values()]
 		offset += page.length
 	}
 }
