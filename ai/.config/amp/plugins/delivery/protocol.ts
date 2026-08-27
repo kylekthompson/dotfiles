@@ -174,6 +174,7 @@ export function createWorkItemPrompt(
 		`Work in ${item.project}. Start the pull request from ${item.baseBranch}.`,
 		'Create the pull request as a draft. You own its branch and may force-push it when a coordinator rebase request requires that.',
 		'Do not merge the pull request, deploy it, or delegate another pull-request-sized task.',
+		'Before starting work, confirm delivery_report is available. If it is unavailable, call reload_plugins once and retry. If it remains unavailable, send a blocker to the coordinator with send_thread_message.',
 		'Use delivery_report for working, pull-request, review, rebase, and blocker updates. Pull-request reports must include its URL, head and base branches, head SHA, and the current remote base-head SHA when this is a stacked PR.',
 	].join('\n')
 }

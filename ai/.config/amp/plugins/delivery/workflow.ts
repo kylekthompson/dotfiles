@@ -153,10 +153,14 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 		}
 
 		if (event.type === 'work-item-reported') {
-			if (
-				item.childThreadId &&
-				item.childThreadId !== event.childThreadId
-			) {
+			if (!item.childThreadId) {
+				addViolation(
+					state.violations,
+					`Work item ${item.id} received a report before child registration.`,
+				)
+				continue
+			}
+			if (item.childThreadId !== event.childThreadId) {
 				addViolation(
 					state.violations,
 					`Work item ${item.id} received a report from a different child thread.`,
@@ -164,7 +168,6 @@ export function reduceDeliveryEvents(events: DeliveryEvent[]): DeliveryState {
 				continue
 			}
 
-			item.childThreadId = event.childThreadId
 			item.status = event.status
 			item.details = event.details
 

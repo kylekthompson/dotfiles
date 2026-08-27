@@ -54,6 +54,7 @@ describe('thread role markers', () => {
 			item,
 		})
 		expect(prompt).toContain('exactly one pull request')
+		expect(prompt).toContain('reload_plugins')
 	})
 })
 

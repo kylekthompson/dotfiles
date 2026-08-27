@@ -19,6 +19,12 @@ const add = (id: string, basedOn?: string): DeliveryEvent => ({
 	},
 })
 
+const register = (id: string): DeliveryEvent => ({
+	type: 'child-registered',
+	workItemId: id,
+	childThreadId: `T-${id}`,
+})
+
 const report = (
 	id: string,
 	url: string,
@@ -67,9 +73,22 @@ describe('reduceDeliveryEvents', () => {
 		})
 	})
 
+	test('rejects reports before the coordinator registers their child', () => {
+		const state = reduceDeliveryEvents([
+			add('a'),
+			report('a', 'https://github.com/example/repo/pull/97'),
+		])
+
+		expect(state.violations).toContain(
+			'Work item a received a report before child registration.',
+		)
+		expect(state.workItems.get('a')!.status).toBeUndefined()
+	})
+
 	test('rejects a second pull request for one work item', () => {
 		const state = reduceDeliveryEvents([
 			add('a'),
+			register('a'),
 			report('a', 'https://github.com/example/repo/pull/1'),
 			report('a', 'https://github.com/example/repo/pull/2'),
 		])
@@ -84,6 +103,8 @@ describe('reduceDeliveryEvents', () => {
 		const state = reduceDeliveryEvents([
 			add('a'),
 			add('b'),
+			register('a'),
+			register('b'),
 			report('a', url),
 			report('b', url),
 		])
@@ -101,6 +122,10 @@ describe('evaluateDelivery', () => {
 			add('b', 'a'),
 			add('c', 'b'),
 			add('d', 'c'),
+			register('a'),
+			register('b'),
+			register('c'),
+			register('d'),
 			report('a', 'https://github.com/example/repo/pull/97'),
 			report('b', 'https://github.com/example/repo/pull/98', 'a-1'),
 			report('c', 'https://github.com/example/repo/pull/99', 'b-1'),
@@ -128,6 +153,9 @@ describe('evaluateDelivery', () => {
 			add('a'),
 			add('b', 'a'),
 			add('c', 'b'),
+			register('a'),
+			register('b'),
+			register('c'),
 			report('a', 'https://github.com/example/repo/pull/97'),
 			report('b', 'https://github.com/example/repo/pull/98', 'a-1'),
 			report('c', 'https://github.com/example/repo/pull/99', 'b-1'),

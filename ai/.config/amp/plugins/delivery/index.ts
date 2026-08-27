@@ -393,14 +393,17 @@ export default async function (amp: PluginAPI) {
 			}
 
 			const child = amp.threads.get(childThreadId as ThreadID)
-			const role = await threadRole(child)
-			if (
-				role?.kind !== 'worker' ||
-				role.coordinatorThreadId !== ctx.thread.id ||
-				role.item.id !== workItemId
-			) {
-				throw new Error('The child thread does not contain the matching work-item marker.')
-			}
+			await child.appendUserMessage(
+				{
+					type: 'user-message',
+					content: [
+						`You are registered as the owner of delivery work item ${workItemId}.`,
+						'Call delivery_report with status working before continuing.',
+						'If delivery_report is unavailable, call reload_plugins once and retry. If it remains unavailable, send a blocker to the coordinator with send_thread_message.',
+					].join('\n'),
+				},
+				{ steer: true },
+			)
 
 			return `Registered ${childThreadId} as the owner of ${workItemId}.`
 		},
@@ -435,18 +438,7 @@ export default async function (amp: PluginAPI) {
 			const role = await requireRole(ctx.thread, 'worker')
 			const status = requiredString(input, 'status') as WorkItemStatus
 			if (!REPORT_STATUSES.includes(status)) throw new Error(`Unknown status ${status}.`)
-			const parentThreadId = await ctx.thread.parentThreadID()
-			if (parentThreadId !== role.coordinatorThreadId) {
-				throw new Error('The worker parent does not match its coordinator marker.')
-			}
-
-			const parent = amp.threads.get(parentThreadId as ThreadID)
-			const state = await deliveryState(amp, parent)
-			const item = state.workItems.get(role.item.id)
-			if (!item) throw new Error(`Coordinator does not know work item ${role.item.id}.`)
-			if (item.childThreadId && item.childThreadId !== ctx.thread.id) {
-				throw new Error('A different child thread owns this work item.')
-			}
+			const coordinator = amp.threads.get(role.coordinatorThreadId as ThreadID)
 
 			let pullRequest: PullRequestReport | undefined
 			if (['pr-opened', 'review-ready', 'rebase-completed'].includes(status)) {
@@ -462,17 +454,6 @@ export default async function (amp: PluginAPI) {
 				}
 				if (role.item.basedOn && !pullRequest.baseHeadSha) {
 					throw new Error('Stacked pull requests must report baseHeadSha.')
-				}
-				if (item.pullRequest && item.pullRequest.url !== pullRequest.url) {
-					throw new Error('This work item already owns a different pull request.')
-				}
-				const otherOwner = [...state.workItems.values()].find(
-					(other) =>
-						other.id !== item.id &&
-						other.pullRequest?.url === pullRequest?.url,
-				)
-				if (otherOwner) {
-					throw new Error(`Pull request already belongs to ${otherOwner.id}.`)
 				}
 			}
 
@@ -490,12 +471,12 @@ export default async function (amp: PluginAPI) {
 				...(requestKey ? { requestKey } : {}),
 				...(details ? { details: details.slice(0, 2_000) } : {}),
 			}
-			await parent.appendUserMessage({
+			await coordinator.appendUserMessage({
 				type: 'user-message',
 				content: createReportMessage(event),
 			})
 
-			return `Reported ${status} for ${role.item.id} to ${parentThreadId}.`
+			return `Sent ${status} for ${role.item.id} to ${role.coordinatorThreadId}.`
 		},
 	})
 
