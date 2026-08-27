@@ -29,13 +29,16 @@ Own the requested outcome through merge and verified rollout. Delegate implement
 For each work item:
 
 1. Call `delivery_reconcile` before adding review work. Do not exceed an active stack depth of 3 or 3 reviewable pull requests globally.
-2. Call `delivery_add_work_item` in dependency order.
-3. Pass the returned prompt unchanged to `create_thread`. Set its `project` to the work item's Amp project or repository. Ask the new thread to report through `delivery_report`; do not also wait for it.
-4. Call `delivery_register_child` with the returned thread ID.
+2. Call `delivery_add_work_item` for a root or independent work item when it is ready to start.
+3. For a stacked work item, wait until its direct predecessor reports its draft pull request, remote head branch, and remote head SHA through `delivery_report`. Set the successor's `baseBranch` to that reported head branch, then call `delivery_add_work_item`. The tool rejects the call before child creation while the predecessor is not ready.
+4. Pass the returned prompt unchanged to `create_thread`. Set its `project` to the work item's Amp project or repository. Ask the new thread to report through `delivery_report`; do not also wait for it.
+5. Call `delivery_register_child` with the returned thread ID.
 
 Registration sends the worker a readiness check. The worker must call `delivery_report` with `working` before it is operational. If the tool is absent on a long-lived runner, the worker must call `reload_plugins` once and retry. Do not create a replacement child while that reload is in progress.
 
-Independent work can run in parallel while the files, branches, and rollout effects do not conflict. Keep later planned work undispatched when it would exceed either limit.
+Do not call `delivery_add_work_item` early to reserve a stacked descendant. The successful call records that work item and authorizes its child prompt. A `create_thread` hook applies the same predecessor gate to marked delivery-worker prompts so a stale ledger cannot create an orphan worker.
+
+Independent work can run in parallel while the files, branches, and rollout effects do not conflict. Stacked work can overlap after each direct predecessor passes the report gate. Keep later planned work undispatched when it would exceed either limit.
 
 Each child owns exactly one branch and one draft pull request. The child can force-push its own branch. The coordinator and other children must not change it.
 

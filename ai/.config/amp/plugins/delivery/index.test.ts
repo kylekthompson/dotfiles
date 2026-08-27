@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
 import deliveryPlugin from './index'
-import { createCoordinatorKickoff, createWorkItemPrompt } from './protocol'
+import {
+	createCoordinatorKickoff,
+	createReportMessage,
+	createWorkItemPrompt,
+} from './protocol'
 import type { WorkItemDefinition } from './workflow'
 
 interface FakeThread {
@@ -20,6 +24,13 @@ interface RegisteredTool {
 
 interface RegisteredCommand {
 	execute: (ctx: unknown) => Promise<unknown>
+}
+
+interface RegisteredHook {
+	execute: (
+		event: Record<string, unknown>,
+		ctx: { thread: FakeThread },
+	) => Promise<unknown>
 }
 
 interface CompletedCall {
@@ -65,6 +76,13 @@ function fakeThread(id: string, marker: unknown): FakeThread {
 	}
 }
 
+function fakeThreadWithMessages(id: string, messages: unknown[]): FakeThread {
+	return {
+		...fakeThread(id, messages[0]),
+		messages: async () => messages,
+	}
+}
+
 function completedAddMessage(id: number): unknown {
 	return {
 		role: 'user',
@@ -99,6 +117,7 @@ async function loadPlugin(
 	threads: Map<string, FakeThread>,
 	completedCalls: CompletedCall[] = [],
 	commands = new Map<string, RegisteredCommand>(),
+	hooks = new Map<string, RegisteredHook>(),
 ) {
 	const tools = new Map<string, RegisteredTool>()
 	const amp = {
@@ -115,7 +134,13 @@ async function loadPlugin(
 			tools.set(tool.name, tool)
 			return {}
 		},
-		on: () => ({}),
+		on: (
+			event: string,
+			execute: RegisteredHook['execute'],
+		) => {
+			hooks.set(event, { execute })
+			return {}
+		},
 		threads: {
 			get: (threadId: string) => {
 				const thread = threads.get(threadId)
@@ -248,6 +273,190 @@ describe('delivery ledger tool calls', () => {
 			.execute({}, { thread: coordinator })
 
 		expect(status).toContain(`Work item ${item.id} was added more than once.`)
+	})
+})
+
+describe('delivery work-item dispatch', () => {
+	test('dispatches a root work item', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const tools = await loadPlugin(new Map([[coordinator.id, coordinator]]))
+
+		await expect(
+			tools
+				.get('delivery_add_work_item')!
+				.execute(item, { thread: coordinator }),
+		).resolves.toContain(createWorkItemPrompt(coordinator.id, item))
+	})
+
+	test('rejects a stacked work item until its predecessor reports a pull request', async () => {
+		const coordinator = fakeThreadWithMessages('T-coordinator', [
+			coordinatorMessage,
+			textMessage(
+				createReportMessage({
+					type: 'work-item-reported',
+					workItemId: item.id,
+					childThreadId: 'T-api-reader',
+					status: 'working',
+				}),
+				2,
+			),
+		])
+		const successor: WorkItemDefinition = {
+			...item,
+			id: 'api-writer',
+			outcome: 'Deliver the API writer.',
+			baseBranch: 'amp/api-reader',
+			basedOn: item.id,
+		}
+		const tools = await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[
+				{
+					toolUseID: 'tool-use-add-predecessor',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+				{
+					toolUseID: 'tool-use-register-predecessor',
+					name: 'delivery_register_child',
+					input: { workItemId: item.id, childThreadId: 'T-api-reader' },
+				},
+			],
+		)
+
+		await expect(
+			tools
+				.get('delivery_add_work_item')!
+				.execute(successor, { thread: coordinator }),
+		).rejects.toThrow(
+			`Cannot dispatch ${successor.id} until predecessor ${item.id} reports its draft pull request, remote head branch, and head SHA.`,
+		)
+	})
+
+	test('dispatches a stacked work item after a valid predecessor pull-request report', async () => {
+		const predecessorReport = {
+			type: 'work-item-reported' as const,
+			workItemId: item.id,
+			childThreadId: 'T-api-reader',
+			status: 'pr-opened' as const,
+			pullRequest: {
+				url: 'https://github.com/example/api/pull/12',
+				headBranch: 'amp/api-reader',
+				baseBranch: 'main',
+				headSha: 'reader-sha',
+			},
+		}
+		const coordinator = fakeThreadWithMessages('T-coordinator', [
+			coordinatorMessage,
+			textMessage(createReportMessage(predecessorReport), 2),
+		])
+		const successor: WorkItemDefinition = {
+			...item,
+			id: 'api-writer',
+			outcome: 'Deliver the API writer.',
+			baseBranch: predecessorReport.pullRequest.headBranch,
+			basedOn: item.id,
+		}
+		const hooks = new Map<string, RegisteredHook>()
+		const tools = await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[
+				{
+					toolUseID: 'tool-use-add-predecessor',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+				{
+					toolUseID: 'tool-use-register-predecessor',
+					name: 'delivery_register_child',
+					input: { workItemId: item.id, childThreadId: 'T-api-reader' },
+				},
+			],
+			new Map(),
+			hooks,
+		)
+
+		await expect(
+			tools
+				.get('delivery_add_work_item')!
+				.execute(successor, { thread: coordinator }),
+		).resolves.toContain('"id":"api-writer"')
+		await expect(
+			hooks.get('tool.call')!.execute(
+				{
+					tool: 'create_thread',
+					input: { prompt: createWorkItemPrompt(coordinator.id, successor) },
+				},
+				{ thread: coordinator },
+			),
+		).resolves.toEqual({ action: 'allow' })
+	})
+
+	test('dispatches independent work while another root has no pull request', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const independent: WorkItemDefinition = {
+			...item,
+			id: 'admin-ui',
+			outcome: 'Deliver the admin UI.',
+		}
+		const tools = await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[
+				{
+					toolUseID: 'tool-use-add-api-reader',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+			],
+		)
+
+		await expect(
+			tools
+				.get('delivery_add_work_item')!
+				.execute(independent, { thread: coordinator }),
+		).resolves.toContain(createWorkItemPrompt(coordinator.id, independent))
+	})
+
+	test('rejects a stale stacked create-thread call before creating an orphan', async () => {
+		const coordinator = fakeThread('T-coordinator', coordinatorMessage)
+		const successor: WorkItemDefinition = {
+			...item,
+			id: 'api-writer',
+			outcome: 'Deliver the API writer.',
+			baseBranch: 'amp/api-reader',
+			basedOn: item.id,
+		}
+		const hooks = new Map<string, RegisteredHook>()
+		await loadPlugin(
+			new Map([[coordinator.id, coordinator]]),
+			[
+				{
+					toolUseID: 'tool-use-add-predecessor',
+					name: 'delivery_add_work_item',
+					input: item,
+				},
+				{
+					toolUseID: 'tool-use-add-successor',
+					name: 'delivery_add_work_item',
+					input: successor,
+				},
+			],
+			new Map(),
+			hooks,
+		)
+
+		await expect(
+			hooks.get('tool.call')!.execute(
+				{
+					tool: 'create_thread',
+					input: { prompt: createWorkItemPrompt(coordinator.id, successor) },
+				},
+				{ thread: coordinator },
+			),
+		).resolves.toEqual({
+			action: 'reject-and-continue',
+			message: `Cannot dispatch ${successor.id} until predecessor ${item.id} reports its draft pull request, remote head branch, and head SHA.`,
+		})
 	})
 })
 
