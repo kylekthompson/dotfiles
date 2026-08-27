@@ -44,14 +44,14 @@ Give each implementation worker:
 
 - one bounded outcome and one draft pull request to own
 - the correct repository, base branch, predecessor branch or SHA when stacked, and acceptance checks
-- the coordinator thread ID and a request to report material progress with `send_thread_message`
+- the coordinator thread ID and an explicit requirement to report back with `send_thread_message` before it goes idle
 - responsibility to investigate, implement, verify, push its branch, and open its draft pull request
 - permission to change only its own branch and pull request
 - instructions not to merge, deploy, create another PR, or delegate PR-sized work
 
 Split work between threads when it needs more than one pull request. A research or verification thread can own no pull request when that is the whole bounded task.
 
-Ask workers to report when they start, open or update a pull request, become blocked, finish requested review changes, or determine that their work is no longer needed. Do not wait on a worker after asking it to reply; continue other unblocked coordination work.
+Ask workers to report when they open or update a pull request, become blocked, finish requested review changes, determine that their work is no longer needed, and complete their bounded task. The completion report must include the outcome, pull request link when applicable, verification results, and any remaining blocker or manual action. A final reply that stays only in the worker thread is not sufficient: the worker must send the report to the coordinator. Do not call `wait_for_threads` or periodically poll a worker after asking it to report; continue other unblocked coordination work and let its message wake the coordinator.
 
 ### Reconcile and retire work
 
@@ -63,7 +63,7 @@ Treat GitHub as authoritative for pull-request state. Check the thread status an
 - Do not archive the planning thread.
 - Restore an archived worker only when new work on its pull request is necessary.
 
-After the first pull request opens, load `building-schedules` and schedule this coordinator to reconcile every 10 minutes. On each wake:
+Reconcile when a worker reports back and whenever the coordinator resumes for a user message or another relevant event:
 
 1. Inspect active worker threads and all delivery pull requests.
 2. Archive merged or safely retired workers.
@@ -72,7 +72,7 @@ After the first pull request opens, load `building-schedules` and schedule this 
 5. Check merge and rollout prerequisites.
 6. Report only material changes or decisions that need the user.
 
-Use the schedule instead of an in-process timer. Clear it when delivery is complete.
+Do not create a reconciliation schedule only to check whether workers finished. Worker reports are the completion signal.
 
 ### Order merge and rollout
 
@@ -92,6 +92,5 @@ Delivery is complete only when:
 - acceptance criteria from the planning thread are verified
 - all worker threads are archived
 - no unresolved blocker or required manual action is hidden
-- the reconciliation schedule is cleared
 
 Send the planning thread a concise completion report with pull-request links, rollout evidence, and any explicit remaining manual action. Then archive this coordinator thread.
