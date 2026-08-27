@@ -18,6 +18,10 @@ interface RegisteredTool {
 	) => Promise<unknown>
 }
 
+interface RegisteredCommand {
+	execute: (ctx: unknown) => Promise<unknown>
+}
+
 interface CompletedCall {
 	name: string
 	input: Record<string, unknown>
@@ -58,11 +62,19 @@ function fakeThread(id: string, marker: unknown): FakeThread {
 async function loadPlugin(
 	threads: Map<string, FakeThread>,
 	completedCalls: CompletedCall[] = [],
+	commands = new Map<string, RegisteredCommand>(),
 ) {
 	const tools = new Map<string, RegisteredTool>()
 	const amp = {
 		registerSkill: async () => ({}),
-		registerCommand: () => ({}),
+		registerCommand: (
+			name: string,
+			_options: unknown,
+			execute: RegisteredCommand['execute'],
+		) => {
+			commands.set(name, { execute })
+			return {}
+		},
 		registerTool: (tool: RegisteredTool & { name: string }) => {
 			tools.set(tool.name, tool)
 			return {}
@@ -87,6 +99,42 @@ async function loadPlugin(
 	await deliveryPlugin(amp as never)
 	return tools
 }
+
+describe('delivery coordinator command', () => {
+	test('creates the coordinator in an orb', async () => {
+		const commands = new Map<string, RegisteredCommand>()
+		await loadPlugin(new Map(), [], commands)
+		const createThreadCalls: unknown[] = []
+		const inputs = ['Ship the API reader.', '']
+		const coordinator = {
+			appendUserMessage: async () => {},
+		}
+
+		await commands.get('delivery-start')!.execute({
+			thread: {
+				id: 'T-planning',
+				agent: async () => ({
+					createThread: async (options: unknown) => {
+						createThreadCalls.push(options)
+						return coordinator
+					},
+				}),
+			},
+			ui: {
+				input: async () => inputs.shift(),
+				notify: async () => {},
+			},
+		})
+
+		expect(createThreadCalls).toEqual([
+			{
+				executor: 'orb',
+				parentThreadID: 'T-planning',
+				show: true,
+			},
+		])
+	})
+})
 
 describe('delivery thread boundaries', () => {
 	test('registers a child without reading its transcript', async () => {

@@ -291,6 +291,7 @@ export default async function (amp: PluginAPI) {
 
 			const agent = await ctx.thread.agent()
 			const coordinator = await agent.createThread({
+				executor: 'orb',
 				parentThreadID: ctx.thread.id,
 				show: true,
 			})
