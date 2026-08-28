@@ -83,6 +83,8 @@ Reconcile when a worker reports back and whenever the coordinator resumes for a 
 5. Check merge and rollout prerequisites.
 6. Report only material changes or decisions that need the user.
 
+When a pull request has complete implementation, all required checks pass, and no worker-owned blocker remains, it is ready for user review. Resolve the current user's GitHub login with `get_current_user_identity` and assign that user to the pull request before reporting it as ready. Do not assign incomplete or blocked pull requests.
+
 Do not create a reconciliation schedule only to check whether workers finished. Worker reports are the completion signal.
 
 ### Order merge and rollout
