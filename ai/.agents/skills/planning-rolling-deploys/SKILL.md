@@ -23,6 +23,8 @@ Inspect the repository, deployment configuration, migration tooling, queue frame
 
 Ask only for facts that cannot be found and that can change the plan. Do not assume a deploy is safe because its normal duration is short. Retries, scheduled work, rollback support, paused workers, and long-running processes can extend version overlap.
 
+Calibrate investigation to the real risk before requesting broad operational evidence. Establish whether the feature is exposed or used, whether relevant data exists, which current code can still run, and what irreversible harm is plausible. Classify a requirement as an implementation, merge, activation, or contraction gate. For deferred hardening, record the enforced protection, affected environments and scope, re-trigger condition, and authoritative decision link. Lack of current use does not make an incompatible version pair safe unless an enforced gate makes that pair unreachable.
+
 Name versions as `current` and `target`, and schema states as `current`, `expanded`, and `contracted`. Avoid ambiguous terms such as “old” in the final plan.
 
 ## Inventory Persisted Contracts
