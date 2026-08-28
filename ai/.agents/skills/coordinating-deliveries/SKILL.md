@@ -49,11 +49,13 @@ Use `create_thread` for each worker. Select `executor: orb` and the exact Amp `p
 Give each implementation worker:
 
 - one bounded outcome and one draft pull request to own
-- the correct repository, base branch, predecessor branch or SHA when stacked, and acceptance checks
+- the correct repository, base ref, its tip at dispatch as an ancestry anchor, any predecessor ref when stacked, and acceptance checks; mark a SHA as immutable only when the work requires that exact revision
 - the coordinator thread ID and an explicit requirement to report back with `send_thread_message` before it goes idle
 - responsibility to investigate, implement, verify, push its branch, and open its draft pull request
 - permission to change only its own branch and pull request
 - instructions not to merge, deploy, create another PR, or delegate PR-sized work
+
+Tell the worker to fetch its base ref when it starts. If the fetched tip differs from the dispatch-time anchor, test it with `git merge-base --is-ancestor <anchor> <fetched-tip>`. A successful test is a normal fast-forward: the worker must continue from the fetched tip without reporting a baseline mismatch. A shallow clone must fetch enough history to test ancestry before it decides that the check failed. The worker must stop before making changes and report a blocker only when the anchor is unavailable after that fetch, the base ref disappeared, or the ancestry test fails. An intentionally immutable SHA is exempt from this fast-forward rule.
 
 Split work between threads when it needs more than one pull request. A research or verification thread can own no pull request when that is the whole bounded task.
 
