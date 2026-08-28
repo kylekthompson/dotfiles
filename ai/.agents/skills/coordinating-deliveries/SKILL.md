@@ -39,7 +39,8 @@ Move a completed plan through implementation, review, merge, and verified rollou
 - Keep at most five active worker threads and at most five open delivery pull requests at one time. The coordinator does not count as a worker. A worker is active from creation until it is archived; draft pull requests count as open.
 - Before each dispatch, reconcile child-thread and GitHub pull-request state. Start work only when both limits remain satisfied.
 - Parallelize independent work when it reduces delivery time. Do not run work concurrently when workers could edit the same files, own the same branch, change the same contract or migration boundary, or depend on an unsettled decision from each other.
-- Sequence conflicting work. For a safe stacked change, wait until the direct predecessor has pushed its branch and opened its draft pull request before starting the successor from that branch.
+- Start the next PR-sized work item as soon as its implementation inputs are stable, even while a predecessor merge, deployment, or rollout is being verified. Rollout verification alone does not block implementation. Keep the successor draft and unmerged when its merge or rollout depends on that verification.
+- Sequence conflicting work. For a safe stacked change, start the successor from the direct predecessor branch after that branch is pushed and its draft pull request is open. Wait only when concurrent edits, an unsettled contract or migration boundary, or concrete expected predecessor rework would make the successor unsafe or wasteful.
 - Keep later work undispatched when a dependency or capacity limit blocks it. Do not create placeholder threads.
 
 ### Delegate one pull request
@@ -90,7 +91,7 @@ Do not create a reconciliation schedule only to check whether workers finished. 
 - Re-stack one direct edge at a time. Ask each worker to rebase only its own branch, and only when that branch must be re-stacked rather than after every predecessor update.
 - State the required merge and rollout sequence clearly.
 - Do not merge pull requests, deploy, publish, migrate production data, or change shared infrastructure without explicit user approval for that action.
-- After approval, coordinate each step in order and verify its result before unblocking dependent rollout work.
+- After approval, coordinate each step in order and verify its result before unblocking dependent merge or rollout work. Eagerly continue implementation that can safely remain draft while this verification runs.
 - Load `planning-rolling-deploys` for schema changes, background jobs, persisted payloads, queues, or any mixed-version contract.
 
 ### Complete the delivery
