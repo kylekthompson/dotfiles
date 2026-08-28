@@ -57,6 +57,8 @@ Give each implementation worker:
 
 Tell the worker to fetch origin when it starts. For unstacked work, it must create its branch from the fetched remote default branch without pinning or comparing a dispatch-time SHA. For stacked work, it must branch from the fetched predecessor branch unless the coordinator explicitly requires an immutable SHA. Report a baseline blocker only when the required branch or immutable SHA is unavailable.
 
+Tell the worker to rebase onto the intended current base immediately before opening its pull request. After the pull request opens, do not rebase merely because the base branch changed; rebase when the branch must be re-stacked. After a rebase, compare the effective pull-request diff with the pre-rebase diff. Do not automatically repeat local checks. Re-run only the checks relevant to a diff change that gives good reason to believe the rebase could have introduced a defect; otherwise rely on pull-request CI.
+
 Split work between threads when it needs more than one pull request. A research or verification thread can own no pull request when that is the whole bounded task.
 
 Ask workers to report when they open or update a pull request, become blocked, finish requested review changes, determine that their work is no longer needed, and complete their bounded task. The completion report must include the outcome, pull request link when applicable, verification results, and any remaining blocker or manual action. A final reply that stays only in the worker thread is not sufficient: the worker must send the report to the coordinator. Do not call `wait_for_threads` or periodically poll a worker after asking it to report; continue other unblocked coordination work and let its message wake the coordinator.
@@ -85,7 +87,7 @@ Do not create a reconciliation schedule only to check whether workers finished. 
 ### Order merge and rollout
 
 - Keep implementation concurrency separate from merge and deployment order.
-- Keep stacked branches current one direct edge at a time. Ask each worker to rebase only its own branch after its predecessor changes or merges.
+- Re-stack one direct edge at a time. Ask each worker to rebase only its own branch, and only when that branch must be re-stacked rather than after every predecessor update.
 - State the required merge and rollout sequence clearly.
 - Do not merge pull requests, deploy, publish, migrate production data, or change shared infrastructure without explicit user approval for that action.
 - After approval, coordinate each step in order and verify its result before unblocking dependent rollout work.
