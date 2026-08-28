@@ -31,17 +31,18 @@ Move a completed plan through implementation, review, merge, and verified rollou
 
 1. Read the complete planning thread named in the kickoff prompt. Treat it as the source for the outcome, decisions, scope, constraints, and acceptance criteria.
 2. Own that outcome through completed pull requests and verified rollout. Do not stop after writing a work breakdown or opening the first pull requests.
-3. Build a dependency graph of PR-sized work items across all required projects. Keep code dependencies, Git ancestry, merge order, and rollout order distinct.
+3. Build a dependency graph of PR-sized work items across all required projects. For each edge, record the concrete reason, the event that removes it, and whether it blocks implementation start, pull-request opening, merge, deployment, or rollout. Keep code dependencies, Git ancestry, merge order, and rollout order distinct. A later gate must not become an earlier gate without a concrete reason.
 4. Resolve material uncertainty before delegation. Make routine, reversible implementation decisions without sending them back to the user.
 
 ### Control parallel work
 
 - Keep at most five active worker threads and at most five open delivery pull requests at one time. The coordinator does not count as a worker. A worker is active from creation until it is archived; draft pull requests count as open.
-- Before each dispatch, reconcile child-thread and GitHub pull-request state. Start work only when both limits remain satisfied.
-- Parallelize independent work when it reduces delivery time. Do not run work concurrently when workers could edit the same files, own the same branch, change the same contract or migration boundary, or depend on an unsettled decision from each other.
+- Before each dispatch, reconcile child-thread and GitHub pull-request state. Start work only when both limits remain satisfied. When both limits have room, examine every undispatched item and fill available capacity with implementation-ready work.
+- Prioritize work that shortens the critical path, then use remaining capacity for any other implementation-ready work.
+- Parallelize independent work when it reduces delivery time. Do not run work concurrently when workers could edit the same files, own the same branch, make incompatible changes to an unsettled contract or migration boundary, or depend on an unsettled decision from each other. A shared project, a shared migration, consumption of a settled contract, or a later merge or rollout dependency is not by itself a reason to serialize implementation.
 - Start the next PR-sized work item as soon as its implementation inputs are stable, even while a predecessor merge, deployment, or rollout is being verified. Rollout verification alone does not block implementation. Keep the successor draft and unmerged when its merge or rollout depends on that verification.
 - Sequence conflicting work. For a safe stacked change, start the successor from the direct predecessor branch after that branch is pushed and its draft pull request is open. Wait only when concurrent edits, an unsettled contract or migration boundary, or concrete expected predecessor rework would make the successor unsafe or wasteful.
-- Keep later work undispatched when a dependency or capacity limit blocks it. Do not create placeholder threads.
+- Keep later work undispatched when an explicit implementation dependency or capacity limit blocks it. Do not create placeholder threads. If capacity remains unused, identify the concrete blocker and unblock event for every undispatched item; challenge blockers based only on broad project relationships or caution.
 
 ### Delegate one pull request
 
@@ -79,9 +80,12 @@ Reconcile when a worker reports back and whenever the coordinator resumes for a 
 1. Inspect active worker threads and all delivery pull requests.
 2. Archive merged or safely retired workers.
 3. Resolve blockers, review changes, and the required direct-successor rebase.
-4. Dispatch newly unblocked work without exceeding either capacity limit.
-5. Check merge and rollout prerequisites.
-6. Report only material changes or decisions that need the user.
+4. Revisit dependency edges whose assumptions may have changed. If capacity is unused, audit all remaining implementation blockers before accepting idle capacity.
+5. Dispatch newly unblocked work without exceeding either capacity limit.
+6. Check merge and rollout prerequisites.
+7. Report only material changes or decisions that need the user.
+
+After the first reconciliation, send the planning thread a concise dispatch report with active workers, the ready queue, blocked items and their unblock events, and the reason for any unused capacity. Send another report when the graph or dispatch plan changes materially.
 
 When a pull request has complete implementation, all required checks pass, and no worker-owned blocker remains, it is ready for user review. Resolve the current user's GitHub login with `get_current_user_identity` and assign that user to the pull request before reporting it as ready. Do not assign incomplete or blocked pull requests.
 
