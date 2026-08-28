@@ -78,7 +78,7 @@ Reconcile when a worker reports back and whenever the coordinator resumes for a 
 
 1. Inspect active worker threads and all delivery pull requests.
 2. Archive merged or safely retired workers.
-3. Resolve blockers, review changes, and required serial rebases.
+3. Resolve blockers, review changes, and the required direct-successor rebase.
 4. Dispatch newly unblocked work without exceeding either capacity limit.
 5. Check merge and rollout prerequisites.
 6. Report only material changes or decisions that need the user.
@@ -90,7 +90,7 @@ Do not create a reconciliation schedule only to check whether workers finished. 
 ### Order merge and rollout
 
 - Keep implementation concurrency separate from merge and deployment order.
-- Re-stack one direct edge at a time. Ask each worker to rebase only its own branch, and only when that branch must be re-stacked rather than after every predecessor update.
+- After a pull request merges, rebase only the bottom-most open pull request in that stack: the merged pull request's direct successor. Leave all later descendants unchanged until each one's direct predecessor merges. Each merge must trigger at most one rebase.
 - State the required merge and rollout sequence clearly.
 - Do not merge pull requests, deploy, publish, migrate production data, or change shared infrastructure without explicit user approval for that action.
 - After approval, coordinate each step in order and verify its result before unblocking dependent merge or rollout work. Eagerly continue implementation that can safely remain draft while this verification runs.
