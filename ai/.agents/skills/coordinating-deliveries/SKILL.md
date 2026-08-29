@@ -13,7 +13,7 @@ Move a completed plan through reviewable draft pull requests and, when authorize
 If this thread is already the coordinator, skip this section.
 
 1. Confirm that the current thread has an implementation-ready plan. Record only unresolved decisions that can change implementation.
-2. Create one high-mode orb thread in the owning project. Give it the planning-thread link, the desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
+2. Create one medium-mode orb thread in the owning project. Coordination is mostly state reconciliation; use a bounded high-mode worker or advisor only for a concrete unresolved design or safety decision. Give the coordinator the planning-thread link, desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
 3. Return the coordinator link. The planning thread does not also implement or relay routine status.
 
 ## Run the Delivery
