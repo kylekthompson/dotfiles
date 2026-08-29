@@ -55,6 +55,7 @@ async function askUserQuestion(
 	}
 
 	try {
+		await ctx.ui.notify(question)
 		let answer: string | undefined
 		switch (responseType) {
 			case 'choice':

@@ -13,9 +13,14 @@ const input = {
 describe('askQuestion', () => {
 	test('presents choices, preselects the recommendation, and allows free text', async () => {
 		let received: Record<string, unknown> | undefined
+		const events: string[] = []
 		const ctx = {
 			ui: {
+				notify: async (message: string) => {
+					events.push(`notify:${message}`)
+				},
 				select: async (options: Record<string, unknown>) => {
+					events.push('select')
 					received = options
 					return 'Only for the previous release'
 				},
@@ -35,13 +40,17 @@ describe('askQuestion', () => {
 		})
 		expect(received?.message).toContain(input.question)
 		expect(received?.message).toContain(input.tradeoff)
+		expect(events).toEqual([`notify:${input.question}`, 'select'])
 		expect(result).toBe('The user answered: Only for the previous release')
 	})
 
 	test('falls back to a normal chat question when UI is unavailable', async () => {
 		const unavailable = new Error('No active UI')
 		const ctx = {
-			ui: { select: async () => Promise.reject(unavailable) },
+			ui: {
+				notify: async () => {},
+				select: async () => Promise.reject(unavailable),
+			},
 		} as unknown as PluginToolContext
 		const amp = {
 			helpers: { isPluginUINotAvailableError: (error: Error) => error === unavailable },
@@ -58,7 +67,7 @@ describe('askQuestion', () => {
 
 	test('treats cancellation as a request to stop grilling', async () => {
 		const ctx = {
-			ui: { select: async () => undefined },
+			ui: { notify: async () => {}, select: async () => undefined },
 		} as unknown as PluginToolContext
 		const amp = {
 			helpers: { isPluginUINotAvailableError: () => false },

@@ -102,9 +102,14 @@ describe('notifyUser', () => {
 describe('askUserQuestion', () => {
 	test('defaults to a free-text question and returns the answer', async () => {
 		let received: Record<string, unknown> | undefined
+		const events: string[] = []
 		const ctx = {
 			ui: {
+				notify: async (message: string) => {
+					events.push(`notify:${message}`)
+				},
 				input: async (options: Record<string, unknown>) => {
+					events.push('input')
 					received = options
 					return '  Use the stable release  '
 				},
@@ -122,6 +127,7 @@ describe('askUserQuestion', () => {
 			helpText: 'Which release should I use?',
 			submitButtonText: 'Answer',
 		})
+		expect(events).toEqual(['notify:Which release should I use?', 'input'])
 		expect(result).toBe('The user answered: Use the stable release')
 	})
 
@@ -129,6 +135,7 @@ describe('askUserQuestion', () => {
 		let received: Record<string, unknown> | undefined
 		const ctx = {
 			ui: {
+				notify: async () => {},
 				select: async (options: Record<string, unknown>) => {
 					received = options
 					return 'Only invited customers'
@@ -159,6 +166,7 @@ describe('askUserQuestion', () => {
 		let received: Record<string, unknown> | undefined
 		const ctx = {
 			ui: {
+				notify: async () => {},
 				confirm: async (options: Record<string, unknown>) => {
 					received = options
 					return false
@@ -203,7 +211,10 @@ describe('askUserQuestion', () => {
 	test('falls back to a direct chat question when UI is unavailable', async () => {
 		const unavailable = new Error('No active UI')
 		const ctx = {
-			ui: { input: async () => Promise.reject(unavailable) },
+			ui: {
+				notify: async () => {},
+				input: async () => Promise.reject(unavailable),
+			},
 		} as unknown as PluginToolContext
 
 		const result = await testables.askUserQuestion(
@@ -218,7 +229,7 @@ describe('askUserQuestion', () => {
 
 	test('reports cancellation without inventing an answer', async () => {
 		const ctx = {
-			ui: { input: async () => undefined },
+			ui: { notify: async () => {}, input: async () => undefined },
 		} as unknown as PluginToolContext
 
 		const result = await testables.askUserQuestion(
@@ -232,7 +243,10 @@ describe('askUserQuestion', () => {
 
 	test('reports errors without inventing an answer', async () => {
 		const ctx = {
-			ui: { input: async () => Promise.reject(new Error('Client disconnected')) },
+			ui: {
+				notify: async () => {},
+				input: async () => Promise.reject(new Error('Client disconnected')),
+			},
 		} as unknown as PluginToolContext
 
 		const result = await testables.askUserQuestion(

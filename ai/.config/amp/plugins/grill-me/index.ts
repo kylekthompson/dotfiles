@@ -25,6 +25,7 @@ async function askQuestion(
 	ctx: PluginToolContext,
 ): Promise<string> {
 	try {
+		await ctx.ui.notify(input.question)
 		const answer = await ctx.ui.select({
 			title: input.title,
 			message: dialogMessage(input),
