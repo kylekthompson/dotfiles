@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Runs environment-dependent commands in the configured RWX sandbox and selects the correct RWX token for the checkout owner.'
+	'Adds gated RWX command execution and selects the correct access token for the checkout owner.'
 
 const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 	['rwx-cloud', 'RWX_RWX_ACCESS_TOKEN'],

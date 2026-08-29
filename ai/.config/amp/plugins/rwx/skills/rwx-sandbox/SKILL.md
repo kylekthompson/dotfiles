@@ -7,7 +7,7 @@ builtin-tools:
 
 # RWX Sandbox
 
-Run environment-dependent project commands with `rwx_exec`. Keep inspection and editing on the host.
+Run environment-dependent project commands with the RWX plugin's `rwx_exec` tool. Keep inspection and editing on the host.
 
 ## Choose the Execution Boundary
 

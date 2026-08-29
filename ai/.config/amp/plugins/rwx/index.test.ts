@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testables } from './index'
 
-describe('rwxArguments', () => {
+describe('RWX command construction', () => {
 	test('passes a simple command directly', () => {
 		expect(testables.rwxArguments({ command: 'npm test' })).toEqual([
 			'sandbox',
