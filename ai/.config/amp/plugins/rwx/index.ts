@@ -29,6 +29,8 @@ const RWX_EXECUTABLE = /(^|[\s;&|()])(?:["']?[^ \t\r\n;&|()"'=]*\/)?["']?rwx["']
 const MAX_OUTPUT_BYTES = 64 * 1024
 const CLI_RELEASE_URL = 'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/latest'
 const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+const SANDBOX_GUIDANCE =
+	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx_exec. Keep inspection and editing on the host.'
 
 type RwxInput = {
 	args: string[]
@@ -202,6 +204,11 @@ function usesSandboxQueue(input: RwxInput): boolean {
 	return input.args[0] === 'sandbox'
 }
 
+function sandboxGuidance(workspacePath: string) {
+	if (!existsSync(join(workspacePath, '.rwx', 'sandbox.yml'))) return {}
+	return { message: { content: SANDBOX_GUIDANCE } }
+}
+
 function runProcess(args: string[], cwd: string, token: string): Promise<ProcessResult> {
 	return new Promise((resolve) => {
 		const child = spawn('rwx', args, {
@@ -337,6 +344,8 @@ export default async function (amp: PluginAPI) {
 		}
 	})
 
+	amp.on('agent.start', () => sandboxGuidance(workspacePath))
+
 	await amp.registerSkill({ path: 'skills/rwx' })
 }
 
@@ -345,6 +354,7 @@ export const testables = {
 	executeRwx,
 	installLatestRwxCli,
 	rwxArguments,
+	sandboxGuidance,
 	tokenExportCommand,
 	tokenVariableForOwner,
 	usesSandboxQueue,

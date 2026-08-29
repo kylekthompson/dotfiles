@@ -1,6 +1,6 @@
 ---
 name: rwx
-description: Runs authenticated RWX CLI commands, including results, logs, and cloud sandbox execution. Use for RWX operations or for environment-dependent project commands when `.rwx/sandbox.yml` exists.
+description: Runs authenticated RWX CLI commands, including results, logs, and cloud sandbox execution. Use for any RWX operation. When `.rwx/sandbox.yml` exists, load this skill before running environment-dependent project commands.
 builtin-tools:
   - rwx_exec
 ---

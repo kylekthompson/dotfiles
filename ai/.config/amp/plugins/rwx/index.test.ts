@@ -27,6 +27,22 @@ describe('RWX command construction', () => {
 	})
 })
 
+describe('sandbox guidance', () => {
+	test('tells the agent to load the RWX skill for a configured workspace', async () => {
+		const workspace = await configuredWorkspace()
+		const guidance = testables.sandboxGuidance(workspace)
+
+		expect(guidance?.message.content).toContain('.rwx/sandbox.yml')
+		expect(guidance?.message.content).toContain('load the rwx:rwx skill')
+		expect(guidance?.message.content).toContain('use rwx_exec')
+	})
+
+	test('does not add guidance without sandbox configuration', async () => {
+		const workspace = await mkdtemp(join(tmpdir(), 'rwx-plugin-'))
+		expect(testables.sandboxGuidance(workspace).message).toBeUndefined()
+	})
+})
+
 describe('orb CLI installation', () => {
 	test('selects official assets for supported Amp platforms', () => {
 		expect(testables.cliAssetName('linux', 'x64')).toBe('rwx-linux-x86_64')
