@@ -1,41 +1,40 @@
 ---
 name: rwx
 description: Runs authenticated RWX CLI commands, including results, logs, and cloud sandbox execution. Use for any RWX operation. When `.rwx/sandbox.yml` exists, load this skill before running environment-dependent project commands.
-builtin-tools:
-  - rwx_exec
 ---
 
 # RWX
 
-Run authenticated RWX CLI commands with `rwx_exec`. In an Amp orb, the plugin installs and verifies the latest stable RWX CLI from its official GitHub release.
+Run authenticated RWX CLI commands with `shell_command`. In an Amp orb, the plugin installs and verifies the latest stable RWX CLI from its official GitHub release. It selects the access token for the repository owner without putting the token value in the command.
 
 ## Execute RWX Commands
 
-Pass the exact arguments that follow the `rwx` executable:
+Run the CLI from the active worktree root:
 
-- Results: `args: ["results", "<run-id>"]`
-- Logs: `args: ["logs", "<task-id>"]`
-- Identity: `args: ["whoami"]`
+- Results: `rwx results <run-id>`
+- Logs: `rwx logs <task-id>`
+- Identity: `rwx whoami`
 
-The tool selects the access token for the repository owner, redacts the token from output, and returns bounded output with the exit status. It serializes `rwx sandbox` operations for this worktree because they share synchronized state; other RWX commands can run concurrently.
+Use a short `timeout_ms` for a long command. If `shell_command` returns `running: true`, pass its PID to `shell_command_status` until the command finishes. Do not rerun the original command to get more output. Output can arrive in batches, and stdout and stderr share one stream. ANSI and carriage-return characters can be present in the output.
 
 ## Use RWX Sandboxes
 
 1. Identify the active worktree root and check for `.rwx/sandbox.yml`. Do not use file searches that omit hidden directories.
-2. Use `rwx_exec` for tests, linters, formatters, type checks, builds, package scripts, migrations, schema or code generation, and database commands.
+2. Use `rwx sandbox exec` through `shell_command` for tests, linters, formatters, type checks, builds, package scripts, migrations, schema or code generation, and database commands.
 3. Keep file reads, searches, edits, lightweight Git inspection, and RWX lifecycle commands on the host.
 4. If the config is absent, use the normal local workflow. Do not add sandbox configuration unless the user asks.
 5. If RWX is unavailable or cannot authenticate, report the blocker. Ask before running an environment-dependent command locally because its result might not represent the configured environment.
+6. Run only one `rwx sandbox` operation at a time for a worktree because sandbox commands share synchronized state.
 
-For a simple command, pass each argument directly:
+For a simple command:
 
-`args: ["sandbox", "exec", "--", "npm", "test"]`
+`rwx sandbox exec -- npm test`
 
 Put shell syntax inside the sandbox, never in the host command:
 
-`args: ["sandbox", "exec", "--", "sh", "-lc", "npm test | tee test.log"]`
+`rwx sandbox exec -- sh -lc 'npm test | tee test.log'`
 
-Let execution lazily start or reuse the sandbox. Add `"--reset"` after `"exec"` only when setup inputs changed or evidence shows stale or damaged sandbox state.
+Let execution lazily start or reuse the sandbox. Add `--reset` after `exec` only when setup inputs changed or evidence shows stale or damaged sandbox state.
 
 Before each command, RWX syncs staged, unstaged, and untracked files into the sandbox. After it completes, RWX syncs command changes back. Inspect returned changes and do not overwrite unrelated work. Git LFS objects do not sync; account for any warning in the result.
 
@@ -46,6 +45,7 @@ Before each command, RWX syncs staged, unstaged, and untracked files into the sa
 3. Do not reset for authentication, authorization, quota, or network errors.
 4. If the output supplies a run ID and more detail is useful, inspect it on the host with `rwx results <run-id>`.
 5. Retry once only when the failure can be transient. If RWX remains blocked, report the evidence and ask before a local fallback.
+6. Use `shell_command_kill` only when repeated status checks show no output and the process is not expected to run for a long time.
 
 ## Report Results
 

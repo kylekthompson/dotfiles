@@ -6,27 +6,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testables } from './index'
 
-describe('RWX command construction', () => {
-	test('passes generic CLI arguments directly', () => {
-		expect(testables.rwxArguments({ args: ['results', 'run-id'] })).toEqual(['results', 'run-id'])
-	})
-
-	test('preserves sandbox shell syntax as one exact argument', () => {
-		const args = ['sandbox', 'exec', '--', 'sh', '-lc', 'npm test | tee test.log']
-		expect(testables.rwxArguments({ args })).toEqual(args)
-	})
-
-	test('rejects an empty command', () => {
-		expect(() => testables.rwxArguments({ args: [] })).toThrow('must not be empty')
-	})
-
-	test('serializes only sandbox commands', () => {
-		expect(testables.usesSandboxQueue({ args: ['sandbox', 'list'] })).toBeTrue()
-		expect(testables.usesSandboxQueue({ args: ['results', 'run-id'] })).toBeFalse()
-		expect(testables.usesSandboxQueue({ args: ['logs', 'task-id'] })).toBeFalse()
-	})
-})
-
 describe('sandbox guidance', () => {
 	test('tells the agent to load the RWX skill for a configured workspace', async () => {
 		const workspace = await configuredWorkspace()
@@ -34,7 +13,7 @@ describe('sandbox guidance', () => {
 
 		expect(guidance?.message.content).toContain('.rwx/sandbox.yml')
 		expect(guidance?.message.content).toContain('load the rwx:rwx skill')
-		expect(guidance?.message.content).toContain('use rwx_exec')
+		expect(guidance?.message.content).toContain('through shell_command')
 	})
 
 	test('does not add guidance without sandbox configuration', async () => {
@@ -116,81 +95,6 @@ test('preserves token selection for direct RWX CLI commands', () => {
 	const command = testables.tokenExportCommand('SSC_RWX_ACCESS_TOKEN')
 	expect(command).toContain('${RWX_ACCESS_TOKEN:-}')
 	expect(command).toContain('${SSC_RWX_ACCESS_TOKEN:?SSC_RWX_ACCESS_TOKEN is not set}')
-})
-
-describe('executeRwx', () => {
-	test('rejects a workspace without sandbox config', async () => {
-		const workspace = await mkdtemp(join(tmpdir(), 'rwx-plugin-'))
-		expect(
-			await testables.executeRwx(
-				{ args: ['sandbox', 'exec', '--', 'npm', 'test'] },
-				workspace,
-				'TOKEN',
-				{
-					TOKEN: 'secret',
-				},
-			),
-		).toContain('.rwx/sandbox.yml is not present')
-	})
-
-	test('runs results without requiring sandbox config', async () => {
-		const workspace = await mkdtemp(join(tmpdir(), 'rwx-plugin-'))
-		let receivedArgs: string[] = []
-		await testables.executeRwx(
-			{ args: ['results', 'run-id'] },
-			workspace,
-			'TOKEN',
-			{ TOKEN: 'secret' },
-			async (args) => {
-				receivedArgs = args
-				return { exitCode: 0, output: 'results' }
-			},
-		)
-		expect(receivedArgs).toEqual(['results', 'run-id'])
-	})
-
-	test('selects an existing RWX_ACCESS_TOKEN before the owner token', async () => {
-		const workspace = await configuredWorkspace()
-		let receivedToken = ''
-		const output = await testables.executeRwx(
-			{ args: ['sandbox', 'exec', '--', 'npm', 'test'] },
-			workspace,
-			'TOKEN',
-			{ RWX_ACCESS_TOKEN: 'override', TOKEN: 'owner-token' },
-			async (_args, _cwd, token) => {
-				receivedToken = token
-				return { exitCode: 0, output: 'passed' }
-			},
-		)
-
-		expect(receivedToken).toBe('override')
-		expect(output).toContain('completed successfully')
-	})
-
-	test('reports a missing owner token without running', async () => {
-		const workspace = await configuredWorkspace()
-		const output = await testables.executeRwx(
-			{ args: ['results', 'run-id'] },
-			workspace,
-			'TOKEN',
-			{},
-		)
-		expect(output).toBe('RWX execution blocked: TOKEN is not set.')
-	})
-
-	test('reports command failure and redacts the token', async () => {
-		const workspace = await configuredWorkspace()
-		const output = await testables.executeRwx(
-			{ args: ['results', 'run-id'] },
-			workspace,
-			'TOKEN',
-			{ TOKEN: 'secret' },
-			async () => ({ exitCode: 2, output: 'request used secret' }),
-		)
-		expect(output).toContain('failed with exit code 2')
-		expect(output).toContain('[REDACTED]')
-		expect(output).not.toContain('secret')
-	})
 })
 
 async function configuredWorkspace(): Promise<string> {

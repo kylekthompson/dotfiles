@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
 	chmodSync,
@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Installs the RWX CLI in Amp orbs, adds gated command execution, and selects the token for the checkout owner.'
+	'Installs the RWX CLI in Amp orbs and authenticates RWX shell commands for the checkout owner.'
 
 const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 	['rwx-cloud', 'RWX_RWX_ACCESS_TOKEN'],
@@ -26,20 +26,10 @@ const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 const BASHRC_BLOCK_START = '# >>> rwx-access-token plugin >>>'
 const BASHRC_BLOCK_END = '# <<< rwx-access-token plugin <<<'
 const RWX_EXECUTABLE = /(^|[\s;&|()])(?:["']?[^ \t\r\n;&|()"'=]*\/)?["']?rwx["']?(?=$|[\s;&|()])/m
-const MAX_OUTPUT_BYTES = 64 * 1024
 const CLI_RELEASE_URL = 'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/latest'
 const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SANDBOX_GUIDANCE =
-	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx_exec. Keep inspection and editing on the host.'
-
-type RwxInput = {
-	args: string[]
-}
-
-type ProcessResult = {
-	exitCode: number
-	output: string
-}
+	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx sandbox exec through shell_command. Keep inspection and editing on the host.'
 
 type ReleaseAsset = {
 	name: string
@@ -192,88 +182,9 @@ function tokenExportCommand(sourceVariable: string): string {
 	return `if [ -z "\${RWX_ACCESS_TOKEN:-}" ]; then export RWX_ACCESS_TOKEN="\${${sourceVariable}:?${sourceVariable} is not set}"; fi; `
 }
 
-function rwxArguments(input: RwxInput): string[] {
-	if (input.args.length === 0) throw new Error('RWX arguments must not be empty.')
-	if (input.args.some((argument) => typeof argument !== 'string')) {
-		throw new Error('Each RWX argument must be a string.')
-	}
-	return input.args
-}
-
-function usesSandboxQueue(input: RwxInput): boolean {
-	return input.args[0] === 'sandbox'
-}
-
 function sandboxGuidance(workspacePath: string) {
 	if (!existsSync(join(workspacePath, '.rwx', 'sandbox.yml'))) return {}
 	return { message: { content: SANDBOX_GUIDANCE } }
-}
-
-function runProcess(args: string[], cwd: string, token: string): Promise<ProcessResult> {
-	return new Promise((resolve) => {
-		const child = spawn('rwx', args, {
-			cwd,
-			env: { ...process.env, RWX_ACCESS_TOKEN: token },
-			stdio: ['ignore', 'pipe', 'pipe'],
-		})
-		let output = ''
-		let omittedBytes = 0
-
-		const collect = (chunk: Buffer) => {
-			output += chunk.toString()
-			if (Buffer.byteLength(output) > MAX_OUTPUT_BYTES) {
-				const bytes = Buffer.from(output)
-				omittedBytes += bytes.length - MAX_OUTPUT_BYTES
-				output = bytes.subarray(bytes.length - MAX_OUTPUT_BYTES).toString()
-			}
-		}
-
-		child.stdout.on('data', collect)
-		child.stderr.on('data', collect)
-		child.on('error', (error) => resolve({ exitCode: 127, output: error.message }))
-		child.on('close', (exitCode) => {
-			const notice = omittedBytes > 0 ? `[Earlier output omitted: ${omittedBytes} bytes]\n` : ''
-			resolve({ exitCode: exitCode ?? 1, output: notice + output })
-		})
-	})
-}
-
-async function executeRwx(
-	input: RwxInput,
-	workspacePath: string,
-	sourceVariable: string | undefined,
-	environment: NodeJS.ProcessEnv = process.env,
-	run: (args: string[], cwd: string, token: string) => Promise<ProcessResult> = runProcess,
-): Promise<string> {
-	const token =
-		environment.RWX_ACCESS_TOKEN || (sourceVariable ? environment[sourceVariable] : undefined)
-	if (!token) {
-		return sourceVariable
-			? `RWX execution blocked: ${sourceVariable} is not set.`
-			: 'RWX execution blocked: RWX_ACCESS_TOKEN is not set and the GitHub owner has no configured token selection.'
-	}
-
-	let args: string[]
-	try {
-		args = rwxArguments(input)
-	} catch (error) {
-		return `RWX execution blocked: ${error instanceof Error ? error.message : String(error)}`
-	}
-	if (
-		args[0] === 'sandbox' &&
-		args[1] === 'exec' &&
-		!existsSync(join(workspacePath, '.rwx', 'sandbox.yml'))
-	) {
-		return 'RWX execution blocked: .rwx/sandbox.yml is not present in the workspace root.'
-	}
-
-	const result = await run(args, workspacePath, token)
-	const output = result.output.split(token).join('[REDACTED]')
-	const summary =
-		result.exitCode === 0
-			? 'RWX command completed successfully.'
-			: `RWX command failed with exit code ${result.exitCode}.`
-	return output.trim() ? `${summary}\n\n${output.trimEnd()}` : summary
 }
 
 export default async function (amp: PluginAPI) {
@@ -293,41 +204,6 @@ export default async function (amp: PluginAPI) {
 		}
 		if (sourceVariable) installOrbTerminalHook(sourceVariable)
 	}
-
-	let executionQueue = Promise.resolve()
-	amp.registerTool({
-		name: 'rwx_exec',
-		title: 'Run RWX command',
-		transcriptGroup: { active: 'Running in RWX', complete: 'Ran in RWX' },
-		description:
-			'Run one RWX CLI command with the repository owner token. Use only with the bundled rwx skill. Pass exact arguments after the rwx executable; put shell syntax in a sandbox sh -lc argument.',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				args: {
-					type: 'array',
-					items: { type: 'string' },
-					minItems: 1,
-					description:
-						'Exact arguments after rwx, such as ["results", "<run-id>"] or ["sandbox", "exec", "--", "npm", "test"].',
-				},
-			},
-			required: ['args'],
-			additionalProperties: false,
-		},
-		execute: (input) => {
-			const rwxInput = input as RwxInput
-			const execute = () => executeRwx(rwxInput, workspacePath, sourceVariable)
-			if (!usesSandboxQueue(rwxInput)) return execute()
-
-			const result = executionQueue.then(execute, execute)
-			executionQueue = result.then(
-				() => undefined,
-				() => undefined,
-			)
-			return result
-		},
-	})
 
 	amp.on('tool.call', (event) => {
 		const shellCommand = amp.helpers.shellCommandFromToolCall(event)
@@ -351,11 +227,8 @@ export default async function (amp: PluginAPI) {
 
 export const testables = {
 	cliAssetName,
-	executeRwx,
 	installLatestRwxCli,
-	rwxArguments,
 	sandboxGuidance,
 	tokenExportCommand,
 	tokenVariableForOwner,
-	usesSandboxQueue,
 }
