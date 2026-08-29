@@ -1,15 +1,25 @@
 ---
-name: rwx-sandbox
-description: Routes environment-dependent commands through an existing RWX cloud sandbox. Before loading, check that `.rwx/sandbox.yml` exists. Use only when it exists and the task runs tests, checks, builds, package scripts, migrations, code generation, or database commands.
+name: rwx
+description: Runs authenticated RWX CLI commands, including results, logs, and cloud sandbox execution. Use for RWX operations or for environment-dependent project commands when `.rwx/sandbox.yml` exists.
 builtin-tools:
   - rwx_exec
 ---
 
-# RWX Sandbox
+# RWX
 
-Run environment-dependent project commands with the RWX plugin's `rwx_exec` tool. Keep inspection and editing on the host.
+Run authenticated RWX CLI commands with `rwx_exec`. In an Amp orb, the plugin installs and verifies the latest stable RWX CLI from its official GitHub release.
 
-## Choose the Execution Boundary
+## Execute RWX Commands
+
+Pass the exact arguments that follow the `rwx` executable:
+
+- Results: `args: ["results", "<run-id>"]`
+- Logs: `args: ["logs", "<task-id>"]`
+- Identity: `args: ["whoami"]`
+
+The tool selects the access token for the repository owner, serializes execution for this worktree, redacts the token from output, and returns bounded output with the exit status.
+
+## Use RWX Sandboxes
 
 1. Identify the active worktree root and check for `.rwx/sandbox.yml`. Do not use file searches that omit hidden directories.
 2. Use `rwx_exec` for tests, linters, formatters, type checks, builds, package scripts, migrations, schema or code generation, and database commands.
@@ -17,12 +27,15 @@ Run environment-dependent project commands with the RWX plugin's `rwx_exec` tool
 4. If the config is absent, use the normal local workflow. Do not add sandbox configuration unless the user asks.
 5. If RWX is unavailable or cannot authenticate, report the blocker. Ask before running an environment-dependent command locally because its result might not represent the configured environment.
 
-## Execute Commands
+For a simple command, pass each argument directly:
 
-- Pass a normal command line in `command`. The tool runs simple commands directly and puts pipelines, redirections, expansions, and command chains inside the sandbox shell.
-- Use `command` plus `args` when argument boundaries must be exact.
-- The tool runs from the worktree root, selects the token for the repository owner, and serializes commands for this worktree.
-- Let execution lazily start or reuse the sandbox. Set `reset` only after setup inputs change or evidence shows stale or damaged sandbox state.
+`args: ["sandbox", "exec", "--", "npm", "test"]`
+
+Put shell syntax inside the sandbox, never in the host command:
+
+`args: ["sandbox", "exec", "--", "sh", "-lc", "npm test | tee test.log"]`
+
+Let execution lazily start or reuse the sandbox. Add `"--reset"` after `"exec"` only when setup inputs changed or evidence shows stale or damaged sandbox state.
 
 Before each command, RWX syncs staged, unstaged, and untracked files into the sandbox. After it completes, RWX syncs command changes back. Inspect returned changes and do not overwrite unrelated work. Git LFS objects do not sync; account for any warning in the result.
 

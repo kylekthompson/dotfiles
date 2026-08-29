@@ -1,11 +1,20 @@
 import { execFileSync, spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Adds gated RWX command execution and selects the correct access token for the checkout owner.'
+	'Installs the RWX CLI in Amp orbs, adds gated command execution, and selects the token for the checkout owner.'
 
 const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 	['rwx-cloud', 'RWX_RWX_ACCESS_TOKEN'],
@@ -18,16 +27,27 @@ const BASHRC_BLOCK_START = '# >>> rwx-access-token plugin >>>'
 const BASHRC_BLOCK_END = '# <<< rwx-access-token plugin <<<'
 const RWX_EXECUTABLE = /(^|[\s;&|()])(?:["']?[^ \t\r\n;&|()"'=]*\/)?["']?rwx["']?(?=$|[\s;&|()])/m
 const MAX_OUTPUT_BYTES = 64 * 1024
+const CLI_RELEASE_URL = 'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/latest'
+const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 type RwxInput = {
-	command: string
-	args?: string[]
-	reset?: boolean
+	args: string[]
 }
 
 type ProcessResult = {
 	exitCode: number
 	output: string
+}
+
+type ReleaseAsset = {
+	name: string
+	digest: string
+	browser_download_url: string
+}
+
+type InstallMetadata = {
+	digest: string
+	checkedAt: number
 }
 
 function githubOwner(workspacePath: string): string | undefined {
@@ -47,6 +67,88 @@ function githubOwner(workspacePath: string): string | undefined {
 
 function tokenVariableForOwner(owner: string | undefined): string | undefined {
 	return owner ? TOKEN_BY_OWNER.get(owner) : undefined
+}
+
+function cliAssetName(
+	platform = process.platform,
+	architecture = process.arch,
+): string | undefined {
+	const operatingSystem =
+		platform === 'linux' ? 'linux' : platform === 'darwin' ? 'darwin' : undefined
+	const cpu = architecture === 'x64' ? 'x86_64' : architecture === 'arm64' ? 'aarch64' : undefined
+	return operatingSystem && cpu ? `rwx-${operatingSystem}-${cpu}` : undefined
+}
+
+function readInstallMetadata(path: string): InstallMetadata | undefined {
+	try {
+		return JSON.parse(readFileSync(path, 'utf8')) as InstallMetadata
+	} catch {
+		return
+	}
+}
+
+function sha256(bytes: Uint8Array): string {
+	return `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+}
+
+async function installLatestRwxCli(
+	binDirectory = join(homedir(), '.amp', 'bin'),
+	fetchRelease: typeof fetch = fetch,
+	now = Date.now(),
+): Promise<string> {
+	const assetName = cliAssetName()
+	if (!assetName)
+		throw new Error(`RWX does not publish a CLI for ${process.platform}/${process.arch}.`)
+
+	const executablePath = join(binDirectory, 'rwx')
+	const metadataPath = join(binDirectory, '.rwx-install.json')
+	const metadata = readInstallMetadata(metadataPath)
+	const installedDigest = existsSync(executablePath)
+		? sha256(readFileSync(executablePath))
+		: undefined
+	if (
+		metadata &&
+		installedDigest === metadata.digest &&
+		now - metadata.checkedAt < CLI_CHECK_INTERVAL_MS
+	) {
+		return executablePath
+	}
+
+	const releaseResponse = await fetchRelease(CLI_RELEASE_URL, {
+		headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'amp-rwx-plugin' },
+	})
+	if (!releaseResponse.ok) {
+		throw new Error(`GitHub release lookup failed with HTTP ${releaseResponse.status}.`)
+	}
+	const release = (await releaseResponse.json()) as { assets?: ReleaseAsset[] }
+	const asset = release.assets?.find((candidate) => candidate.name === assetName)
+	if (!asset?.digest?.startsWith('sha256:')) {
+		throw new Error(`The latest RWX release has no verified ${assetName} asset.`)
+	}
+
+	if (installedDigest !== asset.digest) {
+		const downloadResponse = await fetchRelease(asset.browser_download_url)
+		if (!downloadResponse.ok) {
+			throw new Error(`RWX CLI download failed with HTTP ${downloadResponse.status}.`)
+		}
+		const bytes = new Uint8Array(await downloadResponse.arrayBuffer())
+		const digest = sha256(bytes)
+		if (digest !== asset.digest)
+			throw new Error('The downloaded RWX CLI checksum does not match GitHub.')
+
+		mkdirSync(binDirectory, { recursive: true })
+		const temporaryPath = join(binDirectory, `.rwx-${process.pid}.tmp`)
+		try {
+			writeFileSync(temporaryPath, bytes)
+			chmodSync(temporaryPath, 0o755)
+			renameSync(temporaryPath, executablePath)
+		} finally {
+			rmSync(temporaryPath, { force: true })
+		}
+	}
+
+	writeFileSync(metadataPath, JSON.stringify({ digest: asset.digest, checkedAt: now }))
+	return executablePath
 }
 
 function installOrbTerminalHook(sourceVariable: string): void {
@@ -84,90 +186,16 @@ function commandInputKey(input: Record<string, unknown>): 'command' | 'cmd' | un
 	if (typeof input.cmd === 'string') return 'cmd'
 }
 
-function hasShellSyntax(command: string): boolean {
-	let quote: "'" | '"' | undefined
-	let escaped = false
-
-	for (const character of command) {
-		if (escaped) {
-			escaped = false
-			continue
-		}
-		if (character === '\\' && quote === '"') return true
-		if (character === '\\' && !quote) {
-			escaped = true
-			continue
-		}
-		if (quote) {
-			if (character === quote) quote = undefined
-			if (character === '$' && quote === '"') return true
-			continue
-		}
-		if (character === "'" || character === '"') {
-			quote = character
-			continue
-		}
-		if ('|&;<>()$`\n*?[]{}'.includes(character)) return true
-	}
-
-	return /(^|\s)(?:[A-Za-z_][A-Za-z0-9_]*=|#)/.test(command) || /(^|\s)~(?:\/|$)/.test(command)
-}
-
-function splitSimpleCommand(command: string): string[] {
-	const words: string[] = []
-	let word = ''
-	let started = false
-	let quote: "'" | '"' | undefined
-	let escaped = false
-
-	for (const character of command) {
-		if (escaped) {
-			word += character
-			started = true
-			escaped = false
-			continue
-		}
-		if (character === '\\' && quote !== "'") {
-			escaped = true
-			started = true
-			continue
-		}
-		if (quote) {
-			if (character === quote) quote = undefined
-			else word += character
-			started = true
-			continue
-		}
-		if (character === "'" || character === '"') {
-			quote = character
-			started = true
-			continue
-		}
-		if (/\s/.test(character)) {
-			if (started) {
-				words.push(word)
-				word = ''
-				started = false
-			}
-			continue
-		}
-		word += character
-		started = true
-	}
-
-	if (quote || escaped) throw new Error('Command has an unclosed quote or escape.')
-	if (started) words.push(word)
-	return words
+function tokenExportCommand(sourceVariable: string): string {
+	return `if [ -z "\${RWX_ACCESS_TOKEN:-}" ]; then export RWX_ACCESS_TOKEN="\${${sourceVariable}:?${sourceVariable} is not set}"; fi; `
 }
 
 function rwxArguments(input: RwxInput): string[] {
-	const prefix = ['sandbox', 'exec', ...(input.reset ? ['--reset'] : []), '--']
-	if (input.args) return [...prefix, input.command, ...input.args]
-	if (hasShellSyntax(input.command)) return [...prefix, 'sh', '-lc', input.command]
-
-	const command = splitSimpleCommand(input.command)
-	if (command.length === 0) throw new Error('Command must not be empty.')
-	return [...prefix, ...command]
+	if (input.args.length === 0) throw new Error('RWX arguments must not be empty.')
+	if (input.args.some((argument) => typeof argument !== 'string')) {
+		throw new Error('Each RWX argument must be a string.')
+	}
+	return input.args
 }
 
 function runProcess(args: string[], cwd: string, token: string): Promise<ProcessResult> {
@@ -206,21 +234,26 @@ async function executeRwx(
 	environment: NodeJS.ProcessEnv = process.env,
 	run: (args: string[], cwd: string, token: string) => Promise<ProcessResult> = runProcess,
 ): Promise<string> {
-	if (!existsSync(join(workspacePath, '.rwx', 'sandbox.yml'))) {
-		return 'RWX execution blocked: .rwx/sandbox.yml is not present in the workspace root.'
+	const token =
+		environment.RWX_ACCESS_TOKEN || (sourceVariable ? environment[sourceVariable] : undefined)
+	if (!token) {
+		return sourceVariable
+			? `RWX execution blocked: ${sourceVariable} is not set.`
+			: 'RWX execution blocked: RWX_ACCESS_TOKEN is not set and the GitHub owner has no configured token selection.'
 	}
-	if (!sourceVariable) {
-		return 'RWX execution blocked: the GitHub owner has no configured RWX token selection.'
-	}
-
-	const token = environment.RWX_ACCESS_TOKEN || environment[sourceVariable]
-	if (!token) return `RWX execution blocked: ${sourceVariable} is not set.`
 
 	let args: string[]
 	try {
 		args = rwxArguments(input)
 	} catch (error) {
 		return `RWX execution blocked: ${error instanceof Error ? error.message : String(error)}`
+	}
+	if (
+		args[0] === 'sandbox' &&
+		args[1] === 'exec' &&
+		!existsSync(join(workspacePath, '.rwx', 'sandbox.yml'))
+	) {
+		return 'RWX execution blocked: .rwx/sandbox.yml is not present in the workspace root.'
 	}
 
 	const result = await run(args, workspacePath, token)
@@ -239,34 +272,36 @@ export default async function (amp: PluginAPI) {
 	const workspacePath = amp.helpers.filePathFromURI(workspaceRoot)
 	const owner = githubOwner(workspacePath)
 	const sourceVariable = tokenVariableForOwner(owner)
-	if (sourceVariable && process.env.AMP_ORB === '1') installOrbTerminalHook(sourceVariable)
+	if (process.env.AMP_ORB === '1') {
+		try {
+			await installLatestRwxCli()
+		} catch (error) {
+			console.error(
+				`RWX CLI installation failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+		if (sourceVariable) installOrbTerminalHook(sourceVariable)
+	}
 
 	let executionQueue = Promise.resolve()
 	amp.registerTool({
 		name: 'rwx_exec',
-		title: 'Run in RWX sandbox',
+		title: 'Run RWX command',
 		transcriptGroup: { active: 'Running in RWX', complete: 'Ran in RWX' },
 		description:
-			'Run one environment-dependent command in the repository RWX sandbox. Use only with the bundled rwx-sandbox skill. Host file reads, edits, searches, and lightweight Git inspection do not belong here.',
+			'Run one RWX CLI command with the repository owner token. Use only with the bundled rwx skill. Pass exact arguments after the rwx executable; put shell syntax in a sandbox sh -lc argument.',
 		inputSchema: {
 			type: 'object',
 			properties: {
-				command: {
-					type: 'string',
-					description: 'A command line, or an executable name when args is supplied.',
-				},
 				args: {
 					type: 'array',
 					items: { type: 'string' },
-					description: 'Optional exact arguments. Use this to avoid shell parsing.',
-				},
-				reset: {
-					type: 'boolean',
+					minItems: 1,
 					description:
-						'Reset the sandbox before execution. Use only after setup inputs change or the sandbox is damaged.',
+						'Exact arguments after rwx, such as ["results", "<run-id>"] or ["sandbox", "exec", "--", "npm", "test"].',
 				},
 			},
-			required: ['command'],
+			required: ['args'],
 			additionalProperties: false,
 		},
 		execute: (input) => {
@@ -289,20 +324,20 @@ export default async function (amp: PluginAPI) {
 		const key = commandInputKey(event.input)
 		if (!key) return { action: 'allow' }
 		const command = event.input[key] as string
-		const exportCommand = `if [ -z "\${RWX_ACCESS_TOKEN:-}" ]; then export RWX_ACCESS_TOKEN="\${${sourceVariable}:?${sourceVariable} is not set}"; fi; `
 		return {
 			action: 'modify',
-			input: { ...event.input, [key]: exportCommand + command },
+			input: { ...event.input, [key]: tokenExportCommand(sourceVariable) + command },
 		}
 	})
 
-	await amp.registerSkill({ path: 'skills/rwx-sandbox' })
+	await amp.registerSkill({ path: 'skills/rwx' })
 }
 
 export const testables = {
+	cliAssetName,
 	executeRwx,
-	hasShellSyntax,
+	installLatestRwxCli,
 	rwxArguments,
-	splitSimpleCommand,
+	tokenExportCommand,
 	tokenVariableForOwner,
 }
