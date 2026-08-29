@@ -98,3 +98,96 @@ describe('notifyUser', () => {
 		expect(calls).toBe(0)
 	})
 })
+
+describe('askUserQuestion', () => {
+	test('shows a trimmed question and returns the answer', async () => {
+		let received: Record<string, unknown> | undefined
+		const ctx = {
+			ui: {
+				input: async (options: Record<string, unknown>) => {
+					received = options
+					return '  Use the stable release  '
+				},
+			},
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{ question: '  Which release should I use?  ' },
+			ctx,
+		)
+
+		expect(received).toEqual({
+			title: 'Agent question',
+			helpText: 'Which release should I use?',
+			submitButtonText: 'Answer',
+		})
+		expect(result).toBe('The user answered: Use the stable release')
+	})
+
+	test('falls back to a direct chat question when UI is unavailable', async () => {
+		const unavailable = new Error('No active UI')
+		const ctx = {
+			ui: { input: async () => Promise.reject(unavailable) },
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(unavailable),
+			{ question: 'Which release should I use?' },
+			ctx,
+		)
+
+		expect(result).toContain('Ask the user directly in chat')
+		expect(result).toContain('Which release should I use?')
+	})
+
+	test('reports cancellation without inventing an answer', async () => {
+		const ctx = {
+			ui: { input: async () => undefined },
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{ question: 'Which release should I use?' },
+			ctx,
+		)
+
+		expect(result).toBe('The user cancelled the question without answering.')
+	})
+
+	test('reports errors without inventing an answer', async () => {
+		const ctx = {
+			ui: { input: async () => Promise.reject(new Error('Client disconnected')) },
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{ question: 'Which release should I use?' },
+			ctx,
+		)
+
+		expect(result).toContain('failed: Client disconnected')
+		expect(result).toContain('No answer was received')
+	})
+
+	test('rejects whitespace-only and oversized questions before calling the UI', async () => {
+		let calls = 0
+		const ctx = {
+			ui: {
+				input: async () => {
+					calls++
+				},
+			},
+		} as unknown as PluginToolContext
+
+		for (const question of ['   ', 'x'.repeat(501)]) {
+			const result = await testables.askUserQuestion(
+				ampWithUnavailableError(),
+				{ question },
+				ctx,
+			)
+			expect(result).toContain('must contain 1–500')
+		}
+		expect(calls).toBe(0)
+	})
+})
