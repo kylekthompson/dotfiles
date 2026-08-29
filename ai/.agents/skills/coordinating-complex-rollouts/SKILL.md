@@ -70,7 +70,7 @@ Let workers discover applicable skills. Name a skill in the prompt only when its
 
 Workers run focused checks while iterating. Use one broad local suite only when repository guidance requires it, the change has broad risk, or CI is not an adequate broad gate. Do not run the same broad suite before and after a behavior-neutral rebase.
 
-For a clean restack, record the old and new base/head, `range-diff` verdict, changed-path verdict, and whether conflicts occurred. Do not generate binary patch hashes, synthetic trees, or byte-for-byte proofs unless a conflict, generated artifact, merge anomaly, or regulated audit requirement makes patch identity uncertain. Fresh PR CI is normally the authoritative post-restack check.
+For a clean restack, record the old and new base/head, `range-diff` verdict, changed-path verdict, and whether conflicts occurred. Almost never rerun local checks after a stacked-PR rebase; rely on fresh pull-request CI. Run a local check only when conflicts, generated artifacts, dependency changes, or another material effective-diff change invalidates earlier evidence. Do not generate binary patch hashes, synthetic trees, or byte-for-byte proofs unless a merge anomaly or regulated audit requirement makes patch identity uncertain.
 
 Keep tool output bounded. Query only fields needed for the current gate. Do not print full diffs, manifests, CI definitions, raw provider payloads, or successful test progress. On failure, capture the concise error and the smallest useful log range.
 

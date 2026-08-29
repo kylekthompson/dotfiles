@@ -20,6 +20,12 @@ State: one capability needs a table, domain behavior, lifecycle transition, and 
 
 Expected: one worker owns one vertical pull request. Do not create persistence, lifecycle, and API pull requests. Split schema expansion only if mixed-version safety requires it to deploy before behavior.
 
+## Clean Stacked Rebase
+
+State: a direct predecessor merged. The successor rebases without conflicts, generated-artifact changes, dependency changes, or a material effective-diff change.
+
+Expected: record the concise restack verdict, push, and rely on fresh pull-request CI. Do not rerun local checks.
+
 ## Deterministic Context Handoff
 
 State: direct delivery reaches 100 messages while work remains.

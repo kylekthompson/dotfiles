@@ -6,5 +6,5 @@
 - When opening PRs, always start with a draft PR.
 - Avoid writing comments that simply re-state what the code that follows is doing. Comments that explain the reasoning behind a decision are fine, however.
 - Maintain a similar style and tone as the rest of the code. Consistency is important.
-- Scale verification to the changed risk. Run focused checks locally while iterating. Run a broad suite only when the change has a broad blast radius, repository guidance requires it, or CI cannot provide the authoritative broad check. Do not repeat an unchanged broad check after a behavior-neutral rebase.
+- Scale verification to the changed risk. Run focused checks locally while iterating. Run a broad suite only when the change has a broad blast radius, repository guidance requires it, or CI cannot provide the authoritative broad check. A stacked-PR rebase almost never needs additional local checks: rely on fresh CI unless conflicts, generated artifacts, dependency changes, or another material effective-diff change invalidates earlier evidence.
 - Keep command output bounded. Prefer targeted file ranges, concise status output, and quiet dependency or fetch commands. Do not print full diffs, manifests, CI payloads, or service logs when a summary and selected failures are enough.

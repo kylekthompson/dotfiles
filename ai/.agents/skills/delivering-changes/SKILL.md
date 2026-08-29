@@ -79,7 +79,7 @@ After a material report:
 
 Workers run focused checks while iterating. Run one broad local suite only when repository guidance requires it, the change has broad risk, or CI is not an adequate broad gate.
 
-For a clean restack, record old and new base/head, `range-diff` verdict, changed-path verdict, and conflicts. Do not generate binary patch hashes or synthetic-tree proofs unless a conflict, generated artifact, merge anomaly, or audit requirement makes identity uncertain. Fresh pull-request CI is normally the authoritative post-restack check.
+For a clean restack, record old and new base/head, `range-diff` verdict, changed-path verdict, and conflicts. Almost never rerun local checks after a stacked-PR rebase; rely on fresh pull-request CI. Run a local check only when conflicts, generated artifacts, dependency changes, or another material effective-diff change invalidates earlier evidence. Do not generate binary patch hashes or synthetic-tree proofs unless a merge anomaly or audit requirement makes identity uncertain.
 
 Keep output bounded. Prefer targeted ranges and selected fields. Do not print full diffs, successful test progress, manifests, raw CI payloads, or service logs when a concise verdict is sufficient.
 

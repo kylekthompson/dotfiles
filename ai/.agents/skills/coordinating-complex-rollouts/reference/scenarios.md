@@ -18,7 +18,7 @@ Expected: the coordinator publishes one consolidated replacement brief and sends
 
 State: a successor is coherent and testable, but its predecessor has not merged.
 
-Expected: the worker pushes a draft pull request against the predecessor branch. The moving base blocks merge, not review. After the predecessor merges, only this direct successor restacks. A clean restack records a concise range-diff and changed-path verdict, then relies on fresh pull-request CI.
+Expected: the worker pushes a draft pull request against the predecessor branch. The moving base blocks merge, not review. After the predecessor merges, only this direct successor restacks. A clean restack records a concise range-diff and changed-path verdict, then relies on fresh pull-request CI without local reruns unless a material effective-diff change invalidates earlier evidence.
 
 ## Missed Callback
 
