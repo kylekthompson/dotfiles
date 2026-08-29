@@ -11,6 +11,8 @@ export const description =
 const EVENT_PATTERN = /<!-- delivery-cockpit:event (\{[^\n]*\}) -->/g
 const EVENT_VERSION = 1
 const PAGE_SIZE = 20
+const OWNER_EVENT_TOOLS = ['delivery_start', 'delivery_record'] as const
+const WORKER_EVENT_TOOLS = ['delivery_report'] as const
 
 const DELIVERY_STATES = [
 	'pending',
@@ -339,14 +341,26 @@ function decodeEvents(text: string): DeliveryEvent[] {
 	return events
 }
 
-function eventsFromMessages(messages: ThreadMessage[]): DeliveryEvent[] {
+function eventsFromMessages(
+	messages: ThreadMessage[],
+	acceptedToolNames: readonly string[],
+): DeliveryEvent[] {
 	const events: DeliveryEvent[] = []
+	const toolNames = new Map<string, string>()
+	const accepted = new Set(acceptedToolNames)
 	for (const message of messages) {
+		if (message.role === 'assistant') {
+			for (const block of message.content) {
+				if (block.type === 'tool_use') toolNames.set(block.id, block.name)
+			}
+			continue
+		}
 		if (message.role !== 'user') continue
 		for (const block of message.content) {
 			if (
 				block.type === 'tool_result' &&
 				block.status === 'done' &&
+				accepted.has(toolNames.get(block.toolUseID) ?? '') &&
 				typeof block.output === 'string'
 			) {
 				events.push(...decodeEvents(block.output))
@@ -365,8 +379,11 @@ async function readAllMessages(thread: PluginThread): Promise<ThreadMessage[]> {
 	}
 }
 
-async function readEvents(thread: PluginThread): Promise<DeliveryEvent[]> {
-	return eventsFromMessages(await readAllMessages(thread))
+async function readEvents(
+	thread: PluginThread,
+	acceptedToolNames: readonly string[],
+): Promise<DeliveryEvent[]> {
+	return eventsFromMessages(await readAllMessages(thread), acceptedToolNames)
 }
 
 function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
@@ -453,7 +470,7 @@ function renderLedger(ledger: DeliveryLedger): string {
 
 async function startDelivery(input: StartInput, ctx: PluginToolContext): Promise<string> {
 	const event = normalizeStartInput(input as unknown as Record<string, unknown>, ctx.thread.id)
-	const events = await readEvents(ctx.thread)
+	const events = await readEvents(ctx.thread, OWNER_EVENT_TOOLS)
 	const duplicate = assertNewEvent(events, event) === 'duplicate'
 	if (!duplicate && replay(events).has(event.deliveryId)) {
 		fail(`delivery ${event.deliveryId} already exists with a different start event.`)
@@ -470,7 +487,7 @@ async function recordMaterial(input: RecordInput, ctx: PluginToolContext): Promi
 		ctx.thread.id,
 		MATERIAL_KINDS,
 	)
-	const events = await readEvents(ctx.thread)
+	const events = await readEvents(ctx.thread, OWNER_EVENT_TOOLS)
 	const ledger = ledgerFor(events, event.deliveryId)
 	if (ledger.ownerThread !== ctx.thread.id) fail('material events must be recorded in the owning thread.')
 	if (assertNewEvent(events, event) === 'duplicate') {
@@ -519,7 +536,7 @@ async function reportMaterial(
 		ctx.thread.id,
 		CHILD_REPORT_KINDS,
 	)
-	if (assertNewEvent(await readEvents(ctx.thread), event) === 'duplicate') {
+	if (assertNewEvent(await readEvents(ctx.thread, WORKER_EVENT_TOOLS), event) === 'duplicate') {
 		return `Material event \`${event.eventId}\` was already prepared in this worker thread. No change; do not send it again.`
 	}
 
@@ -534,7 +551,7 @@ async function reportMaterial(
 
 async function deliveryStatus(input: StatusInput, ctx: PluginToolContext): Promise<string> {
 	const deliveryId = identifier(input.deliveryId, 'deliveryId')
-	return renderLedger(ledgerFor(await readEvents(ctx.thread), deliveryId))
+	return renderLedger(ledgerFor(await readEvents(ctx.thread, OWNER_EVENT_TOOLS), deliveryId))
 }
 
 const materialProperties = {

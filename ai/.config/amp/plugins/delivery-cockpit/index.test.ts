@@ -19,6 +19,14 @@ function userText(text: string, id: string): ThreadMessage {
 	return { role: 'user', id, content: [{ type: 'text', text }] }
 }
 
+function toolUse(name: string, id: string): ThreadMessage {
+	return {
+		role: 'assistant',
+		id: `call-${id}`,
+		content: [{ type: 'tool_use', id: `tool-${id}`, name, input: {} }],
+	}
+}
+
 function toolResult(text: string, id: string): ThreadMessage {
 	return {
 		role: 'user',
@@ -132,12 +140,17 @@ describe('delivery event ledger', () => {
 	test('recovers only accepted tool-result events and ignores user-authored markers', () => {
 		const marker = testables.encodeEvent(startEvent)
 		const messages: ThreadMessage[] = [
+			toolUse('delivery_start', 'one'),
 			toolResult(marker, 'one'),
+			toolUse('delivery_report', 'report'),
+			toolResult(marker, 'report'),
+			toolUse('shell_command', 'unrelated'),
+			toolResult(marker, 'unrelated'),
 			userText(marker, 'two'),
 			{ role: 'assistant', id: 'three', content: [{ type: 'text', text: marker }] },
 		]
 
-		expect(testables.eventsFromMessages(messages)).toHaveLength(1)
+		expect(testables.eventsFromMessages(messages, ['delivery_start', 'delivery_record'])).toHaveLength(1)
 	})
 })
 
@@ -168,7 +181,10 @@ describe('material child reports', () => {
 		expect(prepared).toContain('thread `T-owner`')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_BEGIN')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_END')
-		messages.push(toolResult(prepared, 'prepared-report'))
+		messages.push(
+			toolUse('delivery_report', 'prepared-report'),
+			toolResult(prepared, 'prepared-report'),
+		)
 
 		const afterRestart = await testables.reportMaterial(input, ctx)
 		expect(afterRestart).toContain('No change')
@@ -191,7 +207,10 @@ describe('material child reports', () => {
 			ownerThread: 'T-owner',
 		}
 
-		messages.push(toolResult(await testables.reportMaterial(input, ctx), 'prepared-report'))
+		messages.push(
+			toolUse('delivery_report', 'prepared-report'),
+			toolResult(await testables.reportMaterial(input, ctx), 'prepared-report'),
+		)
 		await expect(
 			testables.reportMaterial({ ...input, summary: 'Different summary' }, ctx),
 		).rejects.toThrow('already has a different payload')
@@ -211,7 +230,9 @@ describe('material child reports', () => {
 			workerThread: 'T-worker',
 		}
 		const messages = [
+			toolUse('delivery_start', 'start'),
 			toolResult(testables.encodeEvent(startEvent), 'start'),
+			toolUse('delivery_record', 'assignment'),
 			toolResult(testables.encodeEvent(assignment), 'assignment'),
 		]
 		const ctx = {
@@ -267,9 +288,13 @@ describe('material child reports', () => {
 			workerThread: 'T-replacement',
 		}
 		const messages = [
+			toolUse('delivery_start', 'start'),
 			toolResult(testables.encodeEvent(startEvent), 'start'),
+			toolUse('delivery_record', 'assignment'),
 			toolResult(testables.encodeEvent(assignment), 'assignment'),
+			toolUse('delivery_record', 'promotion'),
 			toolResult(testables.encodeEvent(promoted), 'promotion'),
+			toolUse('delivery_record', 'reassignment'),
 			toolResult(testables.encodeEvent(reassignment), 'reassignment'),
 		]
 		const ctx = {
@@ -324,13 +349,19 @@ describe('material child reports', () => {
 		)
 
 		const promoted = { ...report, sourceThread: 'T-owner' }
-		const events = testables.eventsFromMessages([
-			toolResult(testables.encodeEvent(startEvent), 'start'),
-			userText(testables.encodeEvent(report), 'early-proposal'),
-			toolResult(testables.encodeEvent(assignment), 'assignment'),
-			toolResult(testables.encodeEvent(promoted), 'promotion'),
-			userText(testables.encodeEvent(report), 'duplicate-proposal'),
-		])
+		const events = testables.eventsFromMessages(
+			[
+				toolUse('delivery_start', 'start'),
+				toolResult(testables.encodeEvent(startEvent), 'start'),
+				userText(testables.encodeEvent(report), 'early-proposal'),
+				toolUse('delivery_record', 'assignment'),
+				toolResult(testables.encodeEvent(assignment), 'assignment'),
+				toolUse('delivery_record', 'promotion'),
+				toolResult(testables.encodeEvent(promoted), 'promotion'),
+				userText(testables.encodeEvent(report), 'duplicate-proposal'),
+			],
+			['delivery_start', 'delivery_record'],
+		)
 		const ledger = testables.replay(events).get('billing')
 		expect(ledger?.items.find((item) => item.id === 'api')?.state).toBe('review')
 		expect(ledger?.eventCount).toBe(3)
