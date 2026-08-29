@@ -100,7 +100,7 @@ describe('notifyUser', () => {
 })
 
 describe('askUserQuestion', () => {
-	test('shows a trimmed question and returns the answer', async () => {
+	test('defaults to a free-text question and returns the answer', async () => {
 		let received: Record<string, unknown> | undefined
 		const ctx = {
 			ui: {
@@ -123,6 +123,81 @@ describe('askUserQuestion', () => {
 			submitButtonText: 'Answer',
 		})
 		expect(result).toBe('The user answered: Use the stable release')
+	})
+
+	test('shows options with a free-text fallback for a choice question', async () => {
+		let received: Record<string, unknown> | undefined
+		const ctx = {
+			ui: {
+				select: async (options: Record<string, unknown>) => {
+					received = options
+					return 'Only invited customers'
+				},
+			},
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{
+				responseType: 'choice',
+				question: 'Who can install the app?',
+				options: ['Anyone', 'Managed organizations'],
+			},
+			ctx,
+		)
+
+		expect(received).toEqual({
+			title: 'Agent question',
+			message: 'Who can install the app?',
+			options: ['Anyone', 'Managed organizations'],
+			allowOther: true,
+		})
+		expect(result).toBe('The user answered: Only invited customers')
+	})
+
+	test('shows a confirmation for a yes-no question', async () => {
+		let received: Record<string, unknown> | undefined
+		const ctx = {
+			ui: {
+				confirm: async (options: Record<string, unknown>) => {
+					received = options
+					return false
+				},
+			},
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{ responseType: 'yes-no', question: 'Should old clients remain supported?' },
+			ctx,
+		)
+
+		expect(received).toEqual({
+			title: 'Agent question',
+			message: 'Should old clients remain supported?',
+			confirmButtonText: 'Yes',
+		})
+		expect(result).toBe('The user answered: No')
+	})
+
+	test('rejects a choice question without enough options', async () => {
+		let calls = 0
+		const ctx = {
+			ui: {
+				select: async () => {
+					calls++
+				},
+			},
+		} as unknown as PluginToolContext
+
+		const result = await testables.askUserQuestion(
+			ampWithUnavailableError(),
+			{ responseType: 'choice', question: 'Who can install?', options: ['Anyone'] },
+			ctx,
+		)
+
+		expect(result).toContain('must include 2–5')
+		expect(calls).toBe(0)
 	})
 
 	test('falls back to a direct chat question when UI is unavailable', async () => {

@@ -8,7 +8,9 @@ type NotifyInput = {
 }
 
 type QuestionInput = {
+	responseType?: 'choice' | 'yes-no' | 'text'
 	question: string
+	options?: string[]
 }
 
 async function notifyUser(
@@ -46,13 +48,40 @@ async function askUserQuestion(
 	if (question.length === 0 || question.length > 500) {
 		return 'The question was not shown. It must contain 1–500 non-whitespace characters.'
 	}
+	const responseType = input.responseType ?? 'text'
+	const options = input.options ?? []
+	if (responseType === 'choice' && (options.length < 2 || options.length > 5)) {
+		return 'The question was not shown. A choice question must include 2–5 options.'
+	}
 
 	try {
-		const answer = await ctx.ui.input({
-			title: 'Agent question',
-			helpText: question,
-			submitButtonText: 'Answer',
-		})
+		let answer: string | undefined
+		switch (responseType) {
+			case 'choice':
+				answer = await ctx.ui.select({
+					title: 'Agent question',
+					message: question,
+					options,
+					allowOther: true,
+				})
+				break
+			case 'yes-no':
+				answer = (await ctx.ui.confirm({
+					title: 'Agent question',
+					message: question,
+					confirmButtonText: 'Yes',
+				}))
+					? 'Yes'
+					: 'No'
+				break
+			case 'text':
+				answer = await ctx.ui.input({
+					title: 'Agent question',
+					helpText: question,
+					submitButtonText: 'Answer',
+				})
+				break
+		}
 		if (answer === undefined) return 'The user cancelled the question without answering.'
 
 		const trimmedAnswer = answer.trim()
@@ -61,7 +90,13 @@ async function askUserQuestion(
 			: `The user answered: ${trimmedAnswer}`
 	} catch (error) {
 		if (error instanceof Error && amp.helpers.isPluginUINotAvailableError(error)) {
-			return `Interactive UI is unavailable. Ask the user directly in chat instead: ${question}`
+			const choices =
+				responseType === 'choice'
+					? ` Options: ${options.join(' | ')}. The user can also give another answer.`
+					: responseType === 'yes-no'
+						? ' Answer Yes or No.'
+						: ''
+			return `Interactive UI is unavailable. Ask the user directly in chat instead: ${question}${choices}`
 		}
 		if (error instanceof Error && error.name === 'AbortError') {
 			return 'The question was cancelled without an answer.'
@@ -98,15 +133,29 @@ export default function (amp: PluginAPI) {
 		name: 'ask_user_question',
 		title: 'Ask user question',
 		description:
-			'Ask the Amp user one concise free-text question in an interactive dialog and return their answer. Use when the thread cannot continue without user input.',
+			'Ask the Amp user one concise question in an interactive dialog and return their answer. Use a choice list with free-text fallback, a yes/no confirmation, or free text. Use when the thread cannot continue without user input.',
 		inputSchema: {
 			type: 'object',
 			properties: {
+				responseType: {
+					type: 'string',
+					enum: ['choice', 'yes-no', 'text'],
+					description:
+						'The response UI. choice shows options and a free-text fallback; yes-no shows a confirmation; text shows only a text field. Defaults to text when omitted.',
+				},
 				question: {
 					type: 'string',
 					minLength: 1,
 					maxLength: 500,
 					description: 'One concise, self-contained question for the user.',
+				},
+				options: {
+					type: 'array',
+					items: { type: 'string' },
+					minItems: 2,
+					maxItems: 5,
+					description:
+						'Two to five distinct answers for a choice question. Omit for yes-no and text questions.',
 				},
 			},
 			required: ['question'],
