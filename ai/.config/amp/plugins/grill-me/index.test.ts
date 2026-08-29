@@ -52,6 +52,8 @@ describe('askQuestion', () => {
 		expect(result).toContain('Ask this question directly in chat')
 		expect(result).toContain(input.question)
 		expect(result).toContain(input.options.join(' | '))
+		expect(result).toContain(`**Recommend:** ${input.recommendation}`)
+		expect(result).toContain(`**Main tradeoff:** ${input.tradeoff}`)
 	})
 
 	test('treats cancellation as a request to stop grilling', async () => {

@@ -7,15 +7,16 @@ type QuestionInput = {
 	title: string
 	question: string
 	options: string[]
-	recommendation?: string
-	tradeoff?: string
+	recommendation: string
+	tradeoff: string
 }
 
 function dialogMessage(input: QuestionInput): string {
-	const details = [input.question]
-	if (input.recommendation) details.push(`**Recommend:** ${input.recommendation}`)
-	if (input.tradeoff) details.push(`**Main tradeoff:** ${input.tradeoff}`)
-	return details.join('\n\n')
+	return [
+		input.question,
+		`**Recommend:** ${input.recommendation}`,
+		`**Main tradeoff:** ${input.tradeoff}`,
+	].join('\n\n')
 }
 
 async function askQuestion(
@@ -29,7 +30,7 @@ async function askQuestion(
 			message: dialogMessage(input),
 			options: input.options,
 			allowOther: true,
-			initialValue: input.options.includes(input.recommendation ?? '')
+			initialValue: input.options.includes(input.recommendation)
 				? input.recommendation
 				: undefined,
 		})
@@ -41,9 +42,9 @@ async function askQuestion(
 		if (error instanceof Error && amp.helpers.isPluginUINotAvailableError(error)) {
 			return [
 				'Interactive UI is not available. Ask this question directly in chat instead.',
-				`Question: ${input.question}`,
+				dialogMessage(input),
 				`Options: ${input.options.join(' | ')}`,
-			].join('\n')
+			].join('\n\n')
 		}
 		throw error
 	}
