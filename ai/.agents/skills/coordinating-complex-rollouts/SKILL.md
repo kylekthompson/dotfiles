@@ -29,6 +29,8 @@ Read the planning thread once. Publish one brief with:
 - PR dependency graph, merge order, and rollout gates
 - a compact ledger: `item | worker | PR | dependency | state | next gate`
 
+Load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. The plugin transcript is the event log for the compact ledger. Keep approval policy and unresolved judgment in the brief, not plugin state.
+
 Publish a new consolidated brief only when a decision, scope boundary, dependency, or gate changes. Edit or supersede the source of truth instead of producing a chain of routine status records. Workers read the brief and their assigned item, not the full planning transcript.
 
 Verify repository identity, default branch, pull-request state, and external identifiers through their authoritative service. Ask the user only about decisions that can change behavior or create shared risk.
@@ -49,10 +51,12 @@ Brief: <coordinator link and item>
 Hazard: <only item-specific risk>
 Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
-Report: <PR link, checks, blocker, and material manual action>
+Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> only on a listed material transition; reuse one eventId for retries
 ```
 
 Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
+
+Create workers with Amp's core `create_thread` tool. After creation succeeds, call `delivery_record` with `kind: worker_started`, `state: active`, the returned worker thread ID, and its first material gate. Do not retry an uncertain create call; verify whether the child exists first.
 
 Do not repeat generic agent policy, repository guidance, the full plan, or irreversible-action warnings in every prompt. Add a safety warning only when the brief cannot prevent a plausible shared action.
 
@@ -86,11 +90,13 @@ Workers report these transitions once:
 
 Do not poll workers. Ask them to report. Query GitHub or CI only when a reported event reaches a gate, the user asks for status, or stale state can release a dependency. Use one watcher or one later query, not a watch plus repeated status calls.
 
+`delivery_report` appends each unique direct-child report to this coordinator and updates the replayable ledger event stream. It rejects routine event kinds and conflicting reuse of an event ID. Call `delivery_status` after a report reaches a gate or when status is requested, not as polling.
+
 On each material event:
 
 1. Inspect the changed worker and pull request, plus a direct dependent only when needed.
 2. Resolve review work, blockers, and direct-successor restacks.
-3. Update the compact ledger once.
+3. Record any coordinator decision with `delivery_record`, then render the compact ledger when the event reaches a gate.
 4. Dispatch newly unblocked work.
 5. Tell the planning thread only about a decision, material blocker, review-ready PR, explicit approval request, or completion.
 
@@ -106,7 +112,7 @@ After a merge, verify the merge and release only the direct successor. A success
 
 ### Finish or hand off
 
-At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, ledger, approval state, and next gate. Stop the predecessor after the successor accepts ownership.
+At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, the current `delivery_status` ledger, approval state, and next gate. After it accepts ownership, it loads `delivery-cockpit:managing-deliveries`, starts the same item graph, records each current non-pending item state and worker assignment with new handoff event IDs, and compares the rendered ledger. Give each redirected worker the new coordinator thread ID for future `delivery_report.ownerThread` calls. Redirect reports and stop the predecessor only after that explicit recovery succeeds.
 
 Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Send one final digest with PR links, rollout verdicts, and remaining action, then archive the coordinator.
 

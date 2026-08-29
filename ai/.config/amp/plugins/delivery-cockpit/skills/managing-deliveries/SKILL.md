@@ -48,7 +48,7 @@ Workers call `delivery_report` only for:
 - pull request ready for review or merge
 - work stopped or superseded
 
-Each report supplies the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. The report tool accepts only direct child threads, appends the event to the direct parent, and suppresses a retry with the same `eventId`. A reused ID with different content is an error.
+Each report supplies the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. By default, the report goes to the direct parent. After an owner handoff, a worker may set `ownerThread` only when the new owner's recovered ledger assigns that same worker thread to the item. The plugin suppresses a retry with the same `eventId`; a reused ID with different content is an error.
 
 The owning thread calls `delivery_record` for its own material decisions and verified transitions, including explicit approval, merge, rollout, completion, or abandonment. Recording approval does not grant it and does not perform the approved action. Never infer approval from a state, report, or CI result.
 

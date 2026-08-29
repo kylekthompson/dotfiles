@@ -124,6 +124,7 @@ type RecordInput = {
 
 type ReportInput = Omit<RecordInput, 'kind' | 'workerThread'> & {
 	kind: ChildReportKind
+	ownerThread?: string
 }
 
 type StatusInput = { deliveryId: string }
@@ -156,6 +157,12 @@ function eventIdentifier(value: unknown): string {
 	if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(result)) {
 		fail('eventId contains unsupported characters.')
 	}
+	return result
+}
+
+function threadIdentifier(value: unknown, name: string): string {
+	const result = requiredString(value, name, 64)
+	if (!/^T-[A-Za-z0-9-]+$/.test(result)) fail(`${name} must be an Amp thread ID.`)
 	return result
 }
 
@@ -240,9 +247,7 @@ function normalizeMaterialInput(
 	allowedKinds: readonly string[],
 ): MaterialEvent {
 	const workerThread = optionalString(input.workerThread, 'workerThread', 64)
-	if (workerThread && !/^T-[A-Za-z0-9-]+$/.test(workerThread)) {
-		fail('workerThread must be an Amp thread ID.')
-	}
+	if (workerThread) threadIdentifier(workerThread, 'workerThread')
 	const pullRequest = optionalString(input.pullRequest, 'pullRequest', 500)
 	if (pullRequest && !/^https:\/\/\S+$/.test(pullRequest)) {
 		fail('pullRequest must be an HTTPS URL.')
@@ -521,30 +526,40 @@ async function reportMaterial(
 	locks: LockMap = ownerLocks,
 ): Promise<string> {
 	const parentThreadId = await ctx.thread.parentThreadID()
-	if (!parentThreadId) fail('delivery_report requires a direct child thread with an owning parent.')
+	if (!parentThreadId) fail('delivery_report requires a child thread with an owning parent.')
+	const ownerThreadId = input.ownerThread
+		? threadIdentifier(input.ownerThread, 'ownerThread')
+		: parentThreadId
 	const event = normalizeMaterialInput(
 		{ ...(input as unknown as Record<string, unknown>), workerThread: ctx.thread.id },
 		ctx.thread.id,
 		CHILD_REPORT_KINDS,
 	)
-	const parent = amp.threads.get(parentThreadId)
+	const owner = amp.threads.get(ownerThreadId as `T-${string}`)
 
-	return withOwnerLock(locks, parentThreadId, async () => {
-		const events = await readEvents(parent)
+	return withOwnerLock(locks, ownerThreadId, async () => {
+		const events = await readEvents(owner)
 		const ledger = ledgerFor(events, event.deliveryId)
-		if (ledger.ownerThread !== parentThreadId) fail('the direct parent does not own this delivery.')
-		if (!ledger.items.some((item) => item.id === event.itemId)) {
+		if (ledger.ownerThread !== ownerThreadId) fail('the target thread does not own this delivery.')
+		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
+		if (!item) {
 			fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
+		}
+		if (item.workerThread && item.workerThread !== ctx.thread.id) {
+			fail('the target ledger assigns this item to a different worker.')
+		}
+		if (ownerThreadId !== parentThreadId && item.workerThread !== ctx.thread.id) {
+			fail('the target ledger does not assign this item to the reporting worker.')
 		}
 		if (assertNewEvent(events, event) === 'duplicate') {
 			return `Material event \`${event.eventId}\` is already in the owning thread. No change.`
 		}
 
-		await parent.appendUserMessage(
+		await owner.appendUserMessage(
 			{ type: 'user-message', content: reportMessage(event) },
 			{ steer: true },
 		)
-		return `Recorded material event \`${event.eventId}\` in owning thread ${parentThreadId}.`
+		return `Recorded material event \`${event.eventId}\` in owning thread ${ownerThreadId}.`
 	})
 }
 
@@ -636,7 +651,7 @@ export default async function (amp: PluginAPI) {
 		title: 'Report material delivery event',
 		transcriptGroup: { active: 'Reporting delivery event', complete: 'Reported delivery event' },
 		description:
-			'Append one idempotent material worker report to the direct parent delivery thread. Use only for a listed report transition, never for routine progress.',
+			'Append one idempotent material worker report to its owning delivery thread. Use only for a listed report transition, never for routine progress.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -645,6 +660,11 @@ export default async function (amp: PluginAPI) {
 					type: 'string',
 					enum: CHILD_REPORT_KINDS,
 					description: 'Material worker report transition.',
+				},
+				ownerThread: {
+					type: 'string',
+					description:
+						'Redirected owner thread ID after a handoff. Omit for the direct parent. The target ledger must assign this worker to the item.',
 				},
 			},
 			required: ['eventId', 'deliveryId', 'itemId', 'kind', 'state', 'summary', 'nextGate'],

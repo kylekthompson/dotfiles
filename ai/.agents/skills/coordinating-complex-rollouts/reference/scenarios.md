@@ -24,10 +24,16 @@ Expected: the worker pushes a draft pull request against the predecessor branch.
 
 State: a worker does not report that CI completed or a pull request merged. The coordinator wakes after prolonged inactivity to request approval for a dependent action.
 
-Expected: the pre-approval bounded sweep reads authoritative pull-request head, CI, and merge state, updates the ledger, and processes only direct dependents. It does not restart periodic polling or reread every worker thread.
+Expected: the pre-approval bounded sweep reads authoritative pull-request head, CI, and merge state, records one material reconciliation event with a stable event ID, and processes only direct dependents. It does not restart periodic polling or reread every worker thread.
 
 ## Fresh Coordinator Handoff
 
 State: an implementation phase is complete, no production write is in flight, and coordinator context is large.
 
-Expected: the predecessor publishes one consolidated brief, current ledger, approval state, and next gate. The successor explicitly accepts ownership before reports are redirected and the predecessor is archived. There is never more than one dispatching coordinator.
+Expected: the predecessor publishes one consolidated brief, rendered delivery ledger, approval state, and next gate. The successor explicitly accepts ownership, reconstructs the same item states and worker assignments in its own thread-visible ledger, and compares the result before workers receive the new report owner ID and the predecessor is archived. There is never more than one dispatching coordinator.
+
+## Duplicate Material Report
+
+State: a worker report is delivered at least once across a plugin reload.
+
+Expected: the coordinator transcript contains one event for the stable event ID and the compact ledger applies it once. A retry reports no change; a different payload with the same ID stops reconciliation as a conflict.

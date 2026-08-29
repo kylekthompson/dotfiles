@@ -183,6 +183,76 @@ describe('material child reports', () => {
 				ctx,
 				new Map(),
 			),
-		).rejects.toThrow('direct parent does not own this delivery')
+		).rejects.toThrow('target thread does not own this delivery')
+	})
+
+	test('routes a redirected report only when the new owner assigns that worker', async () => {
+		const assignment = {
+			version: 1 as const,
+			eventId: 'handoff-api-worker',
+			deliveryId: 'billing',
+			kind: 'worker_started' as const,
+			itemId: 'api',
+			state: 'active' as const,
+			summary: 'Recovered worker assignment.',
+			nextGate: 'Draft PR',
+			sourceThread: 'T-new-owner',
+			workerThread: 'T-worker',
+		}
+		const messages = [
+			toolResult(testables.encodeEvent({ ...startEvent, ownerThread: 'T-new-owner' }), 'start'),
+			toolResult(testables.encodeEvent(assignment), 'assignment'),
+		]
+		let appended = false
+		const owner = {
+			id: 'T-new-owner',
+			messages: async () => messages,
+			appendUserMessage: async () => {
+				appended = true
+			},
+		} as unknown as PluginThread
+		const amp = { threads: { get: () => owner } } as unknown as PluginAPI
+		const ctx = {
+			thread: { id: 'T-worker', parentThreadID: async () => 'T-old-owner' },
+		} as unknown as PluginToolContext
+
+		await testables.reportMaterial(
+			amp,
+			{
+				eventId: 'api-ready-after-handoff',
+				deliveryId: 'billing',
+				itemId: 'api',
+				kind: 'ready_for_review',
+				state: 'review',
+				summary: 'Ready in the new owner.',
+				nextGate: 'Review',
+				ownerThread: 'T-new-owner',
+			},
+			ctx,
+			new Map(),
+		)
+
+		expect(appended).toBe(true)
+
+		const imposter = {
+			thread: { id: 'T-imposter', parentThreadID: async () => 'T-old-owner' },
+		} as unknown as PluginToolContext
+		await expect(
+			testables.reportMaterial(
+				amp,
+				{
+					eventId: 'api-imposter-report',
+					deliveryId: 'billing',
+					itemId: 'api',
+					kind: 'ready_for_review',
+					state: 'review',
+					summary: 'Wrong worker.',
+					nextGate: 'Review',
+					ownerThread: 'T-new-owner',
+				},
+				imposter,
+				new Map(),
+			),
+		).rejects.toThrow('assigns this item to a different worker')
 	})
 })

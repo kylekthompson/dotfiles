@@ -30,4 +30,10 @@ Expected: record the concise restack verdict, push, and rely on fresh pull-reque
 
 State: direct delivery reaches 100 messages while work remains.
 
-Expected: at the next material event, and before message 121, publish one compact handoff and create a continuation with `agent_mode: medium`. It acknowledges ownership, active workers are redirected once, and the predecessor stops dispatching. The same handoff occurs at a major phase boundary when work remains, unless an unverified production write is active.
+Expected: at the next material event, and before message 121, publish one compact handoff with the rendered delivery ledger and create a continuation with `agent_mode: medium`. It acknowledges ownership, reconstructs the same item states and worker assignments in a new thread-visible ledger, compares the rendered result, then receives each active worker redirect once with the new report owner ID. The predecessor stops dispatching. The same handoff occurs at a major phase boundary when work remains, unless an unverified production write is active.
+
+## Duplicate Material Report
+
+State: a worker reports a draft pull request, the plugin reloads after appending the event, and the worker retries with the same event ID.
+
+Expected: the owning thread contains one material event and one resulting ledger transition. The retry reports no change. Reusing the event ID with different content is an error.
