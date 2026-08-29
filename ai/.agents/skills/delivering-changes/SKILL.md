@@ -1,6 +1,6 @@
 ---
 name: delivering-changes
-description: Delivers a completed multi-PR plan directly from its planning thread without a persistent coordinator. Use when the user asks to start, implement, or continue delivery from a settled plan.
+description: Delivers a settled plan with multiple pull requests or parallel workstreams directly from its planning thread. Use when the user explicitly asks to start or continue multi-PR delivery. Do not use for ordinary single-PR implementation.
 compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
@@ -17,11 +17,15 @@ Before dispatch:
 3. Verify the repository and remote default branch through authoritative sources.
 4. Ask only about unresolved decisions that can change behavior, ownership, persisted compatibility, or shared risk.
 
+If the outcome fits one pull request, implement it normally in the current thread. Do not load this workflow or create delivery workers.
+
 If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `coordinating-complex-rollouts` instead.
 
 ## Dispatch Bounded Workers
 
 Keep at most five active workers and five open delivery pull requests. Parallelize independent work. For a stack, create a successor from its pushed direct predecessor.
+
+Prefer independently deployable vertical slices. One pull request should deliver one cohesive capability through the persistence, domain, API, and lifecycle layers it needs. Do not split a capability into persistence/API/lifecycle pull requests only because those are technical layers. Split when capabilities can ship independently or a concrete compatibility, rollout, ownership, or review-risk boundary requires it. A schema-first expansion is separate only when mixed-version safety requires storage to deploy before dependent behavior.
 
 Each worker owns investigation through one draft pull request. Use a short prompt:
 
@@ -31,9 +35,12 @@ Own: <repository paths/components and exclusions>
 Base: <remote branch or pushed predecessor>
 Plan: <planning-thread link and relevant item>
 Hazard: <only item-specific risk>
+Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
 Report here: <draft PR, checks, blocker, or material manual action>
 ```
+
+Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
 
 Do not copy the whole plan, generic agent policy, repository guidance, or routine safety disclaimers. Add a safety warning only when omission could plausibly permit an irreversible action before the worker reads the plan.
 
@@ -78,9 +85,15 @@ Keep output bounded. Prefer targeted ranges and selected fields. Do not print fu
 
 ## Use Short-Lived Specialists
 
-Create a separate, bounded review worker only for an independent review that materially reduces risk. Give it the pull request, intent, changed boundaries, and exact concern. It returns findings, then stops.
+Create a separate, bounded review worker only for an independent review that materially reduces risk. Set its mode explicitly: `medium` by default, or `high` only for a named difficult design or safety decision. Give it the pull request, intent, changed boundaries, and exact concern. It returns findings, then stops.
 
-Create a rollout verifier only after an approved merge requires external rollout evidence. It verifies the specific deployment, migration, health, or smoke gates and reports once. It does not become the implementation coordinator.
+Create a medium-mode rollout verifier only after an approved merge requires external rollout evidence. It verifies the specific deployment, migration, health, or smoke gates and reports once. It does not become the implementation coordinator.
+
+## Hand Off Growing Context
+
+At the first material event after this thread reaches 100 messages, and no later than 120 messages, hand delivery to a fresh medium-mode continuation thread. Also hand off at a major phase boundary when more delivery remains, even if the count is lower.
+
+Publish one compact handoff containing the plan link, pull-request graph and current heads, worker/report routes, settled decisions, approval state, checks already accepted, blockers, and next gate. Create the continuation with `agent_mode: medium`, require it to acknowledge ownership, then redirect each active worker once. After acknowledgement, the predecessor stops dispatching and status checks. Do not keep two delivery owners active or hand off during an unverified production write.
 
 ## Keep Shared Actions Explicit
 
@@ -89,3 +102,5 @@ Do not merge, deploy, publish, run production schema or data migrations, make pr
 After a stacked pull request merges, verify it and restack only its direct successor. Separate implementation, merge, activation, and contraction gates. Use `planning-rolling-deploys` for concrete persisted-contract rollout decisions.
 
 Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Return one digest with pull-request links, rollout verdicts, and remaining action.
+
+Use [reference/scenarios.md](reference/scenarios.md) when changing this skill or resolving an ambiguous delivery rule.

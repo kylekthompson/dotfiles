@@ -16,6 +16,8 @@ If this thread is already the coordinator, skip this section.
 2. Create one medium-mode orb thread in the owning project. Coordination is mostly state reconciliation; use a bounded high-mode worker or advisor only for a concrete unresolved design or safety decision. Give the coordinator the planning-thread link, desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
 3. Return the coordinator link. The planning thread does not also implement or relay routine status.
 
+Set `agent_mode: medium` explicitly when creating the coordinator. Never rely on inherited mode.
+
 ## Run the Delivery
 
 ### Record one compact brief
@@ -35,6 +37,8 @@ Verify repository identity, default branch, pull-request state, and external ide
 
 Keep at most five active workers and five open delivery pull requests. Parallelize independent work, including stable successors in a stack. Branch a stacked successor from its pushed predecessor.
 
+Prefer independently deployable vertical slices. Keep one cohesive capability and its required persistence, domain, API, and lifecycle behavior in one pull request. Do not create technical-layer stacks unless a concrete compatibility, rollout, ownership, or review-risk boundary requires the split. A schema-first expansion is separate only when mixed-version safety requires storage to deploy before dependent behavior.
+
 Each worker owns one bounded result and one draft pull request. Use a short prompt:
 
 ```text
@@ -43,9 +47,12 @@ Own: <paths/components and exclusions>
 Base: <remote branch or pushed predecessor>
 Brief: <coordinator link and item>
 Hazard: <only item-specific risk>
+Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
 Report: <PR link, checks, blocker, and material manual action>
 ```
+
+Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
 
 Do not repeat generic agent policy, repository guidance, the full plan, or irreversible-action warnings in every prompt. Add a safety warning only when the brief cannot prevent a plausible shared action.
 
@@ -99,7 +106,7 @@ After a merge, verify the merge and release only the direct successor. A success
 
 ### Finish or hand off
 
-At a safe phase boundary, start a fresh coordinator only when context growth is causing repeated history reads or missed state. Give it one consolidated brief, ledger, approval state, and next gate. Stop the predecessor after the successor accepts ownership.
+At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, ledger, approval state, and next gate. Stop the predecessor after the successor accepts ownership.
 
 Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Send one final digest with PR links, rollout verdicts, and remaining action, then archive the coordinator.
 
