@@ -198,6 +198,10 @@ function rwxArguments(input: RwxInput): string[] {
 	return input.args
 }
 
+function usesSandboxQueue(input: RwxInput): boolean {
+	return input.args[0] === 'sandbox'
+}
+
 function runProcess(args: string[], cwd: string, token: string): Promise<ProcessResult> {
 	return new Promise((resolve) => {
 		const child = spawn('rwx', args, {
@@ -305,7 +309,10 @@ export default async function (amp: PluginAPI) {
 			additionalProperties: false,
 		},
 		execute: (input) => {
-			const execute = () => executeRwx(input as RwxInput, workspacePath, sourceVariable)
+			const rwxInput = input as RwxInput
+			const execute = () => executeRwx(rwxInput, workspacePath, sourceVariable)
+			if (!usesSandboxQueue(rwxInput)) return execute()
+
 			const result = executionQueue.then(execute, execute)
 			executionQueue = result.then(
 				() => undefined,
@@ -340,4 +347,5 @@ export const testables = {
 	rwxArguments,
 	tokenExportCommand,
 	tokenVariableForOwner,
+	usesSandboxQueue,
 }

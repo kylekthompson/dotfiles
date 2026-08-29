@@ -17,7 +17,7 @@ Pass the exact arguments that follow the `rwx` executable:
 - Logs: `args: ["logs", "<task-id>"]`
 - Identity: `args: ["whoami"]`
 
-The tool selects the access token for the repository owner, serializes execution for this worktree, redacts the token from output, and returns bounded output with the exit status.
+The tool selects the access token for the repository owner, redacts the token from output, and returns bounded output with the exit status. It serializes `rwx sandbox` operations for this worktree because they share synchronized state; other RWX commands can run concurrently.
 
 ## Use RWX Sandboxes
 

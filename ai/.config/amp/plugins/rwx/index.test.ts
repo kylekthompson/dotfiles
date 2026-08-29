@@ -19,6 +19,12 @@ describe('RWX command construction', () => {
 	test('rejects an empty command', () => {
 		expect(() => testables.rwxArguments({ args: [] })).toThrow('must not be empty')
 	})
+
+	test('serializes only sandbox commands', () => {
+		expect(testables.usesSandboxQueue({ args: ['sandbox', 'list'] })).toBeTrue()
+		expect(testables.usesSandboxQueue({ args: ['results', 'run-id'] })).toBeFalse()
+		expect(testables.usesSandboxQueue({ args: ['logs', 'task-id'] })).toBeFalse()
+	})
 })
 
 describe('orb CLI installation', () => {
