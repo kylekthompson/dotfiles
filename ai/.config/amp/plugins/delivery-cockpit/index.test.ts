@@ -152,6 +152,35 @@ describe('delivery event ledger', () => {
 
 		expect(testables.eventsFromMessages(messages, ['delivery_start', 'delivery_record'])).toHaveLength(1)
 	})
+
+	test('records one event without repeating the full ledger', async () => {
+		const messages = [
+			toolUse('delivery_start', 'start'),
+			toolResult(testables.encodeEvent(startEvent), 'start'),
+		]
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => messages },
+		} as unknown as PluginToolContext
+
+		const result = await testables.recordMaterial(
+			{
+				eventId: 'api-worker-started',
+				deliveryId: 'billing',
+				itemId: 'api',
+				kind: 'worker_started',
+				state: 'active',
+				summary: 'Worker assigned.',
+				nextGate: 'Draft PR',
+				workerThread: 'T-worker',
+			},
+			ctx,
+		)
+
+		expect(result).toContain('<!-- delivery-cockpit:event')
+		expect(result).toContain('Recorded `worker_started` for `api`.')
+		expect(result).not.toContain('| item | worker |')
+		expect(result).not.toContain('Delivery `billing`')
+	})
 })
 
 describe('material child reports', () => {

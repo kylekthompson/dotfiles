@@ -504,10 +504,9 @@ async function recordMaterial(input: RecordInput, ctx: PluginToolContext): Promi
 	) {
 		fail(`item ${event.itemId} is assigned to a different worker.`)
 	}
+	ledgerFor([...events, event], event.deliveryId)
 
-	return `${encodeEvent(event)}\n\nRecorded \`${event.kind}\` for \`${event.itemId}\`.\n\n${renderLedger(
-		ledgerFor([...events, event], event.deliveryId),
-	)}`
+	return `${encodeEvent(event)}\n\nRecorded \`${event.kind}\` for \`${event.itemId}\`.`
 }
 
 function reportMessage(event: MaterialEvent): string {
