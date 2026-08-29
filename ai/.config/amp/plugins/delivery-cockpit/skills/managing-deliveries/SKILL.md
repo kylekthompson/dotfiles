@@ -10,7 +10,7 @@ builtin-tools:
 
 # Manage Delivery Events
 
-Keep delivery state in the owning Amp thread while workers produce bounded pull requests. The transcript is the event log. The plugin reconstructs its compact ledger from accepted tool results and authenticated child report messages, so plugin memory is not authoritative.
+Keep delivery state in the owning Amp thread while workers produce bounded pull requests. The transcript is the event log. The plugin reconstructs its compact ledger only from owner-accepted tool results, so plugin memory is not authoritative. Worker messages are proposals until the owner promotes them.
 
 ## Start in the Owning Thread
 
@@ -22,7 +22,7 @@ The item graph records dependencies but does not enforce dispatch or merge order
 
 ## Dispatch with Amp's Core Thread Tool
 
-Use `create_thread`, not a plugin tool, so Amp remains responsible for project selection, executor placement, explicit agent mode, and authenticated report routing. After creation succeeds, call `delivery_record` with:
+Use `create_thread`, not a plugin tool, so Amp remains responsible for project selection, executor placement, explicit agent mode, and report routing. After creation succeeds, call `delivery_record` with:
 
 - a new stable `eventId`
 - `kind: worker_started`
@@ -33,8 +33,10 @@ Use `create_thread`, not a plugin tool, so Amp remains responsible for project s
 Add this line to the worker prompt:
 
 ```text
-Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for item <item-id> with ownerThread <owning-thread-id> only when a listed material transition occurs. Then use send_thread_message once to send the exact prepared content to that owner. Reuse one eventId for retries.
+Delivery report: wait until the owner confirms this assignment is recorded. Then load delivery-cockpit:managing-deliveries and call delivery_report for item <item-id> with ownerThread <owning-thread-id> only when a listed material transition occurs. Use send_thread_message once to send the exact prepared content to that owner. Reuse one eventId for retries.
 ```
+
+After `worker_started` is recorded, use `send_thread_message` once to tell the worker that its assignment is recorded and reporting is enabled. This prevents a fast worker from reporting before the owner has committed its assignment.
 
 Do not retry an uncertain `create_thread` call. Verify whether the child exists first. Child creation is deliberately outside the event ledger because the stable Plugin API has no idempotency key for that side effect.
 
@@ -50,22 +52,20 @@ Workers call `delivery_report` only for:
 
 Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the current owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. After a handoff, replace `ownerThread` with the new owner's ID.
 
-`delivery_report` reads only the connected worker transcript. It suppresses a normal retry with the same `eventId`; a reused ID with different content is an error. The owning ledger accepts the report only when an earlier owner event assigned that worker thread to the item. If the message send result is unknown, ask the owner to check the ledger before sending the same prepared content again.
+`delivery_report` reads only the connected worker transcript. It suppresses a normal retry with the same `eventId`; a reused ID with different content is an error. Sending the prepared content does not update the owner ledger.
+
+When a proposal arrives, the owner must:
+
+1. confirm the Amp message metadata identifies the worker assigned to that item;
+2. confirm the transition is material and the explicit state and next gate are correct;
+3. call `delivery_record` with the same event ID, delivery fields, and assigned `workerThread`.
+
+Only that owner tool result enters the ledger. Exact duplicate proposals have no effect, and retrying the same promotion reports no change. If the message send result is unknown, ask the owner to check for the proposal before sending it again.
 
 The owning thread calls `delivery_record` for its own material decisions and verified transitions, including explicit approval, merge, rollout, completion, or abandonment. Recording approval does not grant it and does not perform the approved action. Never infer approval from a state, report, or CI result.
 
-Call `delivery_status` after a material report reaches a gate, before an approval request, or when the user asks for status. Do not call it as a polling loop.
+Call `delivery_status` after promoting a material report that reaches a gate, before an approval request, or when the user asks for status. Do not call it as a polling loop.
 
-## State, Reload, and Future Webhooks
+## State and Reload
 
-Accepted events use stable event IDs and live in the full owning-thread transcript. Prepared reports also live in the worker transcript. Plugin reload loses no authoritative state: the next tool call replays the connected transcript, so no recovery command or hidden file is needed. Duplicate delivery of the same report adds no ledger transition because replay deduplicates its stable event ID.
-
-The MVP does not register external webhooks. A future webhook adapter must:
-
-1. register one stable `createWebhook` key for each owning thread and re-register that key after reload;
-2. treat the capability URL as a credential and configure it outside the plugin;
-3. use `WebhookEvent.id` to suppress Amp's at-least-once handler retry, and require a stable provider event ID plus `Idempotency-Key` to suppress separate provider retries;
-4. validate and normalize the payload into the same material event schema;
-5. append the normalized marker to the connected owning thread before returning success; if the webhook handler cannot access that connected owner, use an explicit authenticated transport adapter rather than plugin memory.
-
-Do not add a webhook until its provider event schema, authentication, and owner-thread registration lifecycle are concrete.
+Accepted events use stable event IDs and live in owner tool results in the full owning-thread transcript. Prepared proposals live in the worker transcript. Plugin reload loses no authoritative state: the next tool call replays the connected transcript, so no recovery command or hidden file is needed. Exact duplicate owner events apply once; conflicting reuse of an event ID is an error.

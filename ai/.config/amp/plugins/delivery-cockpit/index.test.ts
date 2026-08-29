@@ -129,7 +129,7 @@ describe('delivery event ledger', () => {
 		).toThrow('conflicting payloads')
 	})
 
-	test('recovers accepted events from tool results and appended user reports only', () => {
+	test('recovers only accepted tool-result events and ignores user-authored markers', () => {
 		const marker = testables.encodeEvent(startEvent)
 		const messages: ThreadMessage[] = [
 			toolResult(marker, 'one'),
@@ -137,7 +137,7 @@ describe('delivery event ledger', () => {
 			{ role: 'assistant', id: 'three', content: [{ type: 'text', text: marker }] },
 		]
 
-		expect(testables.eventsFromMessages(messages)).toHaveLength(2)
+		expect(testables.eventsFromMessages(messages)).toHaveLength(1)
 	})
 })
 
@@ -197,7 +197,103 @@ describe('material child reports', () => {
 		).rejects.toThrow('already has a different payload')
 	})
 
-	test('owner replay accepts reports only from the assigned worker', () => {
+	test('owner promotion requires the worker already assigned to the item', async () => {
+		const assignment = {
+			version: 1 as const,
+			eventId: 'api-worker-started',
+			deliveryId: 'billing',
+			kind: 'worker_started' as const,
+			itemId: 'api',
+			state: 'active' as const,
+			summary: 'Worker assigned.',
+			nextGate: 'Draft PR',
+			sourceThread: 'T-owner',
+			workerThread: 'T-worker',
+		}
+		const messages = [
+			toolResult(testables.encodeEvent(startEvent), 'start'),
+			toolResult(testables.encodeEvent(assignment), 'assignment'),
+		]
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => messages },
+		} as unknown as PluginToolContext
+
+		await expect(
+			testables.recordMaterial(
+				{
+					eventId: 'api-ready-imposter',
+					deliveryId: 'billing',
+					itemId: 'api',
+					kind: 'ready_for_review',
+					state: 'review',
+					summary: 'Ready.',
+					nextGate: 'Owner review',
+					workerThread: 'T-imposter',
+				},
+				ctx,
+			),
+		).rejects.toThrow('item api is assigned to a different worker')
+	})
+
+	test('an exact promoted retry stays idempotent after worker reassignment', async () => {
+		const assignment = {
+			version: 1 as const,
+			eventId: 'api-worker-started',
+			deliveryId: 'billing',
+			kind: 'worker_started' as const,
+			itemId: 'api',
+			state: 'active' as const,
+			summary: 'Worker assigned.',
+			nextGate: 'Draft PR',
+			sourceThread: 'T-owner',
+			workerThread: 'T-worker',
+		}
+		const promoted = {
+			version: 1 as const,
+			eventId: 'api-ready-1',
+			deliveryId: 'billing',
+			kind: 'ready_for_review' as const,
+			itemId: 'api',
+			state: 'review' as const,
+			summary: 'Ready.',
+			nextGate: 'Owner review',
+			sourceThread: 'T-owner',
+			workerThread: 'T-worker',
+		}
+		const reassignment = {
+			...assignment,
+			eventId: 'api-worker-reassigned',
+			summary: 'Replacement worker assigned.',
+			workerThread: 'T-replacement',
+		}
+		const messages = [
+			toolResult(testables.encodeEvent(startEvent), 'start'),
+			toolResult(testables.encodeEvent(assignment), 'assignment'),
+			toolResult(testables.encodeEvent(promoted), 'promotion'),
+			toolResult(testables.encodeEvent(reassignment), 'reassignment'),
+		]
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => messages },
+		} as unknown as PluginToolContext
+
+		const result = await testables.recordMaterial(
+			{
+				eventId: promoted.eventId,
+				deliveryId: promoted.deliveryId,
+				itemId: promoted.itemId,
+				kind: promoted.kind,
+				state: promoted.state,
+				summary: promoted.summary,
+				nextGate: promoted.nextGate,
+				workerThread: promoted.workerThread,
+			},
+			ctx,
+		)
+
+		expect(result).toContain('already recorded. No change')
+	})
+
+	test('owner replay ignores early proposals and applies explicit promotion once', () => {
 		const assignment = {
 			version: 1 as const,
 			eventId: 'api-worker-started',
@@ -223,15 +319,20 @@ describe('material child reports', () => {
 			workerThread: 'T-worker',
 		}
 
-		const ledger = testables.replay([startEvent, assignment, report, report]).get('billing')
+		expect(() => testables.replay([startEvent, assignment, report])).toThrow(
+			'must be promoted by the owning thread',
+		)
+
+		const promoted = { ...report, sourceThread: 'T-owner' }
+		const events = testables.eventsFromMessages([
+			toolResult(testables.encodeEvent(startEvent), 'start'),
+			userText(testables.encodeEvent(report), 'early-proposal'),
+			toolResult(testables.encodeEvent(assignment), 'assignment'),
+			toolResult(testables.encodeEvent(promoted), 'promotion'),
+			userText(testables.encodeEvent(report), 'duplicate-proposal'),
+		])
+		const ledger = testables.replay(events).get('billing')
 		expect(ledger?.items.find((item) => item.id === 'api')?.state).toBe('review')
 		expect(ledger?.eventCount).toBe(3)
-		expect(() =>
-			testables.replay([
-				startEvent,
-				assignment,
-				{ ...report, eventId: 'api-imposter-report', sourceThread: 'T-imposter', workerThread: 'T-imposter' },
-			]),
-		).toThrow('is not from the worker assigned to item api')
 	})
 })

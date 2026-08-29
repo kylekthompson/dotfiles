@@ -34,6 +34,12 @@ Expected: at the next material event, and before message 121, publish one compac
 
 ## Duplicate Material Report
 
-State: a worker prepares and sends a draft pull request report, the plugin reloads, and the worker retries `delivery_report` with the same event ID. The same authenticated message may also arrive more than once.
+State: a worker prepares and sends a draft pull request proposal, the plugin reloads, and the worker retries `delivery_report` with the same event ID. The proposal may also arrive more than once.
 
-Expected: the worker retry reports no change and does not send again. The owning thread applies one ledger transition for the stable event ID even if transport delivered the exact report more than once. Reusing the event ID with different content is an error.
+Expected: raw proposals do not update the ledger. The owner verifies the assigned worker from Amp message metadata and promotes the proposal once with `delivery_record`. Retrying that stable event ID reports no change. Reusing it with different content is an error.
+
+## Fast Worker Report
+
+State: a worker reaches a material transition before the owner has recorded its assignment.
+
+Expected: the worker waits for the assignment-recorded message before reporting. Even if a proposal arrives early, raw text cannot poison replay; the owner records the assignment before promoting the proposal.

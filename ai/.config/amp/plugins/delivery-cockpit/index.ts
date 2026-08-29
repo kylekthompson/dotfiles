@@ -6,7 +6,7 @@ import type {
 } from '@ampcode/plugin'
 
 export const description =
-	'Maintains a thread-visible delivery ledger and reconciles idempotent material reports from assigned worker threads.'
+	'Maintains a thread-visible delivery ledger and reconciles owner-accepted material reports from assigned worker threads.'
 
 const EVENT_PATTERN = /<!-- delivery-cockpit:event (\{[^\n]*\}) -->/g
 const EVENT_VERSION = 1
@@ -333,7 +333,7 @@ function decodeEvents(text: string): DeliveryEvent[] {
 			const event: unknown = JSON.parse(match[1])
 			if (isDeliveryEvent(event)) events.push(event)
 		} catch {
-			// Ignore malformed user-authored markers. Accepted tool results always contain valid JSON.
+			// Ignore malformed markers. Plugin tool results always contain valid JSON.
 		}
 	}
 	return events
@@ -344,7 +344,6 @@ function eventsFromMessages(messages: ThreadMessage[]): DeliveryEvent[] {
 	for (const message of messages) {
 		if (message.role !== 'user') continue
 		for (const block of message.content) {
-			if (block.type === 'text') events.push(...decodeEvents(block.text))
 			if (
 				block.type === 'tool_result' &&
 				block.status === 'done' &&
@@ -403,9 +402,7 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
 		if (!item) fail(`event ${event.eventId} names unknown item ${event.itemId}.`)
 		if (event.sourceThread !== ledger.ownerThread) {
-			if (event.sourceThread !== event.workerThread || item.workerThread !== event.workerThread) {
-				fail(`event ${event.eventId} is not from the worker assigned to item ${event.itemId}.`)
-			}
+			fail(`event ${event.eventId} must be promoted by the owning thread.`)
 		}
 		item.state = event.state
 		item.nextGate = event.nextGate
@@ -476,11 +473,19 @@ async function recordMaterial(input: RecordInput, ctx: PluginToolContext): Promi
 	const events = await readEvents(ctx.thread)
 	const ledger = ledgerFor(events, event.deliveryId)
 	if (ledger.ownerThread !== ctx.thread.id) fail('material events must be recorded in the owning thread.')
-	if (!ledger.items.some((item) => item.id === event.itemId)) {
-		fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
-	}
 	if (assertNewEvent(events, event) === 'duplicate') {
 		return `Material event \`${event.eventId}\` is already recorded. No change.`
+	}
+	const item = ledger.items.find((candidate) => candidate.id === event.itemId)
+	if (!item) {
+		fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
+	}
+	if (
+		event.workerThread &&
+		CHILD_REPORT_KINDS.includes(event.kind as ChildReportKind) &&
+		item.workerThread !== event.workerThread
+	) {
+		fail(`item ${event.itemId} is assigned to a different worker.`)
 	}
 
 	return `${encodeEvent(event)}\n\nRecorded \`${event.kind}\` for \`${event.itemId}\`.\n\n${renderLedger(
@@ -498,7 +503,7 @@ function reportMessage(event: MaterialEvent): string {
 		event.pullRequest ? `Pull request: ${event.pullRequest}` : undefined,
 		`Worker: ${event.sourceThread}`,
 		'',
-		'Reconcile this event in the owning thread. Keep approval and shared actions explicit.',
+		'This is a proposal. Verify its Amp message attribution, then promote it with delivery_record in the owning thread.',
 	]
 		.filter((line) => line !== undefined)
 		.join('\n')
@@ -592,7 +597,7 @@ export default async function (amp: PluginAPI) {
 		title: 'Record delivery event',
 		transcriptGroup: { active: 'Recording delivery event', complete: 'Recorded delivery event' },
 		description:
-			'Record one material event or owning-thread decision in an existing delivery ledger. This only records state; it never approves or performs a shared action.',
+			'Record one owner-accepted material event or decision in an existing delivery ledger. Use it to promote a verified worker proposal. This only records state; it never approves or performs a shared action.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -602,7 +607,11 @@ export default async function (amp: PluginAPI) {
 					enum: MATERIAL_KINDS,
 					description: 'Material transition or explicit owning-thread decision.',
 				},
-				workerThread: { type: 'string', description: 'Amp worker thread ID, when known.' },
+				workerThread: {
+						type: 'string',
+						description:
+							'Amp worker thread ID. For a promoted worker proposal, this must match the item assignment.',
+					},
 			},
 			required: ['eventId', 'deliveryId', 'itemId', 'kind', 'state', 'summary', 'nextGate'],
 			additionalProperties: false,
@@ -615,7 +624,7 @@ export default async function (amp: PluginAPI) {
 		title: 'Prepare material delivery report',
 		transcriptGroup: { active: 'Preparing delivery report', complete: 'Prepared delivery report' },
 		description:
-			'Prepare one idempotent material worker report for authenticated send_thread_message delivery to its owning thread. Use only for a listed report transition, never for routine progress.',
+			'Prepare one idempotent material worker proposal for send_thread_message delivery to its owning thread. The owner must verify and promote it. Use only for a listed report transition, never for routine progress.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -651,7 +660,7 @@ export default async function (amp: PluginAPI) {
 		title: 'Render delivery ledger',
 		transcriptGroup: { active: 'Reading delivery ledger', complete: 'Read delivery ledger' },
 		description:
-			'Reconstruct and render a compact delivery ledger from accepted events in the current thread. Use at a gate, after a report, or when the user asks for status.',
+			'Reconstruct and render a compact delivery ledger from owner-accepted tool results in the current thread. Use at a gate, after promoting a report, or when the user asks for status.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -674,6 +683,7 @@ export const testables = {
 	eventsFromMessages,
 	normalizeItems,
 	replay,
+	recordMaterial,
 	renderLedger,
 	reportMaterial,
 }
