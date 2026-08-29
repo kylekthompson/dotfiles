@@ -6,7 +6,7 @@ compatibility: Requires Amp thread tools and authenticated GitHub access for pul
 
 # Deliver Changes Directly
 
-Use the planning thread as the delivery owner. Create bounded implementation workers, receive their material reports, and keep approval and dependency decisions in one place. Do not add a pass-through coordinator.
+Use the invocation thread as the delivery owner for the full delivery. Create bounded implementation workers, receive their material reports, and keep approval and dependency decisions in one place. Never create or hand off to a coordinator, relay, owner, or continuation thread.
 
 ## Confirm the Plan Is Ready
 
@@ -19,7 +19,7 @@ Before dispatch:
 
 If the outcome fits one pull request, implement it normally in the current thread. Do not load this workflow or create delivery workers.
 
-If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `delivery-cockpit:coordinating-complex-rollouts` instead.
+If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `delivery-cockpit:coordinating-complex-rollouts` in this thread instead.
 
 For the remaining direct multi-PR delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
 
@@ -99,11 +99,9 @@ Create a separate, bounded review worker only for an independent review that mat
 
 Create a medium-mode rollout verifier only after an approved merge requires external rollout evidence. It verifies the specific deployment, migration, health, or smoke gates and reports once. It does not become the implementation coordinator.
 
-## Hand Off Growing Context
+## Keep Ownership Through Growing Context
 
-At the first material event after this thread reaches 100 messages, and no later than 120 messages, hand delivery to a fresh medium-mode continuation thread. Also hand off at a major phase boundary when more delivery remains, even if the count is lower.
-
-Publish one compact handoff containing the plan link, pull-request graph and current heads, worker/report routes, settled decisions, approval state, checks already accepted, blockers, and next gate. Include the current `delivery_status` ledger. Create the continuation with `agent_mode: medium` and require it to acknowledge ownership. In the continuation, load `delivery-cockpit:managing-deliveries`, start the same item graph, record each current non-pending item state and worker assignment from the handoff with new handoff event IDs, and compare the rendered ledger before redirecting workers once. Send each redirected worker the continuation thread ID for future `delivery_report.ownerThread` calls. After acknowledgement and ledger recovery, the predecessor stops dispatching and status checks. Do not keep two delivery owners active or hand off during an unverified production write.
+When context grows or a major phase ends, publish one compact replacement checkpoint in this thread. Include the pull-request graph and current heads, worker report routes, settled decisions, approval state, accepted checks, blockers, next gate, and current `delivery_status` ledger. Continue in this thread without reconstructing the ledger or redirecting workers. Do not create a coordinator or continuation thread.
 
 ## Keep Shared Actions Explicit
 

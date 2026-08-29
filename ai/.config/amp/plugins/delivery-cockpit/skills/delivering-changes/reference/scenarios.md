@@ -26,11 +26,11 @@ State: a direct predecessor merged. The successor rebases without conflicts, gen
 
 Expected: record the concise restack verdict, push, and rely on fresh pull-request CI. Do not rerun local checks.
 
-## Deterministic Context Handoff
+## Deterministic Context Checkpoint
 
 State: direct delivery reaches 100 messages while work remains.
 
-Expected: at the next material event, and before message 121, publish one compact handoff with the rendered delivery ledger and create a continuation with `agent_mode: medium`. It acknowledges ownership, reconstructs the same item states and worker assignments in a new thread-visible ledger, compares the rendered result, then receives each active worker redirect once with the new report owner ID. The predecessor stops dispatching. The same handoff occurs at a major phase boundary when work remains, unless an unverified production write is active.
+Expected: publish one compact replacement checkpoint in the invocation thread with the rendered delivery ledger, worker report routes, settled decisions, approval state, accepted checks, blockers, and next gate. The invocation thread remains the owner, keeps worker routes unchanged, and does not create a coordinator or continuation thread.
 
 ## Duplicate Material Report
 

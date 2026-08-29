@@ -1,28 +1,24 @@
 ---
 name: coordinating-complex-rollouts
-description: Coordinates a complex, long-running delivery across repositories, more than five active PRs, several production or infrastructure actions, or operator handoffs. Use when these conditions require separate operational ownership or the user explicitly asks for a coordinator.
+description: Coordinates a complex, long-running delivery in the invocation thread across repositories, more than five active PRs, several production or infrastructure actions, or operator handoffs. Use when these conditions require dedicated operational ownership or the user explicitly asks for coordination.
 compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
 # Coordinate Complex Rollouts
 
-Move a complex delivery through reviewable draft pull requests and, when authorized, merge and rollout. Own cross-repository or long-running operational state that cannot stay safely in the planning thread. For ordinary delivery from a settled plan, use `delivery-cockpit:delivering-changes` instead.
+Move a complex delivery through reviewable draft pull requests and, when authorized, merge and rollout. The thread that invokes this skill is the coordinator for the full delivery. Never create or hand off to a separate coordinator or continuation thread. For ordinary delivery from a settled plan, use `delivery-cockpit:delivering-changes` instead.
 
-## Start One Coordinator
+## Use This Thread as the Coordinator
 
-If this thread is already the coordinator, skip this section.
+Confirm that the current thread has an implementation-ready plan and that complex coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivery-cockpit:delivering-changes` in this same thread.
 
-1. Confirm that the current thread has an implementation-ready plan and that separate coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivery-cockpit:delivering-changes`.
-2. Create one medium-mode orb thread in the owning project. Coordination is mostly state reconciliation; use a bounded high-mode worker or advisor only for a concrete unresolved design or safety decision. Give the coordinator the planning-thread link, desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
-3. Return the coordinator link. The planning thread does not also implement or relay routine status.
-
-Set `agent_mode: medium` explicitly when creating the coordinator. Never rely on inherited mode.
+Keep all coordination, approval state, worker routing, and material status in this invocation thread. `create_thread` is only for bounded implementation workers, independent reviewers, or rollout verifiers. It is never for a coordinator, owner, relay, handoff, or continuation.
 
 ## Run the Delivery
 
 ### Record one compact brief
 
-Read the planning thread once. Publish one brief with:
+Read the plan in this thread once. Publish one brief with:
 
 - outcome, scope, non-goals, settled decisions, and acceptance checks
 - safety or compatibility invariants and unresolved decisions
@@ -100,7 +96,7 @@ On each material event:
 4. Resolve review work, blockers, and direct-successor restacks.
 5. Record any coordinator decision with `delivery_record`, then render the compact ledger when the event reaches a gate.
 6. Dispatch newly unblocked work.
-7. Tell the planning thread only about a decision, material blocker, review-ready PR, explicit approval request, or completion.
+7. Tell the user only about a decision, material blocker, review-ready PR, explicit approval request, or completion.
 
 The coordinator reviews intent, changed boundaries, tests, and risk. It does not repeat every worker read or reproduce evidence already stored in the PR.
 
@@ -112,10 +108,10 @@ Separate implementation, merge, activation, and contraction gates. Require rollo
 
 After a merge, verify the merge and release only the direct successor. A successful merge-triggered rollout can satisfy the rollout gate when it includes the required migration, health, and smoke checks; do not rediscover or restate that policy for each PR.
 
-### Finish or hand off
+### Finish in This Thread
 
-At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, the current `delivery_status` ledger, approval state, and next gate. After it accepts ownership, it loads `delivery-cockpit:managing-deliveries`, starts the same item graph, records each current non-pending item state and worker assignment with new handoff event IDs, and compares the rendered ledger. Send each redirected worker the new coordinator thread ID for future `delivery_report.ownerThread` calls. Redirect reports and stop the predecessor only after that explicit recovery succeeds.
+When context grows, publish one consolidated replacement brief in this thread with the current `delivery_status` ledger, approval state, worker assignments, and next gate. Continue from that checkpoint without changing the owner thread or worker report routes. Do not create a coordinator or continuation thread at a phase boundary.
 
-Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Send one final digest with PR links, rollout verdicts, and remaining action, then archive the coordinator.
+Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Send one final digest with PR links, rollout verdicts, and remaining action.
 
 Use [reference/scenarios.md](reference/scenarios.md) only when changing this skill or resolving an ambiguous coordination rule.

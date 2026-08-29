@@ -22,7 +22,7 @@ The item graph records dependencies but does not enforce dispatch or merge order
 
 ## Dispatch with Amp's Core Thread Tool
 
-Use `create_thread`, not a plugin tool, so Amp remains responsible for project selection, executor placement, explicit agent mode, and report routing. After creation succeeds, call `delivery_record` with:
+Use `create_thread` only for bounded workers, not for a coordinator, owner, relay, handoff, or continuation. Use Amp's core tool, not a plugin tool, so Amp remains responsible for project selection, executor placement, explicit agent mode, and report routing. After worker creation succeeds, call `delivery_record` with:
 
 - a new stable `eventId`
 - `kind: worker_started`
@@ -48,7 +48,7 @@ Workers call `delivery_report` only for:
 - pull request ready for review or merge
 - work stopped or superseded
 
-Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the current owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. After a handoff, replace `ownerThread` with the new owner's ID.
+Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the invocation thread's owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. The owner ID stays fixed for the full delivery.
 
 `delivery_report` reads only the connected worker transcript. It suppresses a normal retry with the same `eventId`; a reused ID with different content is an error. Sending the prepared content does not update the owner ledger.
 

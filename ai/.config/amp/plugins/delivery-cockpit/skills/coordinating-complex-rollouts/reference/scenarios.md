@@ -6,7 +6,7 @@ Use these examples when reviewing changes to the coordination workflow. Each sce
 
 State: one repository has three implementation pull requests, one ordinary merge order, and no production write or operator handoff in progress.
 
-Expected: use `delivery-cockpit:delivering-changes` in the planning thread. Do not create a coordinator.
+Expected: use `delivery-cockpit:delivering-changes` in the invocation thread. Do not create a coordinator thread.
 
 ## Changed Brief
 
@@ -26,11 +26,11 @@ State: a worker does not report that CI completed or a pull request merged. The 
 
 Expected: the pre-approval bounded sweep reads authoritative pull-request head, CI, and merge state, records one material reconciliation event with a stable event ID, and processes only direct dependents. It does not restart periodic polling or reread every worker thread.
 
-## Fresh Coordinator Handoff
+## Large Coordinator Context
 
-State: an implementation phase is complete, no production write is in flight, and coordinator context is large.
+State: an implementation phase is complete and coordinator context is large.
 
-Expected: the predecessor publishes one consolidated brief, rendered delivery ledger, approval state, and next gate. The successor explicitly accepts ownership, reconstructs the same item states and worker assignments in its own thread-visible ledger, and compares the result before workers receive the new report owner ID and the predecessor is archived. There is never more than one dispatching coordinator.
+Expected: the invocation thread publishes one consolidated replacement brief with the rendered delivery ledger, approval state, worker assignments, and next gate. It remains the coordinator and keeps all worker report routes unchanged. It does not create a coordinator or continuation thread.
 
 ## Duplicate Material Report
 
