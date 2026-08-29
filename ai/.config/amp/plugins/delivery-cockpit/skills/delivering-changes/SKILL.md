@@ -19,7 +19,7 @@ Before dispatch:
 
 If the outcome fits one pull request, implement it normally in the current thread. Do not load this workflow or create delivery workers.
 
-If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `coordinating-complex-rollouts` instead.
+If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `delivery-cockpit:coordinating-complex-rollouts` instead.
 
 For the remaining direct multi-PR delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
 

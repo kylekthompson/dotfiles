@@ -6,13 +6,13 @@ compatibility: Requires Amp thread tools and authenticated GitHub access for pul
 
 # Coordinate Complex Rollouts
 
-Move a complex delivery through reviewable draft pull requests and, when authorized, merge and rollout. Own cross-repository or long-running operational state that cannot stay safely in the planning thread. For ordinary delivery from a settled plan, use `delivering-changes` instead.
+Move a complex delivery through reviewable draft pull requests and, when authorized, merge and rollout. Own cross-repository or long-running operational state that cannot stay safely in the planning thread. For ordinary delivery from a settled plan, use `delivery-cockpit:delivering-changes` instead.
 
 ## Start One Coordinator
 
 If this thread is already the coordinator, skip this section.
 
-1. Confirm that the current thread has an implementation-ready plan and that separate coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivering-changes`.
+1. Confirm that the current thread has an implementation-ready plan and that separate coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivery-cockpit:delivering-changes`.
 2. Create one medium-mode orb thread in the owning project. Coordination is mostly state reconciliation; use a bounded high-mode worker or advisor only for a concrete unresolved design or safety decision. Give the coordinator the planning-thread link, desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
 3. Return the coordinator link. The planning thread does not also implement or relay routine status.
 

@@ -6,7 +6,7 @@ Use these examples when reviewing changes to direct delivery. Each scenario stat
 
 State: the settled outcome is one cohesive change that fits one pull request.
 
-Expected: implement normally in the current thread. Do not load `delivering-changes` and do not create an implementation worker.
+Expected: implement normally in the current thread. Do not load `delivery-cockpit:delivering-changes` and do not create an implementation worker.
 
 ## Explicit Modes
 

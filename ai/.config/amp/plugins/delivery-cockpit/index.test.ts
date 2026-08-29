@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PluginAPI, PluginThread, PluginToolContext, ThreadMessage } from '@ampcode/plugin'
-import { testables } from './index'
+import deliveryCockpit, { testables } from './index'
 
 const startEvent = {
 	version: 1 as const,
@@ -33,6 +33,37 @@ function toolResult(text: string, id: string): ThreadMessage {
 		],
 	}
 }
+
+describe('plugin registration', () => {
+	test('bundles the delivery workflows with their tools', async () => {
+		const tools: string[] = []
+		const skills: string[] = []
+		const amp = {
+			registerTool: (definition: { name: string }) => {
+				tools.push(definition.name)
+				return {}
+			},
+			registerSkill: async (definition: { path: string }) => {
+				skills.push(definition.path)
+				return {}
+			},
+		} as unknown as PluginAPI
+
+		await deliveryCockpit(amp)
+
+		expect(tools).toEqual([
+			'delivery_start',
+			'delivery_record',
+			'delivery_report',
+			'delivery_status',
+		])
+		expect(skills).toEqual([
+			'skills/managing-deliveries',
+			'skills/delivering-changes',
+			'skills/coordinating-complex-rollouts',
+		])
+	})
+})
 
 describe('delivery event ledger', () => {
 	test('validates references and rejects dependency cycles', () => {

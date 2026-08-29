@@ -1,6 +1,6 @@
 ---
 name: managing-deliveries
-description: Maintains a deterministic delivery ledger and reconciles material child-thread reports. Use with delivering-changes or coordinating-complex-rollouts after a multi-item plan is ready for dispatch.
+description: "Maintains a deterministic delivery ledger and reconciles material child-thread reports. Use with delivery-cockpit:delivering-changes or delivery-cockpit:coordinating-complex-rollouts after a multi-item plan is ready for dispatch."
 builtin-tools:
   - delivery_start
   - delivery_record
