@@ -1,6 +1,12 @@
-# Coordination Scenarios
+# Complex Rollout Coordination Scenarios
 
 Use these examples when reviewing changes to the coordination workflow. Each scenario states the minimum safe result, not extra runtime procedure.
+
+## Coordinator Not Justified
+
+State: one repository has three implementation pull requests, one ordinary merge order, and no production write or operator handoff in progress.
+
+Expected: use `delivering-changes` in the planning thread. Do not create a coordinator.
 
 ## Changed Brief
 

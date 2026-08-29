@@ -1,18 +1,18 @@
 ---
-name: coordinating-deliveries
-description: Starts and guides one delivery coordinator for a completed planning thread. Use only when the user explicitly asks to start or spin up a coordinator from that planning thread.
+name: coordinating-complex-rollouts
+description: Coordinates a complex, long-running delivery across repositories, more than five active PRs, several production or infrastructure actions, or operator handoffs. Use when these conditions require separate operational ownership or the user explicitly asks for a coordinator.
 compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
-# Coordinate Deliveries
+# Coordinate Complex Rollouts
 
-Move a completed plan through reviewable draft pull requests and, when authorized, merge and rollout. Optimize for short worker-to-PR time and material updates instead of process narration.
+Move a complex delivery through reviewable draft pull requests and, when authorized, merge and rollout. Own cross-repository or long-running operational state that cannot stay safely in the planning thread. For ordinary delivery from a settled plan, use `delivering-changes` instead.
 
 ## Start One Coordinator
 
 If this thread is already the coordinator, skip this section.
 
-1. Confirm that the current thread has an implementation-ready plan. Record only unresolved decisions that can change implementation.
+1. Confirm that the current thread has an implementation-ready plan and that separate coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivering-changes`.
 2. Create one medium-mode orb thread in the owning project. Coordination is mostly state reconciliation; use a bounded high-mode worker or advisor only for a concrete unresolved design or safety decision. Give the coordinator the planning-thread link, desired outcome, approval limits, and instructions to follow **Run the Delivery** below.
 3. Return the coordinator link. The planning thread does not also implement or relay routine status.
 
