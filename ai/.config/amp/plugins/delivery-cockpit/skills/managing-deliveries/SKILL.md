@@ -10,7 +10,7 @@ builtin-tools:
 
 # Manage Delivery Events
 
-Keep delivery state in the owning Amp thread while workers produce bounded pull requests. The transcript is the event log. The plugin reconstructs its compact ledger from accepted tool results and appended child reports, so plugin memory is not authoritative.
+Keep delivery state in the owning Amp thread while workers produce bounded pull requests. The transcript is the event log. The plugin reconstructs its compact ledger from accepted tool results and authenticated child report messages, so plugin memory is not authoritative.
 
 ## Start in the Owning Thread
 
@@ -33,7 +33,7 @@ Use `create_thread`, not a plugin tool, so Amp remains responsible for project s
 Add this line to the worker prompt:
 
 ```text
-Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for item <item-id> only when a listed material transition occurs. Reuse one eventId for retries.
+Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for item <item-id> with ownerThread <owning-thread-id> only when a listed material transition occurs. Then use send_thread_message once to send the exact prepared content to that owner. Reuse one eventId for retries.
 ```
 
 Do not retry an uncertain `create_thread` call. Verify whether the child exists first. Child creation is deliberately outside the event ledger because the stable Plugin API has no idempotency key for that side effect.
@@ -48,7 +48,9 @@ Workers call `delivery_report` only for:
 - pull request ready for review or merge
 - work stopped or superseded
 
-Each report supplies the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. By default, the report goes to the direct parent. After an owner handoff, a worker may set `ownerThread` only when the new owner's recovered ledger assigns that same worker thread to the item. The plugin suppresses a retry with the same `eventId`; a reused ID with different content is an error.
+Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the current owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. After a handoff, replace `ownerThread` with the new owner's ID.
+
+`delivery_report` reads only the connected worker transcript. It suppresses a normal retry with the same `eventId`; a reused ID with different content is an error. The owning ledger accepts the report only when an earlier owner event assigned that worker thread to the item. If the message send result is unknown, ask the owner to check the ledger before sending the same prepared content again.
 
 The owning thread calls `delivery_record` for its own material decisions and verified transitions, including explicit approval, merge, rollout, completion, or abandonment. Recording approval does not grant it and does not perform the approved action. Never infer approval from a state, report, or CI result.
 
@@ -56,7 +58,7 @@ Call `delivery_status` after a material report reaches a gate, before an approva
 
 ## State, Reload, and Future Webhooks
 
-Accepted events use stable event IDs and live in the full owning-thread transcript. A plugin reload clears only short-lived concurrency locks. The next tool call replays the transcript, so no recovery command or hidden file is needed. If an append result is uncertain, retry the same event ID; transcript reconciliation makes this safe.
+Accepted events use stable event IDs and live in the full owning-thread transcript. Prepared reports also live in the worker transcript. Plugin reload loses no authoritative state: the next tool call replays the connected transcript, so no recovery command or hidden file is needed. Duplicate delivery of the same report adds no ledger transition because replay deduplicates its stable event ID.
 
 The MVP does not register external webhooks. A future webhook adapter must:
 
@@ -64,6 +66,6 @@ The MVP does not register external webhooks. A future webhook adapter must:
 2. treat the capability URL as a credential and configure it outside the plugin;
 3. use `WebhookEvent.id` to suppress Amp's at-least-once handler retry, and require a stable provider event ID plus `Idempotency-Key` to suppress separate provider retries;
 4. validate and normalize the payload into the same material event schema;
-5. use the same per-owner serialization, transcript lookup, and append path as `delivery_report` before returning success.
+5. append the normalized marker to the connected owning thread before returning success; if the webhook handler cannot access that connected owner, use an explicit authenticated transport adapter rather than plugin memory.
 
 Do not add a webhook until its provider event schema, authentication, and owner-thread registration lifecycle are concrete.

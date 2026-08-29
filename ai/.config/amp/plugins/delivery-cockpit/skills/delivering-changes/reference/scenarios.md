@@ -34,6 +34,6 @@ Expected: at the next material event, and before message 121, publish one compac
 
 ## Duplicate Material Report
 
-State: a worker reports a draft pull request, the plugin reloads after appending the event, and the worker retries with the same event ID.
+State: a worker prepares and sends a draft pull request report, the plugin reloads, and the worker retries `delivery_report` with the same event ID. The same authenticated message may also arrive more than once.
 
-Expected: the owning thread contains one material event and one resulting ledger transition. The retry reports no change. Reusing the event ID with different content is an error.
+Expected: the worker retry reports no change and does not send again. The owning thread applies one ledger transition for the stable event ID even if transport delivered the exact report more than once. Reusing the event ID with different content is an error.

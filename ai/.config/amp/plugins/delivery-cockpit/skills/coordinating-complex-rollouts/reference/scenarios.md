@@ -34,6 +34,6 @@ Expected: the predecessor publishes one consolidated brief, rendered delivery le
 
 ## Duplicate Material Report
 
-State: a worker report is delivered at least once across a plugin reload.
+State: a worker prepares and sends a report across a plugin reload. The same authenticated message is delivered at least once and may arrive more than once.
 
-Expected: the coordinator transcript contains one event for the stable event ID and the compact ledger applies it once. A retry reports no change; a different payload with the same ID stops reconciliation as a conflict.
+Expected: the worker retry reports no change. The coordinator ledger applies the stable event ID once even if the transcript contains duplicate exact reports. A different payload with the same ID stops reconciliation as a conflict.

@@ -39,7 +39,7 @@ Plan: <planning-thread link and relevant item>
 Hazard: <only item-specific risk>
 Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
-Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> only on a listed material transition; reuse one eventId for retries
+Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> with ownerThread <planning thread ID> only on a listed material transition; send the exact prepared content once with send_thread_message; reuse one eventId for retries
 ```
 
 Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
@@ -71,7 +71,7 @@ Ask each worker to report once for these transitions:
 
 Workers report directly to this planning thread. Do not poll workers, schedule checks, or add a relay thread. Query GitHub or CI only when a report reaches a gate, the user asks for status, or stale state can release a dependency. Use one watcher or one later query, not both plus repeated polling.
 
-`delivery_report` appends each unique direct-child report to this thread and updates the replayable ledger event stream. It rejects routine event kinds and conflicting reuse of an event ID. Call `delivery_status` after a report reaches a gate or when the user asks for status, not after every tool call.
+`delivery_report` prepares and deduplicates a material report in the worker's connected transcript. The worker sends its exact prepared content here with Amp's core `send_thread_message` tool. This ledger applies it only when the reporting worker is already assigned to the item, ignores exact duplicate event IDs, and rejects conflicts. Call `delivery_status` after a report reaches a gate or when the user asks for status, not after every tool call.
 
 After a material report:
 

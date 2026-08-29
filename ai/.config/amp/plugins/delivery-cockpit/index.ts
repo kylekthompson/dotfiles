@@ -6,7 +6,7 @@ import type {
 } from '@ampcode/plugin'
 
 export const description =
-	'Maintains a thread-visible delivery ledger and reconciles idempotent material reports from direct child threads.'
+	'Maintains a thread-visible delivery ledger and reconciles idempotent material reports from assigned worker threads.'
 
 const EVENT_PATTERN = /<!-- delivery-cockpit:event (\{[^\n]*\}) -->/g
 const EVENT_VERSION = 1
@@ -124,13 +124,10 @@ type RecordInput = {
 
 type ReportInput = Omit<RecordInput, 'kind' | 'workerThread'> & {
 	kind: ChildReportKind
-	ownerThread?: string
+	ownerThread: string
 }
 
 type StatusInput = { deliveryId: string }
-type LockMap = Map<string, Promise<void>>
-
-const ownerLocks: LockMap = new Map()
 
 function fail(message: string): never {
 	throw new Error(`Delivery cockpit: ${message}`)
@@ -405,6 +402,11 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		if (!ledger) fail(`event ${event.eventId} precedes delivery ${event.deliveryId}.`)
 		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
 		if (!item) fail(`event ${event.eventId} names unknown item ${event.itemId}.`)
+		if (event.sourceThread !== ledger.ownerThread) {
+			if (event.sourceThread !== event.workerThread || item.workerThread !== event.workerThread) {
+				fail(`event ${event.eventId} is not from the worker assigned to item ${event.itemId}.`)
+			}
+		}
 		item.state = event.state
 		item.nextGate = event.nextGate
 		item.lastKind = event.kind
@@ -450,23 +452,6 @@ function renderLedger(ledger: DeliveryLedger): string {
 	}
 	lines.push('', `${ledger.eventCount - 1} material event(s) recorded.`)
 	return lines.join('\n')
-}
-
-async function withOwnerLock<T>(locks: LockMap, ownerThread: string, operation: () => Promise<T>) {
-	const previous = locks.get(ownerThread) ?? Promise.resolve()
-	let release = () => {}
-	const gate = new Promise<void>((resolve) => {
-		release = resolve
-	})
-	const tail = previous.then(() => gate)
-	locks.set(ownerThread, tail)
-	await previous
-	try {
-		return await operation()
-	} finally {
-		release()
-		if (locks.get(ownerThread) === tail) locks.delete(ownerThread)
-	}
 }
 
 async function startDelivery(input: StartInput, ctx: PluginToolContext): Promise<string> {
@@ -520,47 +505,26 @@ function reportMessage(event: MaterialEvent): string {
 }
 
 async function reportMaterial(
-	amp: PluginAPI,
 	input: ReportInput,
 	ctx: PluginToolContext,
-	locks: LockMap = ownerLocks,
 ): Promise<string> {
-	const parentThreadId = await ctx.thread.parentThreadID()
-	if (!parentThreadId) fail('delivery_report requires a child thread with an owning parent.')
-	const ownerThreadId = input.ownerThread
-		? threadIdentifier(input.ownerThread, 'ownerThread')
-		: parentThreadId
+	const ownerThreadId = threadIdentifier(input.ownerThread, 'ownerThread')
 	const event = normalizeMaterialInput(
 		{ ...(input as unknown as Record<string, unknown>), workerThread: ctx.thread.id },
 		ctx.thread.id,
 		CHILD_REPORT_KINDS,
 	)
-	const owner = amp.threads.get(ownerThreadId as `T-${string}`)
+	if (assertNewEvent(await readEvents(ctx.thread), event) === 'duplicate') {
+		return `Material event \`${event.eventId}\` was already prepared in this worker thread. No change; do not send it again.`
+	}
 
-	return withOwnerLock(locks, ownerThreadId, async () => {
-		const events = await readEvents(owner)
-		const ledger = ledgerFor(events, event.deliveryId)
-		if (ledger.ownerThread !== ownerThreadId) fail('the target thread does not own this delivery.')
-		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
-		if (!item) {
-			fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
-		}
-		if (item.workerThread && item.workerThread !== ctx.thread.id) {
-			fail('the target ledger assigns this item to a different worker.')
-		}
-		if (ownerThreadId !== parentThreadId && item.workerThread !== ctx.thread.id) {
-			fail('the target ledger does not assign this item to the reporting worker.')
-		}
-		if (assertNewEvent(events, event) === 'duplicate') {
-			return `Material event \`${event.eventId}\` is already in the owning thread. No change.`
-		}
-
-		await owner.appendUserMessage(
-			{ type: 'user-message', content: reportMessage(event) },
-			{ steer: true },
-		)
-		return `Recorded material event \`${event.eventId}\` in owning thread ${ownerThreadId}.`
-	})
+	return [
+		`Prepared material event \`${event.eventId}\`. Use Amp's core \`send_thread_message\` tool once with thread \`${ownerThreadId}\` and the exact content between the delimiters.`,
+		'',
+		'DELIVERY_COCKPIT_REPORT_BEGIN',
+		reportMessage(event),
+		'DELIVERY_COCKPIT_REPORT_END',
+	].join('\n')
 }
 
 async function deliveryStatus(input: StatusInput, ctx: PluginToolContext): Promise<string> {
@@ -648,10 +612,10 @@ export default async function (amp: PluginAPI) {
 
 	amp.registerTool({
 		name: 'delivery_report',
-		title: 'Report material delivery event',
-		transcriptGroup: { active: 'Reporting delivery event', complete: 'Reported delivery event' },
+		title: 'Prepare material delivery report',
+		transcriptGroup: { active: 'Preparing delivery report', complete: 'Prepared delivery report' },
 		description:
-			'Append one idempotent material worker report to its owning delivery thread. Use only for a listed report transition, never for routine progress.',
+			'Prepare one idempotent material worker report for authenticated send_thread_message delivery to its owning thread. Use only for a listed report transition, never for routine progress.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -664,13 +628,22 @@ export default async function (amp: PluginAPI) {
 				ownerThread: {
 					type: 'string',
 					description:
-						'Redirected owner thread ID after a handoff. Omit for the direct parent. The target ledger must assign this worker to the item.',
+						'Owning thread ID to target with Amp core send_thread_message. The owner ledger must assign this worker to the item.',
 				},
 			},
-			required: ['eventId', 'deliveryId', 'itemId', 'kind', 'state', 'summary', 'nextGate'],
+			required: [
+				'eventId',
+				'deliveryId',
+				'itemId',
+				'kind',
+				'state',
+				'summary',
+				'nextGate',
+				'ownerThread',
+			],
 			additionalProperties: false,
 		},
-		execute: (input, ctx) => reportMaterial(amp, input as unknown as ReportInput, ctx),
+		execute: (input, ctx) => reportMaterial(input as unknown as ReportInput, ctx),
 	})
 
 	amp.registerTool({

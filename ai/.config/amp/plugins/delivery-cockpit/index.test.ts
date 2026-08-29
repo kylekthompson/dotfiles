@@ -91,7 +91,7 @@ describe('delivery event ledger', () => {
 			state: 'draft' as const,
 			summary: 'Draft PR opened and focused checks pass.',
 			nextGate: 'Owner review',
-			sourceThread: 'T-worker',
+			sourceThread: 'T-owner',
 			workerThread: 'T-worker',
 			pullRequest: 'https://github.com/acme/app/pull/42',
 		}
@@ -120,7 +120,7 @@ describe('delivery event ledger', () => {
 			state: 'review' as const,
 			summary: 'Ready',
 			nextGate: 'Review',
-			sourceThread: 'T-worker',
+			sourceThread: 'T-owner',
 		}
 
 		expect(testables.replay([startEvent, event, event]).get('billing')?.eventCount).toBe(2)
@@ -142,26 +142,13 @@ describe('delivery event ledger', () => {
 })
 
 describe('material child reports', () => {
-	test('appends once across concurrent retries and after an in-memory restart', async () => {
-		const messages: ThreadMessage[] = [toolResult(testables.encodeEvent(startEvent), 'start')]
-		let appendCount = 0
-		const parent = {
-			id: 'T-owner',
-			messages: async ({ offset = 0, limit = 20 }: { offset?: number; limit?: number } = {}) =>
-				messages.slice(offset, offset + limit),
-			appendUserMessage: async (message: { content: string }) => {
-				await Bun.sleep(5)
-				appendCount += 1
-				messages.push(userText(message.content, `report-${appendCount}`))
-			},
-		} as unknown as PluginThread
-		const amp = {
-			threads: { get: (id: string) => (id === 'T-owner' ? parent : undefined) },
-		} as unknown as PluginAPI
+	test('prepares once from the worker transcript across a retry and reload', async () => {
+		const messages: ThreadMessage[] = []
 		const ctx = {
 			thread: {
 				id: 'T-worker',
-				parentThreadID: async () => 'T-owner',
+				messages: async ({ offset = 0, limit = 20 }: { offset?: number; limit?: number } = {}) =>
+					messages.slice(offset, offset + limit),
 			},
 		} as unknown as PluginToolContext
 		const input = {
@@ -173,117 +160,78 @@ describe('material child reports', () => {
 			summary: 'Draft PR is open.',
 			nextGate: 'Owner review',
 			pullRequest: 'https://github.com/acme/app/pull/42',
+			ownerThread: 'T-owner',
 		}
 
-		const liveLocks = new Map<string, Promise<void>>()
-		const results = await Promise.all([
-			testables.reportMaterial(amp, input, ctx, liveLocks),
-			testables.reportMaterial(amp, input, ctx, liveLocks),
-		])
-		expect(appendCount).toBe(1)
-		expect(results.filter((result) => result.includes('No change'))).toHaveLength(1)
+		const prepared = await testables.reportMaterial(input, ctx)
+		expect(prepared).toContain('send_thread_message')
+		expect(prepared).toContain('thread `T-owner`')
+		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_BEGIN')
+		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_END')
+		messages.push(toolResult(prepared, 'prepared-report'))
 
-		const restartedLocks = new Map<string, Promise<void>>()
-		const afterRestart = await testables.reportMaterial(amp, input, ctx, restartedLocks)
+		const afterRestart = await testables.reportMaterial(input, ctx)
 		expect(afterRestart).toContain('No change')
-		expect(appendCount).toBe(1)
+		expect(afterRestart).toContain('do not send it again')
 	})
 
-	test('rejects a report whose direct parent does not own the named delivery', async () => {
-		const parent = {
-			id: 'T-other',
-			messages: async () => [toolResult(testables.encodeEvent(startEvent), 'start')],
-		} as unknown as PluginThread
-		const amp = { threads: { get: () => parent } } as unknown as PluginAPI
+	test('rejects conflicting reuse of a prepared worker event ID', async () => {
+		const messages: ThreadMessage[] = []
 		const ctx = {
-			thread: { id: 'T-worker', parentThreadID: async () => 'T-other' },
+			thread: { id: 'T-worker', messages: async () => messages },
 		} as unknown as PluginToolContext
+		const input = {
+			eventId: 'api-ready-1',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind: 'ready_for_review' as const,
+			state: 'review' as const,
+			summary: 'Ready',
+			nextGate: 'Review',
+			ownerThread: 'T-owner',
+		}
 
+		messages.push(toolResult(await testables.reportMaterial(input, ctx), 'prepared-report'))
 		await expect(
-			testables.reportMaterial(
-				amp,
-				{
-					eventId: 'api-ready-1',
-					deliveryId: 'billing',
-					itemId: 'api',
-					kind: 'ready_for_review',
-					state: 'review',
-					summary: 'Ready',
-					nextGate: 'Review',
-				},
-				ctx,
-				new Map(),
-			),
-		).rejects.toThrow('target thread does not own this delivery')
+			testables.reportMaterial({ ...input, summary: 'Different summary' }, ctx),
+		).rejects.toThrow('already has a different payload')
 	})
 
-	test('routes a redirected report only when the new owner assigns that worker', async () => {
+	test('owner replay accepts reports only from the assigned worker', () => {
 		const assignment = {
 			version: 1 as const,
-			eventId: 'handoff-api-worker',
+			eventId: 'api-worker-started',
 			deliveryId: 'billing',
 			kind: 'worker_started' as const,
 			itemId: 'api',
 			state: 'active' as const,
-			summary: 'Recovered worker assignment.',
+			summary: 'Worker assigned.',
 			nextGate: 'Draft PR',
-			sourceThread: 'T-new-owner',
+			sourceThread: 'T-owner',
 			workerThread: 'T-worker',
 		}
-		const messages = [
-			toolResult(testables.encodeEvent({ ...startEvent, ownerThread: 'T-new-owner' }), 'start'),
-			toolResult(testables.encodeEvent(assignment), 'assignment'),
-		]
-		let appended = false
-		const owner = {
-			id: 'T-new-owner',
-			messages: async () => messages,
-			appendUserMessage: async () => {
-				appended = true
-			},
-		} as unknown as PluginThread
-		const amp = { threads: { get: () => owner } } as unknown as PluginAPI
-		const ctx = {
-			thread: { id: 'T-worker', parentThreadID: async () => 'T-old-owner' },
-		} as unknown as PluginToolContext
+		const report = {
+			version: 1 as const,
+			eventId: 'api-ready-1',
+			deliveryId: 'billing',
+			kind: 'ready_for_review' as const,
+			itemId: 'api',
+			state: 'review' as const,
+			summary: 'Ready.',
+			nextGate: 'Owner review',
+			sourceThread: 'T-worker',
+			workerThread: 'T-worker',
+		}
 
-		await testables.reportMaterial(
-			amp,
-			{
-				eventId: 'api-ready-after-handoff',
-				deliveryId: 'billing',
-				itemId: 'api',
-				kind: 'ready_for_review',
-				state: 'review',
-				summary: 'Ready in the new owner.',
-				nextGate: 'Review',
-				ownerThread: 'T-new-owner',
-			},
-			ctx,
-			new Map(),
-		)
-
-		expect(appended).toBe(true)
-
-		const imposter = {
-			thread: { id: 'T-imposter', parentThreadID: async () => 'T-old-owner' },
-		} as unknown as PluginToolContext
-		await expect(
-			testables.reportMaterial(
-				amp,
-				{
-					eventId: 'api-imposter-report',
-					deliveryId: 'billing',
-					itemId: 'api',
-					kind: 'ready_for_review',
-					state: 'review',
-					summary: 'Wrong worker.',
-					nextGate: 'Review',
-					ownerThread: 'T-new-owner',
-				},
-				imposter,
-				new Map(),
-			),
-		).rejects.toThrow('assigns this item to a different worker')
+		const ledger = testables.replay([startEvent, assignment, report, report]).get('billing')
+		expect(ledger?.items.find((item) => item.id === 'api')?.state).toBe('review')
+		expect(ledger?.eventCount).toBe(3)
+		expect(() =>
+			testables.replay([
+				startEvent,
+				assignment,
+				{ ...report, eventId: 'api-imposter-report', sourceThread: 'T-imposter', workerThread: 'T-imposter' },
+			]),
+		).toThrow('is not from the worker assigned to item api')
 	})
 })

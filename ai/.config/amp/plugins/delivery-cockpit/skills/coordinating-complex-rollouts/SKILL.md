@@ -51,7 +51,7 @@ Brief: <coordinator link and item>
 Hazard: <only item-specific risk>
 Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
-Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> only on a listed material transition; reuse one eventId for retries
+Delivery report: load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> with ownerThread <coordinator thread ID> only on a listed material transition; send the exact prepared content once with send_thread_message; reuse one eventId for retries
 ```
 
 Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
@@ -90,7 +90,7 @@ Workers report these transitions once:
 
 Do not poll workers. Ask them to report. Query GitHub or CI only when a reported event reaches a gate, the user asks for status, or stale state can release a dependency. Use one watcher or one later query, not a watch plus repeated status calls.
 
-`delivery_report` appends each unique direct-child report to this coordinator and updates the replayable ledger event stream. It rejects routine event kinds and conflicting reuse of an event ID. Call `delivery_status` after a report reaches a gate or when status is requested, not as polling.
+`delivery_report` prepares and deduplicates a material report in the worker's connected transcript. The worker sends its exact prepared content here with Amp's core `send_thread_message` tool. This ledger applies it only when the reporting worker is already assigned to the item, ignores exact duplicate event IDs, and rejects conflicts. Call `delivery_status` after a report reaches a gate or when status is requested, not as polling.
 
 On each material event:
 
