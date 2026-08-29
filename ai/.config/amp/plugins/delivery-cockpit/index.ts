@@ -513,16 +513,8 @@ function reportMessage(event: MaterialEvent): string {
 	return [
 		encodeEvent(event),
 		'',
-		`Delivery material event for \`${event.deliveryId}\` / \`${event.itemId}\`: \`${event.kind}\` → \`${event.state}\`.`,
-		`Summary: ${event.summary}`,
-		`Next gate: ${event.nextGate}`,
-		event.pullRequest ? `Pull request: ${event.pullRequest}` : undefined,
-		`Worker: ${event.sourceThread}`,
-		'',
-		'This is a proposal. Verify its Amp message attribution, then promote it with delivery_record in the owning thread.',
-	]
-		.filter((line) => line !== undefined)
-		.join('\n')
+		`Delivery proposal \`${event.eventId}\`: verify its Amp message attribution, then promote the marker fields with \`delivery_record\` in the owning thread.`,
+	].join('\n')
 }
 
 async function reportMaterial(

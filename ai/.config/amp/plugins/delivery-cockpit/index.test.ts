@@ -210,6 +210,10 @@ describe('material child reports', () => {
 		expect(prepared).toContain('thread `T-owner`')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_BEGIN')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_END')
+		expect(prepared).toContain('Delivery proposal `api-draft-1`')
+		expect(prepared).not.toContain('Summary:')
+		expect(prepared).not.toContain('Next gate:')
+		expect(prepared).not.toContain('Worker:')
 		messages.push(
 			toolUse('delivery_report', 'prepared-report'),
 			toolResult(prepared, 'prepared-report'),

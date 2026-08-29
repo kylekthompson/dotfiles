@@ -38,8 +38,8 @@ State: a worker prepares and sends a proposal across a plugin reload. The same p
 
 Expected: raw proposals do not update the ledger. The coordinator verifies the assigned worker from Amp message metadata and promotes the proposal once with `delivery_record`. Retrying that stable event ID reports no change. A different payload with the same ID stops promotion as a conflict.
 
-## Fast Worker Report
+## Fast Worker Proposal
 
 State: a worker reaches a material transition before the coordinator has recorded its assignment.
 
-Expected: the worker waits for the assignment-recorded message before reporting. Even if a proposal arrives early, raw text cannot poison replay; the coordinator records the assignment before promoting the proposal.
+Expected: the raw proposal cannot poison replay. The coordinator records the assignment before promoting the proposal; no acknowledgement round trip is required.

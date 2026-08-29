@@ -51,12 +51,12 @@ Brief: <coordinator link and item>
 Hazard: <only item-specific risk>
 Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
 Acceptance: <focused checks and observable result>
-Delivery report: wait until the owner confirms this assignment is recorded; then load delivery-cockpit:managing-deliveries and call delivery_report for <delivery ID>/<item ID> with ownerThread <coordinator thread ID> only on a listed material transition; send the exact prepared content once with send_thread_message; reuse one eventId for retries
+Delivery report: for a draft PR, completed review changes, changed/cleared blocker, review/merge readiness, stop, or supersession, call delivery_report for <delivery ID>/<item ID> with ownerThread <coordinator thread ID>; reuse one eventId, then send the exact prepared proposal once with send_thread_message
 ```
 
 Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
 
-Create workers with Amp's core `create_thread` tool. After creation succeeds, call `delivery_record` with `kind: worker_started`, `state: active`, the returned worker thread ID, and its first material gate. Then use `send_thread_message` once to tell the worker its assignment is recorded and reporting is enabled. Do not retry an uncertain create call; verify whether the child exists first.
+Create workers with Amp's core `create_thread` tool. After creation succeeds, call `delivery_record` with `kind: worker_started`, `state: active`, the returned worker thread ID, and its first material gate. Do not retry an uncertain create call; verify whether the child exists first.
 
 Do not repeat generic agent policy, repository guidance, the full plan, or irreversible-action warnings in every prompt. Add a safety warning only when the brief cannot prevent a plausible shared action.
 
@@ -114,7 +114,7 @@ After a merge, verify the merge and release only the direct successor. A success
 
 ### Finish or hand off
 
-At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, the current `delivery_status` ledger, approval state, and next gate. After it accepts ownership, it loads `delivery-cockpit:managing-deliveries`, starts the same item graph, records each current non-pending item state and worker assignment with new handoff event IDs, and compares the rendered ledger. Send each redirected worker an assignment-recorded message with the new coordinator thread ID for future `delivery_report.ownerThread` calls. Redirect reports and stop the predecessor only after that explicit recovery succeeds.
+At a safe phase boundary, start a fresh medium-mode coordinator only when context growth is causing repeated history reads or missed state. Set `agent_mode: medium` explicitly. Give it one consolidated brief, the current `delivery_status` ledger, approval state, and next gate. After it accepts ownership, it loads `delivery-cockpit:managing-deliveries`, starts the same item graph, records each current non-pending item state and worker assignment with new handoff event IDs, and compares the rendered ledger. Send each redirected worker the new coordinator thread ID for future `delivery_report.ownerThread` calls. Redirect reports and stop the predecessor only after that explicit recovery succeeds.
 
 Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Send one final digest with PR links, rollout verdicts, and remaining action, then archive the coordinator.
 

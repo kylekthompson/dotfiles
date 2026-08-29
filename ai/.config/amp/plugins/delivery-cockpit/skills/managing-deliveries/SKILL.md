@@ -33,10 +33,8 @@ Use `create_thread`, not a plugin tool, so Amp remains responsible for project s
 Add this line to the worker prompt:
 
 ```text
-Delivery report: wait until the owner confirms this assignment is recorded. Then load delivery-cockpit:managing-deliveries and call delivery_report for item <item-id> with ownerThread <owning-thread-id> only when a listed material transition occurs. Use send_thread_message once to send the exact prepared content to that owner. Reuse one eventId for retries.
+Delivery report: for a draft PR, completed review changes, changed/cleared blocker, review/merge readiness, stop, or supersession, call delivery_report for item <item-id> with ownerThread <owning-thread-id>. Reuse one eventId, then send the exact prepared proposal once with send_thread_message.
 ```
-
-After `worker_started` is recorded, use `send_thread_message` once to tell the worker that its assignment is recorded and reporting is enabled. This prevents a fast worker from reporting before the owner has committed its assignment.
 
 Do not retry an uncertain `create_thread` call. Verify whether the child exists first. Child creation is deliberately outside the event ledger because the stable Plugin API has no idempotency key for that side effect.
 
