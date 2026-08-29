@@ -8,6 +8,18 @@ State: the settled outcome is one cohesive change that fits one pull request.
 
 Expected: implement normally in the current thread. Do not load `delivery-cockpit:delivering-changes` and do not create an implementation worker.
 
+## Inferred Multi-Pull-Request Delivery
+
+State: the thread has an implementation-ready plan whose dependency graph and review boundaries require three pull requests. The user asks to implement the plan without saying “multi-PR delivery.”
+
+Expected: load `delivery-cockpit:delivering-changes` and start direct delivery. Do not ask the user to repeat the pull-request count or explicitly request the workflow.
+
+## Parallel Implementation Request
+
+State: the user asks to parallelize implementation, and the settled work has independent implementation workstreams that can own separate pull requests.
+
+Expected: load `delivery-cockpit:delivering-changes`, record the workstream dependencies, and dispatch bounded workers. A request to parallelize research or planning without implementation intent does not trigger delivery.
+
 ## Explicit Modes
 
 State: the plan has a docs-only glossary update, an ordinary backend capability, and one bounded question about a difficult cross-version safety invariant.

@@ -1,6 +1,6 @@
 ---
 name: delivering-changes
-description: Delivers a settled plan with multiple pull requests or parallel workstreams directly from its planning thread. Use when the user explicitly asks to start or continue multi-PR delivery. Do not use for ordinary single-PR implementation.
+description: Delivers a settled plan with multiple pull requests or parallel implementation workstreams in the invocation thread. Use when the plan or thread already indicates multiple PRs, or when the user asks to implement, continue, deliver, or parallelize such work. Do not use for ordinary single-PR implementation.
 compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
@@ -9,6 +9,13 @@ compatibility: Requires Amp thread tools and authenticated GitHub access for pul
 Use the invocation thread as the delivery owner for the full delivery. Create bounded implementation workers, receive their material reports, and keep approval and dependency decisions in one place. Never create or hand off to a coordinator, relay, owner, or continuation thread.
 
 ## Confirm the Plan Is Ready
+
+Trigger this workflow from the delivery shape and implementation intent, not from a required phrase. Use it when either condition is true:
+
+- The settled plan or thread context already shows that implementation needs multiple pull requests or independently owned implementation workstreams.
+- The user asks to implement, deliver, continue, or parallelize work that can be split into multiple pull requests or independent implementation workstreams.
+
+Do not require the user to explicitly say “multi-PR delivery” or repeat conclusions already established in the thread. A request to parallelize research or planning alone does not trigger delivery.
 
 Before dispatch:
 
@@ -21,7 +28,7 @@ If the outcome fits one pull request, implement it normally in the current threa
 
 If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `delivery-cockpit:coordinating-complex-rollouts` in this thread instead.
 
-For the remaining direct multi-PR delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
+For the remaining direct multi-PR or parallel implementation delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
 
 ## Dispatch Bounded Workers
 
