@@ -1,6 +1,6 @@
 ---
 name: rwx-sandbox
-description: Routes environment-dependent project commands through an existing RWX cloud sandbox. Use when `.rwx/sandbox.yml` exists and a task runs tests, checks, builds, package scripts, migrations, code generation, or database commands.
+description: Routes environment-dependent commands through an existing RWX cloud sandbox. Before loading, check that `.rwx/sandbox.yml` exists. Use only when it exists and the task runs tests, checks, builds, package scripts, migrations, code generation, or database commands.
 ---
 
 # RWX Sandbox

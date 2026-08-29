@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Guides test-first implementation with red-green-refactor and characterization-first refactoring. Use for features, bug fixes, behavior-preserving refactors, and test-strategy decisions.
+description: Guides explicit test-first work with red-green-refactor and characterization-first refactoring. Use when the user or plan requires TDD, a bug needs a failing regression, or test strategy is a material design decision. Routine implementation does not require loading it.
 ---
 
 # TDD

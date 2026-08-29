@@ -1,182 +1,120 @@
 ---
 name: planning-rolling-deploys
-description: Plans and reviews rolling deploys for mixed-version safety across database migrations and background jobs. Use when changing schemas, job payloads, job signatures, handlers, queues, schema-cached workers, or any persisted contract that old and new application versions can read or write during rollout, retry, or rollback.
+description: Plans and reviews mixed-version safety for schema changes, persisted messages, jobs, queues, and schema-cached processes. Use when current and target code can overlap during rollout, retry, or rollback.
 ---
 
 # Plan Rolling Deploys
 
-Build a phased deploy plan in which every reachable mix of code, schema, and persisted messages remains compatible. Treat database rows and queued jobs as contracts between versions that do not change at the same time.
+Make every reachable combination of code, schema, and persisted messages compatible. Database rows and queued work are contracts between versions that do not change at the same time.
 
-## Establish the Real Deployment Model
+## Establish the Deployment Model
 
-Inspect the repository, deployment configuration, migration tooling, queue framework, serializers, and operational documentation before recommending a sequence. Determine:
+Inspect repository deployment configuration, migration tooling, queue behavior, and operational documentation. Determine only facts that can change the plan:
 
-- which processes deploy independently, including web, API, worker, scheduler, and migration processes
-- whether deploys replace processes gradually, restart them in place, or use blue-green traffic switching
-- which process types can overlap and for how long
-- whether migrations run before, during, or after application rollout
-- whether a failed rollout can restore the prior application version against the new schema
-- which worker versions poll each queue and what happens when a worker sees an unknown job type
-- the maximum age of queued, scheduled, retried, dead-lettered, or replayed jobs
-- whether processes cache column names, types, prepared statements, generated models, or serializer schemas at boot
-- database engine and version, table size, lock behavior, replication, and supported online DDL operations
+- independently deployed web, API, worker, scheduler, and migration processes
+- rollout order, process overlap, rollback window, and migration timing
+- queue consumers and maximum scheduled, retry, dead-letter, or replay age
+- schema caches, prepared statements, generated models, and restart behavior
+- database engine, lock behavior, table size, and supported online DDL
 
-Ask only for facts that cannot be found and that can change the plan. Do not assume a deploy is safe because its normal duration is short. Retries, scheduled work, rollback support, paused workers, and long-running processes can extend version overlap.
+Ask for missing material facts. Do not assume short normal deploy time prevents overlap. Name code versions `current` and `target`; name schema states `current`, `expanded`, and `contracted`.
 
-Calibrate investigation to the real risk before requesting broad operational evidence. Establish whether the feature is exposed or used, whether relevant data exists, which current code can still run, and what irreversible harm is plausible. Classify a requirement as an implementation, merge, activation, or contraction gate. For deferred hardening, record the enforced protection, affected environments and scope, re-trigger condition, and authoritative decision link. Lack of current use does not make an incompatible version pair safe unless an enforced gate makes that pair unreachable.
-
-Name versions as `current` and `target`, and schema states as `current`, `expanded`, and `contracted`. Avoid ambiguous terms such as “old” in the final plan.
+First establish exposure and plausible harm. Separate implementation, merge, activation, and contraction gates. A deferred control needs an enforced protection and a clear re-trigger condition.
 
 ## Inventory Persisted Contracts
 
-List each changed contract and its producers and consumers:
+List each changed database object, job payload or type, queue, scheduled entry, outbox/event record, cache entry, serializer, and generated or cached schema. For each, record:
 
-- database tables, columns, types, defaults, constraints, indexes, views, triggers, and enums
-- job type names, queue names, argument order, payload fields, defaults, serialization, and retry metadata
-- scheduler entries, outbox records, events, cache entries, and replay or dead-letter stores
-- ORM schema caches, prepared statements, generated clients, and deployed code outside the main rollout
+1. producers and writers
+2. consumers and readers
+3. persistence or retry lifetime
+4. tolerance for missing or unknown fields
+5. rollback behavior
 
-For each contract, record:
+Treat positional arguments, serialized class names, implicit defaults, and stale process caches as contract details.
 
-1. who writes or enqueues it
-2. who reads, executes, or deserializes it
-3. how long persisted instances can survive
-4. whether readers ignore unknown fields and tolerate missing fields
-5. whether rollback restores an earlier reader or writer
+## Prove Reachable Version Pairs
 
-Treat a positional job argument list, serialized class name, and implicit default as part of the wire format. A source-level method signature is not the full contract.
+For persisted messages, prove:
 
-## Prove the Compatibility Matrix
-
-Analyze every reachable producer-consumer pair for a changed job payload:
-
-| Producer | Consumer | Required result |
+| Producer | Consumer | Requirement |
 | --- | --- | --- |
-| current | current | Existing behavior remains valid |
-| current | target | Target accepts queued current payloads |
-| target | current | Current accepts target payloads, or this pair is prevented by an enforced gate or queue boundary |
-| target | target | Target behavior is valid |
+| current | current | baseline remains valid |
+| current | target | target accepts existing messages |
+| target | current | current accepts target messages, or an enforced gate prevents the pair |
+| target | target | target behavior works |
 
-Analyze every reachable code-schema pair for each process type:
+For each process type, prove:
 
-| Code | Schema | Required result |
+| Code | Schema | Requirement |
 | --- | --- | --- |
-| current | current | Baseline works |
-| current | expanded | Current code tolerates additive changes |
-| target | current | Target tolerates the pre-migration state, or an enforced migration gate prevents this pair |
-| target | expanded | Target can roll out and roll back safely |
-| current | contracted | Must be impossible at and after contraction, including during rollback |
-| target | contracted | Final behavior works |
+| current | current | baseline works |
+| current | expanded | rollback and overlapping current processes work |
+| target | current | target works, or migration order enforces that this pair is unreachable |
+| target | expanded | rollout and rollback work |
+| current | contracted | impossible after contraction |
+| target | contracted | final behavior works |
 
-Add intermediate schema or code states when the real sequence has more phases. Include a process that started before a migration and kept its cached schema after the migration. Do not use a freshly started console as proof that a long-lived process is safe.
+Add intermediate states when the real rollout has them. A pair is unreachable only when a mechanism prevents it, such as a completed gate, isolated queue, or disabled producer. Timing and operator intent are not mechanisms. Block the plan while a reachable pair is incompatible.
 
-A pair is unreachable only when a concrete mechanism prevents it, such as a completed rollout gate, a queue that current workers cannot poll, or a disabled producer flag. Timing assumptions and operator intent are not mechanisms.
+## Design Compatible Changes
 
-## Design Database Changes
+### Database
 
-Prefer expand-migrate-contract. Make each phase independently deployable, observable, and safe for application rollback.
+- Prefer expand, migrate, activate, observe, then contract.
+- Add compatible storage before code requires it unless target code tolerates its absence.
+- Check engine-specific lock, rewrite, replication, and online-index behavior. Additive does not mean cheap.
+- Treat renames as add-transition-remove. For incompatible types, use a shadow field, dual writes, backfill, read cutover, then contraction.
+- Make backfills resumable, idempotent, bounded, observable, and safe with concurrent writes.
+- Add required constraints only after existing and concurrent data satisfies them.
+- Before dropping storage, deploy code that does not read or write it, account for generated queries and caches, and close the rollback window.
+- Prefer compatibility that does not depend on coordinated cache invalidation. If restart is required, state what stops stale processes from receiving work.
 
-### Additive changes
+### Jobs and persisted messages
 
-- Add a nullable column or otherwise compatible database object before code requires it, unless target code explicitly tolerates its absence.
-- Verify engine-specific lock and table-rewrite behavior for defaults, constraints, indexes, and type changes. “Additive” does not mean operationally cheap.
-- Start writing new data only after every relevant writer and reader can tolerate it.
-- Add required constraints after existing rows and concurrent writes satisfy them. Use non-blocking validation features when the engine supports them.
+- Deploy tolerant consumers before producers emit a new format.
+- Prefer named additive optional fields with explicit defaults, after verifying serializer behavior.
+- Do not change positional argument meaning in place. Use a payload version or new job type when meaning changes or readers are strict.
+- Do not enqueue a new job type while an incompatible worker can reserve it; wait for rollout or isolate its queue.
+- Retain old consumers until ready, scheduled, retry, dead-letter, replay, and rollback horizons have drained.
+- Make overlapping old/new jobs idempotent at a stable business boundary.
+- Test delayed jobs against the schema state in which they can execute.
 
-### Renames, removals, and type changes
+## Build Measurable Phases
 
-- Treat a rename as add, transition, and remove. Do not rename a live column in one step when mixed code refers to both names.
-- For an incompatible type change, add a shadow column, write both forms, backfill, switch reads, stop old writes, and contract later.
-- Before dropping a column, deploy code that neither reads nor writes it. Account for ORM-generated `SELECT *`, partial writes, callbacks, and schema caches.
-- When a framework supports an ignored-column declaration, deploy it before the drop and wait for every process without it to exit.
-- Do not contract while application rollback can restore code that needs the removed shape.
+Use only phases the change needs:
 
-### Backfills and data transitions
+1. **Prepare:** tolerant readers/consumers, dual-write capability, handlers, queue routing, flags, and observability.
+2. **Expand:** compatible schema and online structures.
+3. **Migrate:** measured backfill or conversion.
+4. **Activate:** target writers, producers, jobs, or reads after their compatibility gates pass.
+5. **Observe and drain:** measure health, invalid data, queues, retries, schedules, and rollback window.
+6. **Contract:** remove compatibility only after no supported rollback or persisted work needs it.
 
-- Make backfills resumable, idempotent, bounded in batches, and safe with concurrent writes.
-- Establish the required write path before the backfill so rows do not become stale behind it.
-- Measure remaining rows and invalid rows. Gate read cutover and constraint validation on those measurements.
-- Keep long-running data changes out of a blocking schema transaction when the framework and database allow it.
+For each active phase, state the coexistence invariant, action, entry and exit gates, signals and thresholds, and valid rollback or roll-forward action. Prefer roll-forward repair after a failed additive migration. Do not use a destructive down migration without proving data and mixed-version safety.
 
-Treat schema-cache behavior as part of the design. If safety depends on cache refresh, specify which processes restart, in what order, and what prevents a stale process from receiving work. Prefer a compatibility phase that does not depend on coordinated cache invalidation.
+## Verify the Risk
 
-## Design Background Job Changes
+Choose focused checks for the actual boundary:
 
-Queued payloads can outlive the deployment that created them. Make consumers tolerant before producers emit a new format.
+- deserialize current payloads with target consumers and the reverse when reachable
+- run current and target code against expanded schema
+- start a current process, apply the migration, then exercise that same stale-cache process
+- simulate rollback after expansion or activation
+- enqueue before deploy and execute after deploy
+- prove incompatible workers cannot reserve target jobs
+- test retries, delays, duplicate delivery, and replay when relevant
+- inspect generated SQL and measure migration locks when operational risk requires it
 
-### Change a payload or signature
+Do not require every check for every change. State uncertainty when topology, retention, cache behavior, or DDL semantics remain unverified.
 
-- First deploy a consumer that accepts both current and target payloads while producers still emit the current form.
-- Prefer named, additive, optional fields with explicit defaults. Verify that the actual serializer and consumer ignore unknown fields before relying on this pattern.
-- Avoid changing positional argument count or meaning in place. It can cause arity errors or, worse, valid calls with changed semantics.
-- When meaning changes or readers are strict, use an explicit payload version or a new job type. Keep translation at the consumer boundary.
-- Activate target producers only after compatible consumers are everywhere that can reserve the job, or route target payloads to a queue consumed only by compatible workers.
-- Retain compatibility until current payloads have left ready, scheduled, retry, dead-letter, and replay stores and the application rollback window has closed.
+## Report
 
-### Introduce a job type
+Return a concise artifact:
 
-- Deploy and verify the handler before any producer can enqueue the new type.
-- If current workers can reserve a job whose class or type they do not know, do not enqueue while those workers poll the queue. Wait for their rollout to finish or use a separate queue that they cannot poll.
-- Gate producer activation independently from code deployment. A target process starting does not prove all consumers are ready.
-- Verify routing, retries, idempotency, uniqueness, priority, and dead-letter handling before activation.
-
-### Remove or replace a job type
-
-- Stop all producers and schedulers first.
-- Keep the handler able to process old jobs through the maximum queue, schedule, retry, replay, and rollback horizon.
-- Inspect all stores, not only the ready queue, before removing the handler or queue.
-- Make replacement jobs safe when both job types can execute for the same logical work. Use a stable idempotency boundary where duplicate execution is possible.
-
-Also test job code against the database state in which it can run. A delayed current-format job can execute with target code against a later schema.
-
-## Build the Rollout in Enforced Phases
-
-Use only the phases the change needs, but keep these responsibilities separate:
-
-1. **Prepare compatibility:** Add tolerant readers, dual-write capability, ignored-column declarations, handlers, queue routing, flags, and observability. Keep new production behavior off.
-2. **Expand storage:** Apply compatible schema additions and online structures. Verify lock time, replication health, and current-process behavior, including stale schema caches.
-3. **Migrate data:** Run and measure backfills or conversions while compatible paths remain active.
-4. **Activate producers and reads:** Enable target writes, enqueue formats, job types, or read paths only after their consumer and data gates pass.
-5. **Observe and drain:** Wait for explicit health, data, queue, retry, schedule, and rollback-window conditions. Do not substitute a fixed sleep when state can be measured.
-6. **Contract:** Remove compatibility code, old handlers, flags, queues, columns, or types only after no supported rollback or persisted work needs them.
-
-For each phase, state:
-
-- exact code versions, schema state, and worker groups that can coexist
-- the compatibility invariant that the phase preserves
-- commands or artifacts deployed and features activated
-- entry gate and measurable exit gate
-- verification signals and failure thresholds
-- rollback action that is valid from that phase
-
-Prefer roll-forward repair for a failed additive migration. Never propose an automatic destructive down migration without proving it preserves data and remains compatible with every live process.
-
-## Verify the Risk, Not Only the Final State
-
-Choose tests that exercise the actual boundaries:
-
-- deserialize current payload fixtures with target consumers
-- deserialize target payload fixtures with current consumers when that pair is meant to be supported
-- start a process on the current schema, apply the migration, and exercise that same process with its stale cache
-- run current and target code against the expanded schema
-- simulate rollback to current code after expansion and activation
-- enqueue before deployment and execute after deployment
-- enqueue after target activation and prove a current worker cannot fail on it
-- test retries, delayed schedules, duplicate delivery, and dead-letter replay when relevant
-- inspect generated SQL for dropped or renamed columns and measure migration locks on representative data
-
-Use framework and database documentation for version-specific claims. State uncertainty when production topology, queue retention, schema-cache behavior, or DDL semantics are not verified.
-
-## Report the Plan
-
-Return a concise deployment artifact with:
-
-1. **Verdict:** `safe`, `safe with gates`, or `blocked`, with the main reason
-2. **Deployment model:** process overlap, migration order, queue lifetime, cache behavior, and rollback window
-3. **Changed contracts:** producers, consumers, and persistence horizon
-4. **Compatibility matrices:** all reachable job and code-schema pairs; mark the mechanism that makes any pair unreachable
-5. **Phased rollout:** deploy actions, activation actions, measurable gates, verification, and rollback for each phase
-6. **Cleanup criteria:** exact evidence required before destructive changes
-7. **Open risks:** only unresolved facts that can change safety
-
-Block the plan when any reachable pair is incompatible. Do not call a plan zero-downtime-safe based only on the target code working with the final schema.
+1. verdict: `safe`, `safe with gates`, or `blocked`
+2. deployment model and changed persisted contracts
+3. reachable compatibility pairs and mechanisms that prevent others
+4. rollout phases with measurable gates and rollback
+5. contraction criteria
+6. unresolved facts that can change safety

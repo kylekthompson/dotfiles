@@ -1,6 +1,6 @@
 ---
 name: ubiquitous-language
-description: Keeps domain vocabulary aligned with `DOMAIN.md`. Use during naming, implementation, refactoring, review, documentation, API or schema design, and explicit glossary audits or updates.
+description: Resolves domain vocabulary against `DOMAIN.md`. Use for a domain-term decision, new or renamed domain concept, glossary change, or explicit terminology audit. Routine implementation that preserves existing names does not require loading it.
 ---
 
 # Ubiquitous Language
