@@ -351,19 +351,30 @@ function eventsFromMessages(
 	for (const message of messages) {
 		if (message.role === 'assistant') {
 			for (const block of message.content) {
-				if (block.type === 'tool_use') toolNames.set(block.id, block.name)
+				const candidate = block as unknown as Record<string, unknown>
+				if (
+					candidate.type === 'tool_use' &&
+					typeof candidate.id === 'string' &&
+					typeof candidate.name === 'string'
+				) {
+					toolNames.set(candidate.id, candidate.name)
+				}
 			}
 			continue
 		}
 		if (message.role !== 'user') continue
 		for (const block of message.content) {
-			if (
-				block.type === 'tool_result' &&
-				block.status === 'done' &&
-				accepted.has(toolNames.get(block.toolUseID) ?? '') &&
-				typeof block.output === 'string'
-			) {
-				events.push(...decodeEvents(block.output))
+			const candidate = block as unknown as Record<string, unknown>
+			if (candidate.type !== 'tool_result' || candidate.status !== 'done') continue
+
+			// Neo results identify their tool directly. Legacy results link to a preceding tool use.
+			const toolName =
+				typeof candidate.toolName === 'string'
+					? candidate.toolName
+					: toolNames.get(typeof candidate.toolUseID === 'string' ? candidate.toolUseID : '')
+			const output = 'result' in candidate ? candidate.result : candidate.output
+			if (toolName && accepted.has(toolName) && typeof output === 'string') {
+				events.push(...decodeEvents(output))
 			}
 		}
 	}
@@ -687,6 +698,7 @@ export default async function (amp: PluginAPI) {
 
 export const testables = {
 	decodeEvents,
+	deliveryStatus,
 	encodeEvent,
 	eventsFromMessages,
 	normalizeItems,
@@ -694,4 +706,5 @@ export const testables = {
 	recordMaterial,
 	renderLedger,
 	reportMaterial,
+	startDelivery,
 }

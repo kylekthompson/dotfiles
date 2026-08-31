@@ -42,6 +42,25 @@ function toolResult(text: string, id: string): ThreadMessage {
 	}
 }
 
+function runtimeToolCall(name: string, id: string): ThreadMessage {
+	return {
+		role: 'assistant',
+		id: `call-${id}`,
+		kind: 'tool_call',
+		content: [{ type: 'tool_call', toolName: name, input: {} }],
+	} as unknown as ThreadMessage
+}
+
+function runtimeToolResult(name: string, result: string, id: string): ThreadMessage {
+	return {
+		role: 'user',
+		id,
+		kind: 'tool_result',
+		origin: 'tool_result',
+		content: [{ type: 'tool_result', toolName: name, status: 'done', result }],
+	} as unknown as ThreadMessage
+}
+
 describe('plugin registration', () => {
 	test('bundles the delivery workflows with their tools', async () => {
 		const tools: string[] = []
@@ -180,6 +199,51 @@ describe('delivery event ledger', () => {
 		expect(result).toContain('Recorded `worker_started` for `api`.')
 		expect(result).not.toContain('| item | worker |')
 		expect(result).not.toContain('Delivery `billing`')
+	})
+
+	test('reconstructs start and record results across runtime tool invocations', async () => {
+		const messages: ThreadMessage[] = []
+		const ctx = {
+			thread: {
+				id: 'T-owner',
+				messages: async ({ offset = 0, limit = 20 }: { offset?: number; limit?: number } = {}) =>
+					messages.slice(offset, offset + limit),
+			},
+		} as unknown as PluginToolContext
+
+		const startInput = {
+			deliveryId: 'billing',
+			outcome: startEvent.outcome,
+			items: startEvent.items,
+		}
+		const started = await testables.startDelivery(startInput, ctx)
+		messages.push(
+			runtimeToolCall('delivery_start', 'start'),
+			runtimeToolResult('delivery_start', started, 'start'),
+		)
+		expect(await testables.startDelivery(startInput, ctx)).toContain('already has this start event')
+
+		const recordInput = {
+			eventId: 'api-worker-started',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind: 'worker_started' as const,
+			state: 'active' as const,
+			summary: 'Worker assigned.',
+			nextGate: 'Draft PR',
+			workerThread: 'T-worker',
+		}
+		const recorded = await testables.recordMaterial(recordInput, ctx)
+		messages.push(
+			runtimeToolCall('delivery_record', 'record'),
+			runtimeToolResult('delivery_record', recorded, 'record'),
+		)
+		expect(await testables.recordMaterial(recordInput, ctx)).toContain('already recorded')
+
+		const status = await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)
+		expect(status).toContain('| api — Add the API | T-worker |')
+		expect(status).toContain('| schema | active | Draft PR |')
+		expect(status).toContain('1 material event(s) recorded')
 	})
 })
 
