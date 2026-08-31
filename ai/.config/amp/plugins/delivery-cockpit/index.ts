@@ -349,8 +349,14 @@ function eventsFromMessages(
 	const toolNames = new Map<string, string>()
 	const accepted = new Set(acceptedToolNames)
 	for (const message of messages) {
+		const stored = message as unknown as Record<string, unknown>
+		const blocks = Array.isArray(stored.content)
+			? stored.content
+			: Array.isArray(stored.blocks)
+				? stored.blocks
+				: []
 		if (message.role === 'assistant') {
-			for (const block of message.content) {
+			for (const block of blocks) {
 				const candidate = block as unknown as Record<string, unknown>
 				if (
 					candidate.type === 'tool_use' &&
@@ -363,7 +369,7 @@ function eventsFromMessages(
 			continue
 		}
 		if (message.role !== 'user') continue
-		for (const block of message.content) {
+		for (const block of blocks) {
 			const candidate = block as unknown as Record<string, unknown>
 			if (candidate.type !== 'tool_result' || candidate.status !== 'done') continue
 

@@ -61,6 +61,24 @@ function runtimeToolResult(name: string, result: string, id: string): ThreadMess
 	} as unknown as ThreadMessage
 }
 
+function persistedToolResult(name: string, result: string, id: string): ThreadMessage {
+	return {
+		role: 'user',
+		id,
+		kind: 'tool_result',
+		origin: 'tool_result',
+		blocks: [
+			{
+				type: 'tool_result',
+				toolUseId: `tool-${id}`,
+				toolName: name,
+				status: 'done',
+				result,
+			},
+		],
+	} as unknown as ThreadMessage
+}
+
 describe('plugin registration', () => {
 	test('bundles the delivery workflows with their tools', async () => {
 		const tools: string[] = []
@@ -244,6 +262,52 @@ describe('delivery event ledger', () => {
 		expect(status).toContain('| api — Add the API | T-worker |')
 		expect(status).toContain('| schema | active | Draft PR |')
 		expect(status).toContain('1 material event(s) recorded')
+	})
+
+	test('replays persisted result blocks across later calls and retries', async () => {
+		const messages: ThreadMessage[] = []
+		const ctx = {
+			thread: {
+				id: 'T-owner',
+				messages: async ({ offset = 0, limit = 20 }: { offset?: number; limit?: number } = {}) =>
+					messages.slice(offset, offset + limit),
+			},
+		} as unknown as PluginToolContext
+		const startInput = {
+			deliveryId: 'billing',
+			outcome: startEvent.outcome,
+			items: startEvent.items,
+		}
+		messages.push(
+			{
+				role: 'user',
+				id: 'authored-marker',
+				blocks: [{ type: 'text', text: testables.encodeEvent(startEvent) }],
+			} as unknown as ThreadMessage,
+			persistedToolResult('delivery_report', testables.encodeEvent(startEvent), 'proposal'),
+		)
+
+		const started = await testables.startDelivery(startInput, ctx)
+		messages.push(persistedToolResult('delivery_start', started, 'start'))
+		expect(await testables.startDelivery(startInput, ctx)).toContain('already has this start event')
+
+		const recordInput = {
+			eventId: 'api-worker-started',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind: 'worker_started' as const,
+			state: 'active' as const,
+			summary: 'Worker assigned.',
+			nextGate: 'Draft PR',
+			workerThread: 'T-worker',
+		}
+		const recorded = await testables.recordMaterial(recordInput, ctx)
+		messages.push(persistedToolResult('delivery_record', recorded, 'record'))
+
+		expect(await testables.recordMaterial(recordInput, ctx)).toContain('already recorded')
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)).toContain(
+			'1 material event(s) recorded',
+		)
 	})
 })
 
