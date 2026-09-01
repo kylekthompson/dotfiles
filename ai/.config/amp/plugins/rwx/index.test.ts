@@ -6,6 +6,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testables } from './index'
 
+describe('bundled skill guidance', () => {
+	test('uses current RWX documentation and local changes for run loops', () => {
+		const skill = readFileSync(join(import.meta.dir, 'skills', 'rwx', 'SKILL.md'), 'utf8')
+
+		expect(skill).toContain('rwx docs pull /migrating/rwx-reference')
+		expect(skill).toContain('rwx lint .rwx/<name>.yml')
+		expect(skill).toContain('rwx run .rwx/<file>.yml --wait')
+		expect(skill).toContain('does not require a commit or push')
+	})
+})
+
 describe('sandbox guidance', () => {
 	test('tells the agent to load the RWX skill for a configured workspace', async () => {
 		const workspace = await configuredWorkspace()

@@ -7,13 +7,28 @@ description: Runs authenticated RWX CLI commands, including results, logs, and c
 
 Run authenticated RWX CLI commands with `shell_command`. In an Amp orb, the plugin installs and verifies the latest stable RWX CLI from its official GitHub release. It selects the access token for the repository owner without putting the token value in the command.
 
+Before the first RWX operation in a task, run `rwx whoami` to verify that the selected credentials work.
+
+## Use Current RWX Documentation
+
+Before creating, modifying, or explaining files under `.rwx`, pull the current run-definition reference:
+
+`rwx docs pull /migrating/rwx-reference`
+
+The output is already bounded. Do not truncate it. If the reference does not answer a question, run `rwx docs search "<query>"`, then use `rwx docs pull` for the relevant result.
+
+After changing a run definition, validate it with `rwx lint .rwx/<name>.yml`.
+
 ## Execute RWX Commands
 
 Run the CLI from the active worktree root:
 
 - Results: `rwx results <run-id>`
 - Logs: `rwx logs <task-id>`
+- Artifacts: `rwx artifacts --help`
 - Identity: `rwx whoami`
+
+For CI failures or branch status, start with `rwx results --help` to select the correct filters. If the user explicitly asks to start a run, use `rwx run .rwx/<file>.yml --wait` and iterate on failures. A run uses local changes to patch its Git clone, so it does not require a commit or push.
 
 Use a short `timeout_ms` for a long command. If `shell_command` returns `running: true`, pass its PID to `shell_command_status` until the command finishes. Do not rerun the original command to get more output. Output can arrive in batches, and stdout and stderr share one stream. ANSI and carriage-return characters can be present in the output.
 
