@@ -26,10 +26,12 @@ const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 const BASHRC_BLOCK_START = '# >>> rwx-access-token plugin >>>'
 const BASHRC_BLOCK_END = '# <<< rwx-access-token plugin <<<'
 const RWX_EXECUTABLE = /(^|[\s;&|()])(?:["']?[^ \t\r\n;&|()"'=]*\/)?["']?rwx["']?(?=$|[\s;&|()])/m
+const GH_PR_CHECKS_WATCH = /(^|[\s;&|()])gh\s+pr\s+checks\b[^\n;&|]*\s--watch(?:[=\s]|$)/m
 const CLI_RELEASE_URL = 'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/latest'
 const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SANDBOX_GUIDANCE =
 	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx sandbox exec through shell_command. Keep inspection and editing on the host.'
+const RWX_RUN_URL = /https:\/\/cloud\.rwx\.com\/[^/\s]+\/[^/\s]+\/runs\/([a-zA-Z0-9_-]+)/
 
 type ReleaseAsset = {
 	name: string
@@ -187,6 +189,29 @@ function sandboxGuidance(workspacePath: string) {
 	return { message: { content: SANDBOX_GUIDANCE } }
 }
 
+function failedChecksGuidance(
+	command: string,
+	output: unknown,
+): { status: 'done'; output: unknown } | undefined {
+	if (!GH_PR_CHECKS_WATCH.test(command) || typeof output !== 'object' || output === null) return
+
+	const result = output as Record<string, unknown>
+	if (typeof result.exitCode !== 'number' || result.exitCode === 0) return
+
+	const commandOutput = typeof result.output === 'string' ? result.output : ''
+	const runID = commandOutput.match(RWX_RUN_URL)?.[1]
+	if (!runID) return
+
+	const guidance = `GitHub reported failed checks. Run \`rwx results ${runID}\` for a more useful, LLM-friendly failure summary before inspecting individual logs.`
+	return {
+		status: 'done',
+		output: {
+			...result,
+			output: `${commandOutput}${commandOutput.endsWith('\n') ? '' : '\n'}\n${guidance}`,
+		},
+	}
+}
+
 export default async function (amp: PluginAPI) {
 	const workspaceRoot = amp.system.workspaceRoot
 	if (!workspaceRoot) return
@@ -220,6 +245,11 @@ export default async function (amp: PluginAPI) {
 		}
 	})
 
+	amp.on('tool.result', (event) => {
+		const shellCommand = amp.helpers.shellCommandFromToolCall(event)
+		return shellCommand ? failedChecksGuidance(shellCommand.command, event.output) : undefined
+	})
+
 	amp.on('agent.start', () => sandboxGuidance(workspacePath))
 
 	await amp.registerSkill({ path: 'skills/rwx' })
@@ -227,6 +257,7 @@ export default async function (amp: PluginAPI) {
 
 export const testables = {
 	cliAssetName,
+	failedChecksGuidance,
 	installLatestRwxCli,
 	sandboxGuidance,
 	tokenExportCommand,

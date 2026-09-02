@@ -15,6 +15,49 @@ describe('bundled skill guidance', () => {
 		expect(skill).toContain('rwx run .rwx/<file>.yml --wait')
 		expect(skill).toContain('does not require a commit or push')
 	})
+
+	test('prefers RWX results after watched GitHub checks fail', () => {
+		const skill = readFileSync(join(import.meta.dir, 'skills', 'rwx', 'SKILL.md'), 'utf8')
+
+		expect(skill).toContain('`gh pr checks --watch`')
+		expect(skill).toContain('run `rwx results <run-id>`')
+		expect(skill).toContain('RWX URL')
+		expect(skill).toContain('before inspecting individual logs')
+	})
+})
+
+describe('GitHub check guidance', () => {
+	test('adds RWX results guidance when watched PR checks fail', () => {
+		const result = testables.failedChecksGuidance('gh pr checks --watch', {
+			output:
+				'RWX: CI\tfail\t1m2s\thttps://cloud.rwx.com/acme/widgets/runs/421186a89f5b4f379d9fe7d712ad17b2',
+			exitCode: 1,
+		})
+
+		expect(result).toEqual({
+			status: 'done',
+			output: {
+				output:
+					'RWX: CI\tfail\t1m2s\thttps://cloud.rwx.com/acme/widgets/runs/421186a89f5b4f379d9fe7d712ad17b2\n\nGitHub reported failed checks. Run `rwx results 421186a89f5b4f379d9fe7d712ad17b2` for a more useful, LLM-friendly failure summary before inspecting individual logs.',
+				exitCode: 1,
+			},
+		})
+	})
+
+	test('does not add guidance for successful or unwatched checks', () => {
+		expect(
+			testables.failedChecksGuidance('gh pr checks --watch', { output: 'All checks passed', exitCode: 0 }),
+		).toBeUndefined()
+		expect(
+			testables.failedChecksGuidance('gh pr checks', { output: 'Checks failed', exitCode: 1 }),
+		).toBeUndefined()
+		expect(
+			testables.failedChecksGuidance('gh pr checks --watch', {
+				output: 'Checks failed without an RWX URL',
+				exitCode: 1,
+			}),
+		).toBeUndefined()
+	})
 })
 
 describe('sandbox guidance', () => {
