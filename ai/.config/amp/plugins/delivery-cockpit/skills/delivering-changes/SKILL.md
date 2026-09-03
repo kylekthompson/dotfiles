@@ -90,6 +90,8 @@ After a material report:
 6. Dispatch newly unblocked work.
 7. Tell the user the decision, blocker, review-ready result, approval request, or completion—not routine state.
 
+To replace an assigned worker, record `superseded` with the current `workerThread` before recording `worker_started` for the replacement. Do not overwrite an active assignment directly.
+
 Call `delivery_status` after promotion reaches a gate or when the user asks for status, not after every tool call.
 
 ## Verify at the Right Layer

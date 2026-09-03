@@ -98,6 +98,8 @@ On each material event:
 6. Dispatch newly unblocked work.
 7. Tell the user only about a decision, material blocker, review-ready PR, explicit approval request, or completion.
 
+To replace an assigned worker, record `superseded` with the current `workerThread` before recording `worker_started` for the replacement. Do not overwrite an active assignment directly.
+
 The coordinator reviews intent, changed boundaries, tests, and risk. It does not repeat every worker read or reproduce evidence already stored in the PR.
 
 ### Keep approval and rollout explicit

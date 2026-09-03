@@ -60,10 +60,12 @@ When a proposal arrives, the owner must:
 
 Only that owner tool result enters the ledger. Exact duplicate proposals have no effect, and retrying the same promotion reports no change. If the message send result is unknown, ask the owner to check for the proposal before sending it again.
 
+An item can have only one assigned worker. To replace it, first record `superseded` with the current `workerThread`, then record a new `worker_started` event for the replacement. A direct reassignment is rejected. Supersession clears the old assignment so later reports cannot use it.
+
 The owning thread calls `delivery_record` for its own material decisions and verified transitions, including explicit approval, merge, rollout, completion, or abandonment. Recording approval does not grant it and does not perform the approved action. Never infer approval from a state, report, or CI result.
 
 Call `delivery_status` after promoting a material report that reaches a gate, before an approval request, or when the user asks for status. Do not call it as a polling loop.
 
 ## State and Reload
 
-Accepted events use stable event IDs and live in owner tool results in the full owning-thread transcript. Prepared proposals live in the worker transcript. Plugin reload loses no authoritative state: the next tool call replays the connected transcript, so no recovery command or hidden file is needed. Exact duplicate owner events apply once; conflicting reuse of an event ID is an error.
+Accepted events use stable event IDs and live in owner tool results in the full owning-thread transcript. Prepared proposals live in the worker transcript. The plugin serializes calls per thread and keeps newly returned events visible until the transcript reader catches up. This short-lived overlay is not authoritative. Plugin reload loses no authoritative state: the next tool call replays the connected transcript, so no recovery command or hidden file is needed. Exact duplicate owner events apply once; conflicting reuse of an event ID is an error.

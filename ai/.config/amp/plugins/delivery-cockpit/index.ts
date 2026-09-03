@@ -403,6 +403,76 @@ async function readEvents(
 	return eventsFromMessages(await readAllMessages(thread), acceptedToolNames)
 }
 
+function mergeEvents(persisted: DeliveryEvent[], pending: DeliveryEvent[]): DeliveryEvent[] {
+	const events = [...persisted]
+	const byId = new Map(persisted.map((event) => [event.eventId, event]))
+	for (const event of pending) {
+		const previous = byId.get(event.eventId)
+		if (previous) {
+			if (!sameEvent(previous, event)) fail(`event ID ${event.eventId} has conflicting payloads.`)
+			continue
+		}
+		byId.set(event.eventId, event)
+		events.push(event)
+	}
+	return events
+}
+
+class EventJournal {
+	private readonly pending = new Map<string, DeliveryEvent[]>()
+	private readonly tails = new Map<string, Promise<void>>()
+
+	async transact<T>(
+		thread: PluginThread,
+		acceptedToolNames: readonly string[],
+		operation: (events: DeliveryEvent[], remember: (event: DeliveryEvent) => void) => T,
+	): Promise<T> {
+		const threadKey = thread.id
+		const channelKey = `${threadKey}:${acceptedToolNames.join(',')}`
+		const previous = this.tails.get(threadKey) ?? Promise.resolve()
+		let release!: () => void
+		const gate = new Promise<void>((resolve) => {
+			release = resolve
+		})
+		const tail = previous.then(() => gate)
+		this.tails.set(threadKey, tail)
+		await previous
+
+		try {
+			let persisted: DeliveryEvent[]
+			try {
+				persisted = await readEvents(thread, acceptedToolNames)
+			} catch (error) {
+				const detail = error instanceof Error ? error.message : String(error)
+				fail(`could not read the durable transcript for thread ${thread.id}: ${detail}`)
+			}
+			const cached = this.pending.get(channelKey) ?? []
+			const events = mergeEvents(persisted, cached)
+			const persistedIds = new Set(persisted.map((event) => event.eventId))
+			const pending = cached.filter((event) => !persistedIds.has(event.eventId))
+			if (pending.length === 0) this.pending.delete(channelKey)
+			else this.pending.set(channelKey, pending)
+			return operation(events, (event) => {
+				pending.push(event)
+				this.pending.set(channelKey, pending)
+			})
+		} finally {
+			release()
+			if (this.tails.get(threadKey) === tail) this.tails.delete(threadKey)
+		}
+	}
+}
+
+async function withEvents<T>(
+	thread: PluginThread,
+	acceptedToolNames: readonly string[],
+	journal: EventJournal | undefined,
+	operation: (events: DeliveryEvent[], remember: (event: DeliveryEvent) => void) => T,
+): Promise<T> {
+	if (journal) return journal.transact(thread, acceptedToolNames, operation)
+	return operation(await readEvents(thread, acceptedToolNames), () => {})
+}
+
 function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 	const ledgers = new Map<string, DeliveryLedger>()
 	const seen = new Map<string, DeliveryEvent>()
@@ -436,13 +506,34 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
 		if (!item) fail(`event ${event.eventId} names unknown item ${event.itemId}.`)
 		if (event.sourceThread !== ledger.ownerThread) {
-			fail(`event ${event.eventId} must be promoted by the owning thread.`)
+			fail(
+				`event ${event.eventId} has source thread ${event.sourceThread}; expected owner ${ledger.ownerThread}.`,
+			)
+		}
+		if (event.kind === 'worker_started') {
+			if (!event.workerThread) fail(`worker_started event ${event.eventId} must name a worker.`)
+			if (item.workerThread && item.workerThread !== event.workerThread) {
+				fail(
+					`item ${event.itemId} is still assigned to ${item.workerThread}; record superseded for that worker before reassignment.`,
+				)
+			}
+		} else if (event.kind === 'superseded' && !event.workerThread) {
+			fail(`superseded event ${event.eventId} must name the assigned worker.`)
+		} else if (
+			event.workerThread &&
+			CHILD_REPORT_KINDS.includes(event.kind as ChildReportKind) &&
+			item.workerThread !== event.workerThread
+		) {
+			fail(
+				`item ${event.itemId} is assigned to ${item.workerThread ?? 'no worker'}, not ${event.workerThread}.`,
+			)
 		}
 		item.state = event.state
 		item.nextGate = event.nextGate
 		item.lastKind = event.kind
 		item.lastSummary = event.summary
-		if (event.workerThread) item.workerThread = event.workerThread
+		if (event.kind === 'superseded') delete item.workerThread
+		else if (event.workerThread) item.workerThread = event.workerThread
 		if (event.pullRequest) item.pullRequest = event.pullRequest
 		ledger.eventCount += 1
 	}
@@ -485,45 +576,54 @@ function renderLedger(ledger: DeliveryLedger): string {
 	return lines.join('\n')
 }
 
-async function startDelivery(input: StartInput, ctx: PluginToolContext): Promise<string> {
+async function startDelivery(
+	input: StartInput,
+	ctx: PluginToolContext,
+	journal?: EventJournal,
+): Promise<string> {
 	const event = normalizeStartInput(input as unknown as Record<string, unknown>, ctx.thread.id)
-	const events = await readEvents(ctx.thread, OWNER_EVENT_TOOLS)
-	const duplicate = assertNewEvent(events, event) === 'duplicate'
-	if (!duplicate && replay(events).has(event.deliveryId)) {
-		fail(`delivery ${event.deliveryId} already exists with a different start event.`)
-	}
-	if (duplicate) return `Delivery \`${event.deliveryId}\` already has this start event. No change.`
+	return withEvents(ctx.thread, OWNER_EVENT_TOOLS, journal, (events, remember) => {
+		const duplicate = assertNewEvent(events, event) === 'duplicate'
+		if (!duplicate && replay(events).has(event.deliveryId)) {
+			fail(`delivery ${event.deliveryId} already exists with a different start event.`)
+		}
+		if (duplicate) return `Delivery \`${event.deliveryId}\` already has this start event. No change.`
 
-	const ledger = ledgerFor([...events, event], event.deliveryId)
-	return `${encodeEvent(event)}\n\n${renderLedger(ledger)}`
+		const ledger = ledgerFor([...events, event], event.deliveryId)
+		remember(event)
+		return `${encodeEvent(event)}\n\n${renderLedger(ledger)}`
+	})
 }
 
-async function recordMaterial(input: RecordInput, ctx: PluginToolContext): Promise<string> {
+async function recordMaterial(
+	input: RecordInput,
+	ctx: PluginToolContext,
+	journal?: EventJournal,
+): Promise<string> {
 	const event = normalizeMaterialInput(
 		input as unknown as Record<string, unknown>,
 		ctx.thread.id,
 		MATERIAL_KINDS,
 	)
-	const events = await readEvents(ctx.thread, OWNER_EVENT_TOOLS)
-	const ledger = ledgerFor(events, event.deliveryId)
-	if (ledger.ownerThread !== ctx.thread.id) fail('material events must be recorded in the owning thread.')
-	if (assertNewEvent(events, event) === 'duplicate') {
-		return `Material event \`${event.eventId}\` is already recorded. No change.`
-	}
-	const item = ledger.items.find((candidate) => candidate.id === event.itemId)
-	if (!item) {
-		fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
-	}
-	if (
-		event.workerThread &&
-		CHILD_REPORT_KINDS.includes(event.kind as ChildReportKind) &&
-		item.workerThread !== event.workerThread
-	) {
-		fail(`item ${event.itemId} is assigned to a different worker.`)
-	}
-	ledgerFor([...events, event], event.deliveryId)
+	return withEvents(ctx.thread, OWNER_EVENT_TOOLS, journal, (events, remember) => {
+		const ledger = ledgerFor(events, event.deliveryId)
+		if (ledger.ownerThread !== ctx.thread.id) {
+			fail(
+				`thread ${ctx.thread.id} is not the owner of delivery ${event.deliveryId}; expected ${ledger.ownerThread}.`,
+			)
+		}
+		if (assertNewEvent(events, event) === 'duplicate') {
+			return `Material event \`${event.eventId}\` is already recorded. No change.`
+		}
+		const item = ledger.items.find((candidate) => candidate.id === event.itemId)
+		if (!item) {
+			fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
+		}
+		ledgerFor([...events, event], event.deliveryId)
+		remember(event)
 
-	return `${encodeEvent(event)}\n\nRecorded \`${event.kind}\` for \`${event.itemId}\`.`
+		return `${encodeEvent(event)}\n\nRecorded \`${event.kind}\` for \`${event.itemId}\`.`
+	})
 }
 
 function reportMessage(event: MaterialEvent): string {
@@ -537,6 +637,7 @@ function reportMessage(event: MaterialEvent): string {
 async function reportMaterial(
 	input: ReportInput,
 	ctx: PluginToolContext,
+	journal?: EventJournal,
 ): Promise<string> {
 	const ownerThreadId = threadIdentifier(input.ownerThread, 'ownerThread')
 	const event = normalizeMaterialInput(
@@ -544,22 +645,31 @@ async function reportMaterial(
 		ctx.thread.id,
 		CHILD_REPORT_KINDS,
 	)
-	if (assertNewEvent(await readEvents(ctx.thread, WORKER_EVENT_TOOLS), event) === 'duplicate') {
-		return `Material event \`${event.eventId}\` was already prepared in this worker thread. No change; do not send it again.`
-	}
+	return withEvents(ctx.thread, WORKER_EVENT_TOOLS, journal, (events, remember) => {
+		if (assertNewEvent(events, event) === 'duplicate') {
+			return `Material event \`${event.eventId}\` was already prepared in this worker thread. No change; do not send it again.`
+		}
+		remember(event)
 
-	return [
-		`Prepared material event \`${event.eventId}\`. Use Amp's core \`send_thread_message\` tool once with thread \`${ownerThreadId}\` and the exact content between the delimiters.`,
-		'',
-		'DELIVERY_COCKPIT_REPORT_BEGIN',
-		reportMessage(event),
-		'DELIVERY_COCKPIT_REPORT_END',
-	].join('\n')
+		return [
+			`Prepared material event \`${event.eventId}\`. Use Amp's core \`send_thread_message\` tool once with thread \`${ownerThreadId}\` and the exact content between the delimiters.`,
+			'',
+			'DELIVERY_COCKPIT_REPORT_BEGIN',
+			reportMessage(event),
+			'DELIVERY_COCKPIT_REPORT_END',
+		].join('\n')
+	})
 }
 
-async function deliveryStatus(input: StatusInput, ctx: PluginToolContext): Promise<string> {
+async function deliveryStatus(
+	input: StatusInput,
+	ctx: PluginToolContext,
+	journal?: EventJournal,
+): Promise<string> {
 	const deliveryId = identifier(input.deliveryId, 'deliveryId')
-	return renderLedger(ledgerFor(await readEvents(ctx.thread, OWNER_EVENT_TOOLS), deliveryId))
+	return withEvents(ctx.thread, OWNER_EVENT_TOOLS, journal, (events) =>
+		renderLedger(ledgerFor(events, deliveryId)),
+	)
 }
 
 const materialProperties = {
@@ -580,6 +690,8 @@ const materialProperties = {
 }
 
 export default async function (amp: PluginAPI) {
+	const journal = new EventJournal()
+
 	amp.registerTool({
 		name: 'delivery_start',
 		title: 'Start delivery ledger',
@@ -614,7 +726,7 @@ export default async function (amp: PluginAPI) {
 			required: ['deliveryId', 'outcome', 'items'],
 			additionalProperties: false,
 		},
-		execute: (input, ctx) => startDelivery(input as unknown as StartInput, ctx),
+		execute: (input, ctx) => startDelivery(input as unknown as StartInput, ctx, journal),
 	})
 
 	amp.registerTool({
@@ -641,7 +753,7 @@ export default async function (amp: PluginAPI) {
 			required: ['eventId', 'deliveryId', 'itemId', 'kind', 'state', 'summary', 'nextGate'],
 			additionalProperties: false,
 		},
-		execute: (input, ctx) => recordMaterial(input as unknown as RecordInput, ctx),
+		execute: (input, ctx) => recordMaterial(input as unknown as RecordInput, ctx, journal),
 	})
 
 	amp.registerTool({
@@ -677,7 +789,7 @@ export default async function (amp: PluginAPI) {
 			],
 			additionalProperties: false,
 		},
-		execute: (input, ctx) => reportMaterial(input as unknown as ReportInput, ctx),
+		execute: (input, ctx) => reportMaterial(input as unknown as ReportInput, ctx, journal),
 	})
 
 	amp.registerTool({
@@ -694,7 +806,7 @@ export default async function (amp: PluginAPI) {
 			required: ['deliveryId'],
 			additionalProperties: false,
 		},
-		execute: (input, ctx) => deliveryStatus(input as unknown as StatusInput, ctx),
+		execute: (input, ctx) => deliveryStatus(input as unknown as StatusInput, ctx, journal),
 	})
 
 	await amp.registerSkill({ path: 'skills/managing-deliveries' })
@@ -703,6 +815,7 @@ export default async function (amp: PluginAPI) {
 }
 
 export const testables = {
+	createEventJournal: () => new EventJournal(),
 	decodeEvents,
 	deliveryStatus,
 	encodeEvent,
