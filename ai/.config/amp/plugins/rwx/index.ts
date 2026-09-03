@@ -125,7 +125,7 @@ async function installLatestRwxCli(
 		throw new Error(`The unstable RWX release has no verified ${assetName} asset.`)
 	}
 
-	if (installedDigest !== asset.digest) {
+	if (installedDigest !== asset.digest || metadata?.installedByPlugin !== true) {
 		const downloadResponse = await fetchRelease(asset.browser_download_url)
 		if (!downloadResponse.ok) {
 			throw new Error(`RWX CLI download failed with HTTP ${downloadResponse.status}.`)
