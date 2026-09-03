@@ -4,9 +4,9 @@ Use these examples when reviewing changes to the coordination workflow. Each sce
 
 ## Coordinator Not Justified
 
-State: one repository has three implementation pull requests, one ordinary merge order, and no production write or operator handoff in progress.
+State: one repository has eight independent implementation pull requests, one ordinary merge order, and no production write or operator handoff in progress.
 
-Expected: use `delivery-cockpit:delivering-changes` in the invocation thread. Do not create a coordinator thread.
+Expected: use `delivery-cockpit:delivering-changes` in the invocation thread and dispatch all ready bounded workers without a fixed worker or pull-request limit. Do not create a coordinator thread.
 
 ## Changed Brief
 

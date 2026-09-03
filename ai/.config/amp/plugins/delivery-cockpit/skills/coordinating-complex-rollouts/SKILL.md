@@ -1,6 +1,6 @@
 ---
 name: coordinating-complex-rollouts
-description: Coordinates a complex, long-running delivery in the invocation thread across repositories, more than five active PRs, several production or infrastructure actions, or operator handoffs. Use when these conditions require dedicated operational ownership or the user explicitly asks for coordination.
+description: Coordinates a complex, long-running delivery in the invocation thread across repositories, several production or infrastructure actions, or operator handoffs. Use when these conditions require dedicated operational ownership or the user explicitly asks for coordination.
 compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
 ---
 
@@ -10,7 +10,7 @@ Move a complex delivery through reviewable draft pull requests and, when authori
 
 ## Use This Thread as the Coordinator
 
-Confirm that the current thread has an implementation-ready plan and that complex coordination is justified by cross-repository work, more than five active pull requests, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivery-cockpit:delivering-changes` in this same thread.
+Confirm that the current thread has an implementation-ready plan and that complex coordination is justified by cross-repository work, several production or infrastructure actions, operator handoff across days, or an explicit user request. Otherwise, stop and use `delivery-cockpit:delivering-changes` in this same thread.
 
 Keep all coordination, approval state, worker routing, and material status in this invocation thread. `create_thread` is only for bounded implementation workers, independent reviewers, or rollout verifiers. It is never for a coordinator, owner, relay, handoff, or continuation.
 
@@ -33,7 +33,7 @@ Verify repository identity, default branch, pull-request state, and external ide
 
 ### Dispatch for fast draft PRs
 
-Keep at most five active workers and five open delivery pull requests. Parallelize independent work, including stable successors in a stack. Branch a stacked successor from its pushed predecessor.
+Parallelize independent work, including stable successors in a stack. Branch a stacked successor from its pushed predecessor.
 
 Prefer independently deployable vertical slices. Keep one cohesive capability and its required persistence, domain, API, and lifecycle behavior in one pull request. Do not create technical-layer stacks unless a concrete compatibility, rollout, ownership, or review-risk boundary requires the split. A schema-first expansion is separate only when mixed-version safety requires storage to deploy before dependent behavior.
 

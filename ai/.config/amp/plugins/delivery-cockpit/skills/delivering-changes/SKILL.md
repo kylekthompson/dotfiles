@@ -26,13 +26,13 @@ Before dispatch:
 
 If the outcome fits one pull request, implement it normally in the current thread. Do not load this workflow or create delivery workers.
 
-If the work needs multi-repository control, several concurrent production or infrastructure actions, an operator handoff across days, or more than five active pull requests, use `delivery-cockpit:coordinating-complex-rollouts` in this thread instead.
+If the work needs multi-repository control, several concurrent production or infrastructure actions, or an operator handoff across days, use `delivery-cockpit:coordinating-complex-rollouts` in this thread instead.
 
 For the remaining direct multi-PR or parallel implementation delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
 
 ## Dispatch Bounded Workers
 
-Keep at most five active workers and five open delivery pull requests. Parallelize independent work. For a stack, create a successor from its pushed direct predecessor.
+Parallelize independent work. For a stack, create a successor from its pushed direct predecessor.
 
 Prefer independently deployable vertical slices. One pull request should deliver one cohesive capability through the persistence, domain, API, and lifecycle layers it needs. Do not split a capability into persistence/API/lifecycle pull requests only because those are technical layers. Split when capabilities can ship independently or a concrete compatibility, rollout, ownership, or review-risk boundary requires it. A schema-first expansion is separate only when mixed-version safety requires storage to deploy before dependent behavior.
 

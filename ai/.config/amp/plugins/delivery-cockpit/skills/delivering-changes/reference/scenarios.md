@@ -16,9 +16,9 @@ Expected: load `delivery-cockpit:delivering-changes` and start direct delivery. 
 
 ## Parallel Implementation Request
 
-State: the user asks to parallelize implementation, and the settled work has independent implementation workstreams that can own separate pull requests.
+State: the user asks to parallelize implementation, and the settled work has eight independent implementation workstreams that can own separate pull requests.
 
-Expected: load `delivery-cockpit:delivering-changes`, record the workstream dependencies, and dispatch bounded workers. A request to parallelize research or planning without implementation intent does not trigger delivery.
+Expected: load `delivery-cockpit:delivering-changes`, record the workstream dependencies, and dispatch all ready bounded workers without a fixed worker or pull-request limit. A request to parallelize research or planning without implementation intent does not trigger delivery.
 
 ## Explicit Modes
 
