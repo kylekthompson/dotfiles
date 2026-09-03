@@ -117,6 +117,48 @@ describe('orb CLI installation', () => {
 		expect(calls).toBe(2)
 	})
 
+	test('replaces an existing CLI once and records plugin ownership', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
+		const executable = join(directory, 'rwx')
+		const binary = new TextEncoder().encode('unstable rwx binary')
+		const digest = `sha256:${createHash('sha256').update(binary).digest('hex')}`
+		const existingBinary = new TextEncoder().encode('existing rwx binary')
+		const existingDigest = `sha256:${createHash('sha256').update(existingBinary).digest('hex')}`
+		writeFileSync(executable, existingBinary)
+		writeFileSync(
+			join(directory, '.rwx-install.json'),
+			JSON.stringify({ digest: existingDigest, checkedAt: 1_000, releaseTag: 'unstable' }),
+		)
+		let calls = 0
+		const fetchRelease = async (url: string | URL | Request) => {
+			calls += 1
+			return String(url).includes('/releases/tags/unstable')
+				? Response.json({
+						assets: [
+							{
+								name: testables.cliAssetName(),
+								digest,
+								browser_download_url: 'https://example.test/rwx',
+							},
+						],
+					})
+				: new Response(binary)
+		}
+
+		await testables.installLatestRwxCli(directory, fetchRelease as typeof fetch, 2_000)
+
+		expect(readFileSync(executable)).toEqual(Buffer.from(binary))
+		expect(JSON.parse(readFileSync(join(directory, '.rwx-install.json'), 'utf8'))).toEqual({
+			digest,
+			checkedAt: 2_000,
+			releaseTag: 'unstable',
+			installedByPlugin: true,
+		})
+
+		await testables.installLatestRwxCli(directory, fetchRelease as typeof fetch, 3_000)
+		expect(calls).toBe(2)
+	})
+
 	test('does not reuse metadata from the stable release channel', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
 		const binary = new TextEncoder().encode('rwx binary')
@@ -145,6 +187,7 @@ describe('orb CLI installation', () => {
 			digest,
 			checkedAt: 2_000,
 			releaseTag: 'unstable',
+			installedByPlugin: true,
 		})
 	})
 

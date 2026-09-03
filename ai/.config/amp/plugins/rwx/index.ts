@@ -44,6 +44,7 @@ type InstallMetadata = {
 	digest: string
 	checkedAt: number
 	releaseTag: string
+	installedByPlugin: true
 }
 
 function githubOwner(workspacePath: string): string | undefined {
@@ -104,6 +105,7 @@ async function installLatestRwxCli(
 		: undefined
 	if (
 		metadata &&
+		metadata.installedByPlugin === true &&
 		metadata.releaseTag === CLI_RELEASE_TAG &&
 		installedDigest === metadata.digest &&
 		now - metadata.checkedAt < CLI_CHECK_INTERVAL_MS
@@ -146,7 +148,12 @@ async function installLatestRwxCli(
 
 	writeFileSync(
 		metadataPath,
-		JSON.stringify({ digest: asset.digest, checkedAt: now, releaseTag: CLI_RELEASE_TAG }),
+		JSON.stringify({
+			digest: asset.digest,
+			checkedAt: now,
+			releaseTag: CLI_RELEASE_TAG,
+			installedByPlugin: true,
+		}),
 	)
 	return executablePath
 }
