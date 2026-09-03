@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Installs the RWX CLI in Amp orbs and authenticates RWX shell commands for the checkout owner.'
+	'Installs the latest unstable RWX CLI in Amp orbs and authenticates RWX shell commands for the checkout owner.'
 
 const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 	['rwx-cloud', 'RWX_RWX_ACCESS_TOKEN'],
@@ -27,7 +27,8 @@ const BASHRC_BLOCK_START = '# >>> rwx-access-token plugin >>>'
 const BASHRC_BLOCK_END = '# <<< rwx-access-token plugin <<<'
 const RWX_EXECUTABLE = /(^|[\s;&|()])(?:["']?[^ \t\r\n;&|()"'=]*\/)?["']?rwx["']?(?=$|[\s;&|()])/m
 const GH_PR_CHECKS_WATCH = /(^|[\s;&|()])gh\s+pr\s+checks\b[^\n;&|]*\s--watch(?:[=\s]|$)/m
-const CLI_RELEASE_URL = 'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/latest'
+const CLI_RELEASE_TAG = 'unstable'
+const CLI_RELEASE_URL = `https://api.github.com/repos/rwx-cloud/rwx/releases/tags/${CLI_RELEASE_TAG}`
 const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SANDBOX_GUIDANCE =
 	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx sandbox exec through shell_command. Keep inspection and editing on the host.'
@@ -42,6 +43,7 @@ type ReleaseAsset = {
 type InstallMetadata = {
 	digest: string
 	checkedAt: number
+	releaseTag: string
 }
 
 function githubOwner(workspacePath: string): string | undefined {
@@ -102,6 +104,7 @@ async function installLatestRwxCli(
 		: undefined
 	if (
 		metadata &&
+		metadata.releaseTag === CLI_RELEASE_TAG &&
 		installedDigest === metadata.digest &&
 		now - metadata.checkedAt < CLI_CHECK_INTERVAL_MS
 	) {
@@ -117,7 +120,7 @@ async function installLatestRwxCli(
 	const release = (await releaseResponse.json()) as { assets?: ReleaseAsset[] }
 	const asset = release.assets?.find((candidate) => candidate.name === assetName)
 	if (!asset?.digest?.startsWith('sha256:')) {
-		throw new Error(`The latest RWX release has no verified ${assetName} asset.`)
+		throw new Error(`The unstable RWX release has no verified ${assetName} asset.`)
 	}
 
 	if (installedDigest !== asset.digest) {
@@ -141,7 +144,10 @@ async function installLatestRwxCli(
 		}
 	}
 
-	writeFileSync(metadataPath, JSON.stringify({ digest: asset.digest, checkedAt: now }))
+	writeFileSync(
+		metadataPath,
+		JSON.stringify({ digest: asset.digest, checkedAt: now, releaseTag: CLI_RELEASE_TAG }),
+	)
 	return executablePath
 }
 

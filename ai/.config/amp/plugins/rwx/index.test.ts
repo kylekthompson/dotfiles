@@ -84,14 +84,14 @@ describe('orb CLI installation', () => {
 		expect(testables.cliAssetName('win32', 'x64')).toBeUndefined()
 	})
 
-	test('downloads, verifies, installs, and caches the latest release', async () => {
+	test('downloads, verifies, installs, and caches the latest unstable release', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
 		const binary = new TextEncoder().encode('rwx binary')
 		const digest = `sha256:${createHash('sha256').update(binary).digest('hex')}`
 		let calls = 0
 		const fetchRelease = async (url: string | URL | Request) => {
 			calls += 1
-			return String(url).includes('/releases/tags/latest')
+			return String(url).includes('/releases/tags/unstable')
 				? Response.json({
 						assets: [
 							{
@@ -117,10 +117,41 @@ describe('orb CLI installation', () => {
 		expect(calls).toBe(2)
 	})
 
+	test('does not reuse metadata from the stable release channel', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
+		const binary = new TextEncoder().encode('rwx binary')
+		const digest = `sha256:${createHash('sha256').update(binary).digest('hex')}`
+		writeFileSync(join(directory, 'rwx'), binary)
+		writeFileSync(join(directory, '.rwx-install.json'), JSON.stringify({ digest, checkedAt: 1_000 }))
+		let calls = 0
+		const fetchRelease = async (url: string | URL | Request) => {
+			calls += 1
+			expect(String(url)).toContain('/releases/tags/unstable')
+			return Response.json({
+				assets: [
+					{
+						name: testables.cliAssetName(),
+						digest,
+						browser_download_url: 'https://example.test/rwx',
+					},
+				],
+			})
+		}
+
+		await testables.installLatestRwxCli(directory, fetchRelease as typeof fetch, 2_000)
+
+		expect(calls).toBe(1)
+		expect(JSON.parse(readFileSync(join(directory, '.rwx-install.json'), 'utf8'))).toEqual({
+			digest,
+			checkedAt: 2_000,
+			releaseTag: 'unstable',
+		})
+	})
+
 	test('rejects an asset whose checksum does not match GitHub', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
 		const fetchRelease = async (url: string | URL | Request) =>
-			String(url).includes('/releases/tags/latest')
+			String(url).includes('/releases/tags/unstable')
 				? Response.json({
 						assets: [
 							{
