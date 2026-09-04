@@ -1,6 +1,6 @@
 ---
 name: managing-deliveries
-description: "Maintains a deterministic delivery ledger and reconciles material child-thread reports. Use with delivery-cockpit:delivering-changes or delivery-cockpit:coordinating-complex-rollouts after a multi-item plan is ready for dispatch."
+description: "Maintains a deterministic delivery ledger and reconciles material child-thread reports. Use with delivery-cockpit:delivering-changes after a multi-item plan is ready for dispatch, or when an assigned worker needs to report a result."
 builtin-tools:
   - delivery_start
   - delivery_record
@@ -10,7 +10,7 @@ builtin-tools:
 
 # Manage Delivery Events
 
-Keep delivery state in the owning Amp thread while workers produce bounded pull requests. The transcript is the event log. The plugin reconstructs its compact ledger only from owner-accepted tool results, so plugin memory is not authoritative. Worker messages are proposals until the owner promotes them.
+Keep delivery state in the owning Amp thread while workers produce bounded results. The transcript is the event log. The plugin reconstructs its compact ledger only from owner-accepted tool results, so plugin memory is not authoritative. Worker messages are proposals until the owner promotes them.
 
 ## Start in the Owning Thread
 
@@ -22,7 +22,7 @@ The item graph records dependencies but does not enforce dispatch or merge order
 
 ## Dispatch with Amp's Core Thread Tool
 
-Use `create_thread` only for bounded workers, not for a coordinator, owner, relay, handoff, or continuation. Use Amp's core tool, not a plugin tool, so Amp remains responsible for project selection, executor placement, explicit agent mode, and report routing. After worker creation succeeds, call `delivery_record` with:
+Use `create_thread` only for bounded workers, not for a coordinator, owner, relay, handoff, or continuation. Use Amp's core tool, not a plugin tool, so Amp remains responsible for project selection, executor placement, agent mode, and report routing. After worker creation succeeds, call `delivery_record` with:
 
 - a new stable `eventId`
 - `kind: worker_started`
@@ -45,7 +45,7 @@ Workers call `delivery_report` only for:
 - draft pull request opened
 - review changes complete
 - blocker materially changed or cleared
-- pull request ready for review or merge
+- result ready for review (local work or a published PR), or PR ready for merge
 - work stopped or superseded
 
 Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the invocation thread's owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. The owner ID stays fixed for the full delivery.
@@ -56,8 +56,8 @@ Older proposals without a recorded destination remain readable, but cannot be re
 
 When a proposal arrives, the owner must:
 
-1. confirm the Amp message metadata identifies the worker assigned to that item;
-2. confirm the transition is material and the explicit state and next gate are correct;
+1. confirm the Amp message metadata identifies the worker assigned to that item and the recorded destination is this owner;
+2. verify the result and confirm the transition is material and the explicit state and next gate are correct;
 3. call `delivery_record` with the same event ID, delivery fields, and assigned `workerThread`.
 
 Only that owner tool result enters the ledger. Exact duplicate proposals have no effect, and retrying the same promotion reports no change. If the message send result is unknown, ask the owner to check for the proposal before sending it again.

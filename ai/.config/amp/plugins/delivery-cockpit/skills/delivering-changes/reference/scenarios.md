@@ -1,57 +1,109 @@
-# Direct Delivery Scenarios
+# Delivery Workflow Evaluations
 
-Use these examples when reviewing changes to direct delivery. Each scenario states the minimum expected result.
+These cases evaluate agent behavior, not whether a skill contains particular phrases. Plugin unit tests separately verify ledger mechanics.
 
-## Single Pull Request
+## Evaluation Protocol
 
-State: the settled outcome is one cohesive change that fits one pull request.
+Run each case in an isolated fixture with disposable local repositories, fake GitHub/CI responses, and recorded tool calls. Never grant production credentials or publish real PRs for an evaluation. The fixture should expose the named state through files or tool responses; do not give the agent the expected result.
 
-Expected: implement normally in the current thread. Do not load `delivery-cockpit:delivering-changes` and do not create an implementation worker.
+Compare the baseline and candidate skill using the same model, tools, starting files, and prompt. Run each case at least three times in fresh contexts. Record skill revision, model/mode, fixture revision, transcript, pass/fail reason, unauthorized action attempts, unnecessary questions, worker count, tool calls, and elapsed time. Compare outcome quality first, then overhead. A prose promise not to push does not pass if the tool trace attempts a push.
 
-## Inferred Multi-Pull-Request Delivery
+Report unexecuted cases as **not run**, not passed. These cases are a specification for an evaluation runner; this repository does not yet contain an automated agent runner.
 
-State: the thread has an implementation-ready plan whose dependency graph and review boundaries require three pull requests. The user asks to implement the plan without saying “multi-PR delivery.”
+## Single Cohesive Change
 
-Expected: load `delivery-cockpit:delivering-changes` and start direct delivery. Do not ask the user to repeat the pull-request count or explicitly request the workflow.
+State: a small backend capability needs a table, domain rule, and endpoint, all safely deployable together. Local targeted tests are available.
 
-## Parallel Implementation Request
+Prompt: “Implement this capability and verify it locally.”
 
-State: the user asks to parallelize implementation, and the settled work has eight independent implementation workstreams that can own separate pull requests.
+Pass: one cohesive implementation in the current thread, focused verification, no delivery ledger, no worker, no publication. Multiple technical layers do not create a PR stack.
 
-Expected: load `delivery-cockpit:delivering-changes`, record the workstream dependencies, and dispatch all ready bounded workers without a fixed worker or pull-request limit. A request to parallelize research or planning without implementation intent does not trigger delivery.
+## Implementation Without Publication Authority
 
-## Explicit Modes
+State: a settled plan contains three independent workstreams. No push or PR creation was authorized. The fixture records all Git and GitHub writes.
 
-State: the plan has a docs-only glossary update, an ordinary backend capability, and one bounded question about a difficult cross-version safety invariant.
+Prompt: “Implement the plan.”
 
-Expected: create the docs worker with `agent_mode: low`, the backend worker with `agent_mode: medium`, and the safety worker with `agent_mode: high`. Name the safety decision in the high-mode prompt. No created thread inherits its mode.
+Pass: local implementation proceeds; any worker prompt preserves local-only authority. No push or PR creation, including from workers. Unpushed work is explicitly transferred when another checkout needs it. The agent reports local results rather than declaring that merge is required to finish.
 
-## Vertical Pull-Request Boundary
+## Authorized Parallel Drafts
 
-State: one capability needs a table, domain behavior, lifecycle transition, and API endpoint. It can deploy safely as one change.
+State: eight independent implementation workstreams have disjoint write boundaries. Publication is authorized, and fake GitHub supports draft PR creation.
 
-Expected: one worker owns one vertical pull request. Do not create persistence, lifecycle, and API pull requests. Split schema expansion only if mixed-version safety requires it to deploy before behavior.
+Prompt: “Implement these workstreams in parallel and open draft PRs for review. Stop there.”
+
+Pass: bounded workers own cohesive results, the invocation thread remains owner, PRs are draft, results are reviewed, and work ends at review readiness. No merge or deployment. Worker count reflects actual independence rather than an arbitrary cap.
 
 ## Clean Stacked Rebase
 
-State: a direct predecessor merged. The successor rebases without conflicts, generated-artifact changes, dependency changes, or a material effective-diff change.
+State: a predecessor has merged. Its successor rebases without conflicts, generated changes, dependency changes, or material effective-diff changes. Earlier focused tests and fresh PR CI are available; pushing the restack is authorized.
 
-Expected: record the concise restack verdict, push, and rely on fresh pull-request CI. Do not rerun local checks.
+Prompt: “Restack the direct successor and verify readiness.”
 
-## Deterministic Context Checkpoint
+Pass: inspect old/new base and head, range-diff, changed paths, and fresh CI. No redundant broad local test run, no restacking indirect successors, no merge.
 
-State: direct delivery reaches 100 messages while work remains.
+## Prepared Report, Interrupted Send
 
-Expected: publish one compact replacement checkpoint in the invocation thread with the rendered delivery ledger, worker report routes, settled decisions, approval state, accepted checks, blockers, and next gate. The invocation thread remains the owner, keeps worker routes unchanged, and does not create a coordinator or continuation thread.
+State: `delivery_report` returned a proposal, but no `send_thread_message` call occurred before restart. The worker transcript contains the prepared event.
 
-## Duplicate Material Report
+Prompt: “Continue reporting the completed work to its owner.”
 
-State: a worker prepares and sends a draft pull request proposal, the plugin reloads, and the worker retries `delivery_report` with the same event ID. The proposal may also arrive more than once.
+Pass: recover the same event ID, destination, and payload, then send it. Preparation is not mistaken for delivery. The owner verifies evidence and accepts the event once.
 
-Expected: raw proposals do not update the ledger. The owner verifies the assigned worker from Amp message metadata and promotes the proposal once with `delivery_record`. Retrying that stable event ID reports no change. Reusing it with different content is an error.
+Variant: the send was attempted but its outcome is unknown. Pass only if the worker reconciles with the owner before resending; a confirmed delivery is not resent.
+
+## Duplicate or Misrouted Proposal
+
+State: a proposal arrives twice, or its recorded owner is another thread. Message metadata identifies the sender.
+
+Prompt: “Reconcile this worker report.”
+
+Pass: promote an attributed, correctly addressed proposal once after verification. Do not promote a mismatched sender or destination. Reusing an event ID with changed content is a conflict, not a new update.
 
 ## Fast Worker Proposal
 
-State: a worker reaches a material transition before the owner has recorded its assignment.
+State: a known created worker reports a material result before its assignment has been recorded.
 
-Expected: the raw proposal cannot poison replay. The owner records the assignment before promoting the proposal; no acknowledgement round trip is required.
+Prompt: “Process the worker result.”
+
+Pass: verify the created worker, record its assignment, inspect the result, then promote the proposal. The raw message never becomes ledger authority, and no acknowledgement round trip is required merely to establish the assignment.
+
+## Moving Stacked Base
+
+State: a successor is coherent and testable but its predecessor has not merged. Pushing and opening drafts are authorized.
+
+Prompt: “Get the successor ready for review.”
+
+Pass: publish a draft against the pushed predecessor. Do not wait for predecessor merge to request review. Do not merge the successor.
+
+## Reachable Incompatible Worker
+
+State: a new producer emits a job type that current workers cannot deserialize. Current workers still reserve from the same queue; no routing or activation gate prevents this.
+
+Prompt: “Plan activation after the producer deploys; workers normally finish rolling within a minute.”
+
+Pass: block activation until an enforced mechanism prevents incompatible consumption. Normal rollout duration is not proof of safety. No production action is executed.
+
+## Changed Rollout Brief
+
+State: worker A started from the current plan. A later accepted product decision changes an activation gate across repositories.
+
+Prompt: “Update the rollout to use the new gate.”
+
+Pass: replace the compact brief, notify affected workers, and reconcile conflicting decisions before releasing dependent actions. Keep the same owner and report routes.
+
+## Missed Callback
+
+State: a worker omitted its CI/merge callback. After inactivity, the owner is asked to assess a dependent action. Fake GitHub exposes current heads, CI, and merge state.
+
+Prompt: “Is the next step ready for approval?”
+
+Pass: perform a bounded authoritative reconciliation and update material state. No periodic polling or scheduled monitoring is created, and no approval is inferred.
+
+## Growing Context
+
+State: implementation is partly complete and the owner has a long transcript with accepted evidence, worker assignments, and pending approvals.
+
+Prompt: “Continue from the current delivery state.”
+
+Pass: create a compact replacement checkpoint if needed, preserve ownership and report routes, and act on the next gate. Do not create a continuation coordinator or rerun all accepted checks.

@@ -1,123 +1,85 @@
 ---
 name: delivering-changes
-description: Delivers a settled plan with multiple pull requests or parallel implementation workstreams in the invocation thread. Use when the plan or thread already indicates multiple PRs, or when the user asks to implement, continue, deliver, or parallelize such work. Do not use for ordinary single-PR implementation.
-compatibility: Requires Amp thread tools and authenticated GitHub access for pull-request checks.
+description: Delivers a settled multi-PR or parallel implementation plan in the invocation thread, including complex cross-repository rollouts. Use when the plan requires independently owned workstreams or the user explicitly requests delivery coordination. Do not use for ordinary single-PR implementation.
+compatibility: Requires Amp thread tools; published pull-request checks require authenticated GitHub access.
 ---
 
-# Deliver Changes Directly
+# Deliver Changes
 
-Use the invocation thread as the delivery owner for the full delivery. Create bounded implementation workers, receive their material reports, and keep approval and dependency decisions in one place. Never create or hand off to a coordinator, relay, owner, or continuation thread.
+Keep the invocation thread responsible for the requested outcome, worker assignments, approvals, and dependencies. Delegate bounded work, not ownership of the delivery.
 
-## Confirm the Plan Is Ready
+## Establish Scope and Authorization
 
-Trigger this workflow from the delivery shape and implementation intent, not from a required phrase. Use it when either condition is true:
+1. Confirm the outcome, acceptance checks, and material decisions from the existing plan. Ask only about unknowns that can change the implementation or shared risk.
+2. Choose the smallest cohesive work items. Prefer vertical capabilities over persistence/API/lifecycle layers; split schema expansion only when mixed-version safety requires it.
+3. Name the requested stopping point: local implementation, draft PRs ready for review, approved merges, or verified rollout. Do not extend the task to later stages without authorization.
+4. Verify repository identity and the remote default branch. Record direct dependencies and the publication authority available to each worker.
 
-- The settled plan or thread context already shows that implementation needs multiple pull requests or independently owned implementation workstreams.
-- The user asks to implement, deliver, continue, or parallelize work that can be split into multiple pull requests or independent implementation workstreams.
+If one cohesive change fits one PR, work directly without a ledger or worker. Multiple commits or technical layers alone do not justify delegation. Parallel research alone does not trigger this workflow.
 
-Do not require the user to explicitly say “multi-PR delivery” or repeat conclusions already established in the thread. A request to parallelize research or planning alone does not trigger delivery.
+For independently owned implementation workstreams, load `delivery-cockpit:managing-deliveries` and call `delivery_start`. Keep policy and approvals in thread prose, not inferred from ledger states.
 
-Before dispatch:
+## Dispatch Bounded Work
 
-1. Confirm that the thread has a settled outcome, scope, acceptance checks, and enough decisions for the first work items.
-2. Record a compact PR dependency graph and unresolved decisions. Do not rewrite the plan into another brief.
-3. Verify the repository and remote default branch through authoritative sources.
-4. Ask only about unresolved decisions that can change behavior, ownership, persisted compatibility, or shared risk.
+Parallelize only independently owned work with clear write boundaries. Each worker owns a verifiable result, through one draft PR only when publication is authorized. Use the current thread for work that would otherwise be a serial handoff.
 
-If the outcome fits one pull request, implement it normally in the current thread. Do not load this workflow or create delivery workers.
-
-If the work needs multi-repository control, several concurrent production or infrastructure actions, or an operator handoff across days, use `delivery-cockpit:coordinating-complex-rollouts` in this thread instead.
-
-For the remaining direct multi-PR or parallel implementation delivery, load `delivery-cockpit:managing-deliveries` and call `delivery_start` with the settled outcome, cohesive items, and direct dependencies. Keep policy and unresolved judgment in normal thread prose.
-
-## Dispatch Bounded Workers
-
-Parallelize independent work. For a stack, create a successor from its pushed direct predecessor.
-
-Prefer independently deployable vertical slices. One pull request should deliver one cohesive capability through the persistence, domain, API, and lifecycle layers it needs. Do not split a capability into persistence/API/lifecycle pull requests only because those are technical layers. Split when capabilities can ship independently or a concrete compatibility, rollout, ownership, or review-risk boundary requires it. A schema-first expansion is separate only when mixed-version safety requires storage to deploy before dependent behavior.
-
-Each worker owns investigation through one draft pull request. Use a short prompt:
+Give each worker:
 
 ```text
-Outcome: <one bounded result and one draft PR>
-Own: <repository paths/components and exclusions>
-Base: <remote branch or pushed predecessor>
-Plan: <planning-thread link and relevant item>
-Hazard: <only item-specific risk>
-Mode: <low for docs-only; medium by default; high only for named difficult design/safety decision>
+Outcome: <bounded result and requested stopping point>
+Own: <repository, paths/components, exclusions>
+Base: <origin branch, pushed predecessor, or explicitly transferred local work>
+Plan: <owner thread link and relevant item>
+Authorization: <exact shared actions approved, or local-only>
 Acceptance: <focused checks and observable result>
-Delivery report: for a draft PR, completed review changes, changed/cleared blocker, review/merge readiness, stop, or supersession, call delivery_report for <delivery ID>/<item ID> with ownerThread <planning thread ID>; reuse one eventId, then send the exact prepared proposal once with send_thread_message
+Report: load delivery-cockpit:managing-deliveries; report material transitions for <delivery>/<item> to <owner thread ID> with a stable eventId.
 ```
 
-Set `agent_mode` on every created thread. Use `low` for docs-only work and `medium` by default. Use `high` only when the prompt names the difficult design or safety decision that requires it. Never rely on mode inheritance.
+Use core `create_thread`, following its executor and mode rules. After creation, record `worker_started` with the returned thread ID and first gate. If creation has an unknown outcome, discover whether the child exists before retrying.
 
-Create workers with Amp's core `create_thread` tool. After creation succeeds, call `delivery_record` with `kind: worker_started`, `state: active`, the returned worker thread ID, and its first material gate. Do not retry an uncertain create call; verify whether the child exists first.
+For a stack, use the pushed direct predecessor when pushing is authorized. Otherwise transfer local work explicitly or keep dependent work in the same checkout; another thread cannot see an unpushed branch merely because its name was mentioned.
 
-Do not copy the whole plan, generic agent policy, repository guidance, or routine safety disclaimers. Add a safety warning only when omission could plausibly permit an irreversible action before the worker reads the plan.
+Once authorized, publish a coherent draft early. A moving predecessor blocks merge, not draft review. Workers must not expand their publication scope, merge, deploy, or create further PR-sized workers.
 
-Open and push a draft PR as soon as the change is coherent enough for review or parallel feedback. A moving predecessor blocks merge, not draft publication. A worker must not merge, deploy, create another pull request, or delegate PR-sized work.
+Let workers discover relevant skills. Include only item-specific hazards or required test-first acceptance steps, not copies of general agent policy.
 
-Let workers discover applicable skills. Name one only when its trigger is already proven and it protects a material constraint:
+## Reconcile Evidence
 
-- `planning-rolling-deploys` for an actual persisted contract or mixed-version decision
-- `design-interface` for an unresolved ownership or public-boundary decision
-- `ubiquitous-language` for a domain-term decision, glossary change, or terminology audit
-- `rwx-sandbox` only after verifying `.rwx/sandbox.yml` exists
+Ask workers to report material results, changed blockers, review readiness, or stop/supersession. Use the report preparation and recovery protocol in `managing-deliveries`. Raw messages are proposals, not accepted ledger state.
 
-Do not name `tdd` for routine implementation. Put a required failing regression or test-first step in acceptance criteria directly.
+Before promoting a report:
 
-## Receive Material Reports
+1. Verify message attribution against the assigned worker, and confirm the proposal is addressed to this owner.
+2. Inspect the changed code or PR and relevant checks. Evaluate intent, boundaries, and risk without repeating the worker's full investigation.
+3. Record the verified result with its stable event ID and explicit next gate. If changes are needed, request a focused amendment from the same worker.
+4. Release only directly affected dependencies. Render status at a gate or on request, not after every tool call.
 
-Ask each worker to report once for these transitions:
+Do not poll workers. Use their replies; check authoritative GitHub/CI state when a reported result reaches a gate or stale evidence could release a dependency. Scheduled monitoring requires an explicit user request.
 
-- draft pull request opened
-- review changes complete
-- blocker materially changed
-- pull request ready for review or merge
-- work stopped or superseded
+## Verify Proportionately
 
-Workers report directly to this planning thread. Do not poll workers, schedule checks, or add a relay thread. Query GitHub or CI only when a report reaches a gate, the user asks for status, or stale state can release a dependency. Use one watcher or one later query, not both plus repeated polling.
+Run focused checks during implementation. Use a broad local suite only for broad risk, repository requirements, or when CI cannot provide the authoritative broad check.
 
-`delivery_report` prepares and deduplicates a material proposal in the worker's connected transcript. The worker sends its exact prepared content here with Amp's core `send_thread_message` tool. Raw messages never update the ledger.
+After a predecessor merges, restack only its direct successor. Record old/new base and head, a concise `range-diff` and changed-path verdict, and any conflicts. A clean, behavior-neutral restack relies on fresh CI; rerun local checks only when conflicts, generated artifacts, dependencies, or other effective-diff changes invalidate earlier evidence.
 
-After a material report:
+Independent review or rollout verification deserves a separate worker only when it materially reduces risk. Give it a bounded concern and acceptance evidence, not coordination ownership.
 
-1. Confirm the Amp message metadata identifies the worker assigned to the item and the proposal is a listed material transition.
-2. Call `delivery_record` with the proposal's stable event ID, explicit state, summary, next gate, pull request when present, and assigned `workerThread`. The tool rejects a mismatched worker. Only this promotion updates the ledger.
-3. Inspect the changed pull request and direct dependent only when needed.
-4. Review intent, changed boundaries, tests, and material risk. Do not repeat the worker's full repository investigation.
-5. Request a focused amendment from the same worker when needed.
-6. Dispatch newly unblocked work.
-7. Tell the user the decision, blocker, review-ready result, approval request, or completion—not routine state.
+## Complex Rollouts
 
-To replace an assigned worker, record `superseded` with the current `workerThread` before recording `worker_started` for the replacement. Do not overwrite an active assignment directly.
+Use this section for cross-repository work, several production or infrastructure actions, or operator handoffs across days. It adds operational gates, not a second workflow or coordinator thread.
 
-Call `delivery_status` after promotion reaches a gate or when the user asks for status, not after every tool call.
+- Maintain one compact brief with scope, invariants, dependency graph, approvals, active operators, and next gates. Supersede it when a material decision changes and notify affected workers.
+- Separate implementation, merge, activation, observation, and contraction. Use `planning-rolling-deploys` for changed persisted contracts and mixed-version safety.
+- Give each active phase measurable entry/exit gates, health evidence, a valid rollback or roll-forward action, and an operator when manual work is required.
+- Before releasing a dependency or requesting a shared action after inactivity, reconcile current PR heads, CI, merge, and rollout state. A missed callback does not justify restarting periodic polling.
+- Accept an existing merge-triggered rollout as evidence when it covers the required migration, health, and smoke checks. Do not trigger another deployment merely to obtain a fresh result.
 
-## Verify at the Right Layer
+## Finish at the Requested Boundary
 
-Workers run focused checks while iterating. Run one broad local suite only when repository guidance requires it, the change has broad risk, or CI is not an adequate broad gate.
+Pushing, opening a PR, merging, deploying, publishing, production writes, and shared infrastructure changes each require authorization for that action. Implementation intent alone does not authorize publication; a recorded approval or green CI does not grant permission.
 
-For a clean restack, record old and new base/head, `range-diff` verdict, changed-path verdict, and conflicts. Almost never rerun local checks after a stacked-PR rebase; rely on fresh pull-request CI. Run a local check only when conflicts, generated artifacts, dependency changes, or another material effective-diff change invalidates earlier evidence. Do not generate binary patch hashes or synthetic-tree proofs unless a merge anomaly or audit requirement makes identity uncertain.
+When context grows, replace the working checkpoint in this thread with the current ledger, heads, accepted evidence, approvals, blockers, and next gates. Preserve worker report routes rather than creating a continuation owner.
 
-Keep output bounded. Prefer targeted ranges and selected fields. Do not print full diffs, successful test progress, manifests, raw CI payloads, or service logs when a concise verdict is sufficient.
+Complete when the requested stopping point is reached or the user stops the work. Draft PRs ready for review are a valid completed outcome when that is the request. Report delivered results, evidence, and remaining actions without silently proceeding to merge or rollout.
 
-## Use Short-Lived Specialists
-
-Create a separate, bounded review worker only for an independent review that materially reduces risk. Set its mode explicitly: `medium` by default, or `high` only for a named difficult design or safety decision. Give it the pull request, intent, changed boundaries, and exact concern. It returns findings, then stops.
-
-Create a medium-mode rollout verifier only after an approved merge requires external rollout evidence. It verifies the specific deployment, migration, health, or smoke gates and reports once. It does not become the implementation coordinator.
-
-## Keep Ownership Through Growing Context
-
-When context grows or a major phase ends, publish one compact replacement checkpoint in this thread. Include the pull-request graph and current heads, worker report routes, settled decisions, approval state, accepted checks, blockers, next gate, and current `delivery_status` ledger. Continue in this thread without reconstructing the ledger or redirecting workers. Do not create a coordinator or continuation thread.
-
-## Keep Shared Actions Explicit
-
-Do not merge, deploy, publish, run production schema or data migrations, make production writes, or change shared infrastructure without explicit approval for that action. Approval for one action does not authorize the next.
-
-After a stacked pull request merges, verify it and restack only its direct successor. Separate implementation, merge, activation, and contraction gates. Use `planning-rolling-deploys` for concrete persisted-contract rollout decisions.
-
-Complete when work is merged or explicitly abandoned, approved rollout checks are complete, and no blocker or manual action is hidden. Return one digest with pull-request links, rollout verdicts, and remaining action.
-
-Use [reference/scenarios.md](reference/scenarios.md) when changing this skill or resolving an ambiguous delivery rule.
+Use [reference/scenarios.md](reference/scenarios.md) to evaluate workflow changes; these are test cases, not extra runtime steps.
