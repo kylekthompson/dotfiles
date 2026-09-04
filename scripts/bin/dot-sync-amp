@@ -1,0 +1,456 @@
+#!/usr/bin/env bun
+import { spawnSync } from 'node:child_process'
+import {
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+	chmodSync,
+} from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+
+const kinds = ['skills', 'plugins'] as const
+type File = { bytes: Buffer; mode: number }
+type Tree = Map<string, File>
+type Repository = {
+	scope: string
+	exists: boolean
+	cloneURL: string
+	viewerCanWrite: boolean
+	cloneRef: string
+}
+
+function run(cwd: string, command: string, args: string[]): Buffer {
+	const result = spawnSync(command, args, {
+		cwd,
+		env: process.env,
+		encoding: 'buffer',
+		maxBuffer: 64 * 1024 * 1024,
+	})
+	if (result.error) throw result.error
+	if (result.status !== 0)
+		throw new Error(
+			`${command} ${args.join(' ')} failed:\n${result.stderr}\n${result.stdout}`,
+		)
+	return result.stdout
+}
+
+function git(cwd: string, ...args: string[]): string {
+	return run(cwd, 'git', args).toString().trim()
+}
+
+function safeName(name: unknown): asserts name is string {
+	if (
+		typeof name !== 'string' ||
+		name.length > 64 ||
+		!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
+	) {
+		throw new Error(`Invalid skill directory name: ${JSON.stringify(name)}`)
+	}
+}
+
+export function manifestNames(bytes: Buffer): string[] {
+	const manifest = JSON.parse(bytes.toString())
+	const names: unknown = manifest?.skills
+	if (!Array.isArray(names) || names.length === 0)
+		throw new Error('Manifest skills must be a nonempty array')
+	for (const name of names) safeName(name)
+	if (new Set(names).size !== names.length)
+		throw new Error('Manifest contains duplicate skills')
+	return names.sort()
+}
+
+function sourceTree(source: string, revision: string, path: string): Tree {
+	const tree: Tree = new Map()
+	const entries = run(source, 'git', ['ls-tree', '-rz', `${revision}:${path}`])
+		.toString()
+		.split('\0')
+		.filter(Boolean)
+	for (const entry of entries) {
+		const [metadata, name] = entry.split('\t')
+		const [mode, type, oid] = metadata.split(' ')
+		if (
+			!name ||
+			/[\x00-\x1f\\]/.test(name) ||
+			name
+				.split('/')
+				.some(
+					(part) => !part || ['.', '..', '.git'].includes(part.toLowerCase()),
+				)
+		) {
+			throw new Error(`Unsafe source path: ${entry}`)
+		}
+		if (type !== 'blob' || !['100644', '100755'].includes(mode))
+			throw new Error(`Unsupported source entry: ${name}`)
+		tree.set(name, {
+			bytes: run(source, 'git', ['cat-file', 'blob', oid]),
+			mode: mode === '100755' ? 0o755 : 0o644,
+		})
+	}
+	return tree
+}
+
+function validateSkill(tree: Tree, path: string): void {
+	const name = path.split('/').at(-1)
+	safeName(name)
+	const file = tree.get(`${path}/SKILL.md`)
+	if (!file) throw new Error(`Missing ${path}/SKILL.md`)
+	const match = file.bytes
+		.toString()
+		.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
+	if (!match) throw new Error(`Missing frontmatter: ${path}`)
+	const data = Bun.YAML.parse(match[1]) as Record<string, unknown> | null
+	if (
+		data?.name !== name ||
+		typeof data.description !== 'string' ||
+		!data.description.trim() ||
+		data.description.length > 1024
+	) {
+		throw new Error(`Invalid name or description: ${path}`)
+	}
+}
+
+export function validateTrees(
+	skills: Tree,
+	plugins: Tree,
+	names: string[],
+): void {
+	for (const name of names) validateSkill(skills, name)
+	for (const [path, file] of [...skills, ...plugins]) {
+		if (
+			file.bytes.includes(0) ||
+			!Buffer.from(file.bytes.toString('utf8')).equals(file.bytes)
+		)
+			throw new Error(`Non-text resource: ${path}`)
+	}
+	for (const root of new Set(
+		[...plugins.keys()].map((path) => path.split('/')[0]),
+	)) {
+		const entry = plugins.has(root)
+			? root
+			: [`${root}/index.ts`, `${root}/index.js`].find((path) =>
+					plugins.has(path),
+				)
+		if (!entry || !/\.(ts|js)$/.test(entry))
+			throw new Error(`Invalid plugin entrypoint: ${root}`)
+		const text = new Bun.Transpiler({
+			loader: entry.endsWith('.ts') ? 'ts' : 'js',
+		}).transformSync(plugins.get(entry)!.bytes.toString())
+		if (/export\s+const\s+description\b/.test(text)) {
+			const match = text.match(
+				/export\s+const\s+description\s*=\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*(?:;|\r?\n|$)/,
+			)
+			if (!match)
+				throw new Error(`Description must be a static quoted string: ${entry}`)
+			const value = Bun.YAML.parse(match[1])
+			if (typeof value !== 'string' || !value.trim() || value.length > 300)
+				throw new Error(`Invalid plugin description: ${entry}`)
+		}
+		const bundled = new Set(
+			[...plugins.keys()]
+				.filter((path) => path.startsWith(`${root}/skills/`))
+				.map((path) => path.split('/')[2]),
+		)
+		for (const name of bundled) {
+			validateSkill(plugins, `${root}/skills/${name}`)
+			const registration = new RegExp(
+				`\\bamp\\.registerSkill\\(\\s*\\{\\s*path:\\s*['"]skills/${name}['"]\\s*\\}\\s*\\)`,
+			)
+			if (!registration.test(text))
+				throw new Error(
+					`Missing literal skill registration in ${entry}: ${name}`,
+				)
+		}
+	}
+}
+
+export function diskTree(directory: string): Tree {
+	const tree: Tree = new Map()
+	function walk(relative: string): void {
+		for (const name of readdirSync(join(directory, relative)).sort()) {
+			if (!relative && name === '.git') continue
+			const path = relative ? `${relative}/${name}` : name
+			const full = join(directory, path)
+			const stat = lstatSync(full)
+			if (stat.isSymbolicLink()) throw new Error(`Refusing symlink: ${full}`)
+			if (stat.isDirectory()) walk(path)
+			else if (stat.isFile())
+				tree.set(path, {
+					bytes: readFileSync(full),
+					mode: stat.mode & 0o111 ? 0o755 : 0o644,
+				})
+			else throw new Error(`Unsupported file: ${full}`)
+		}
+	}
+	walk('')
+	return tree
+}
+
+export function changes(before: Tree, after: Tree): string[] {
+	return [...new Set([...before.keys(), ...after.keys()])]
+		.sort()
+		.filter((path) => {
+			const a = before.get(path),
+				b = after.get(path)
+			return !a || !b || a.mode !== b.mode || !a.bytes.equals(b.bytes)
+		})
+}
+
+function writeTree(directory: string, tree: Tree): void {
+	mkdirSync(directory, { recursive: true })
+	for (const [path, file] of tree) {
+		const full = join(directory, path)
+		mkdirSync(dirname(full), { recursive: true })
+		writeFileSync(full, file.bytes)
+		chmodSync(full, file.mode)
+	}
+}
+
+export function assertClean(directory: string): void {
+	if (
+		git(
+			directory,
+			'status',
+			'--porcelain=v1',
+			'--untracked-files=all',
+			'--ignored=matching',
+		)
+	) {
+		throw new Error(
+			`Dirty clone (including ignored files); neither repository will be overwritten: ${directory}`,
+		)
+	}
+}
+
+export function reconcile(
+	source: string,
+	cache: string,
+	publish?: string,
+): void {
+	git(source, 'fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main')
+	const revision = git(source, 'rev-parse', 'origin/main')
+	console.log(
+		`Source: https://github.com/kylekthompson/dotfiles/commit/${revision}`,
+	)
+	if (publish && publish !== revision)
+		throw new Error(
+			'Reviewed revision is not the latest origin/main; check and review again',
+		)
+	const names = manifestNames(
+		run(source, 'git', ['show', `${revision}:ai/.agents/amp-skills.json`]),
+	)
+	const selectedSkills: Tree = new Map()
+	for (const name of names) {
+		for (const [path, file] of sourceTree(
+			source,
+			revision,
+			`ai/.agents/skills/${name}`,
+		))
+			selectedSkills.set(`${name}/${path}`, file)
+	}
+	const trees = {
+		skills: selectedSkills,
+		plugins: sourceTree(source, revision, 'ai/.config/amp/plugins'),
+	}
+	validateTrees(trees.skills, trees.plugins, names)
+	const repositories = kinds.map((kind) => {
+		const listed: Repository[] = JSON.parse(
+			run(source, 'amp', [kind, 'repositories', '--json']).toString(),
+		)
+		const user = listed.filter((repository) => repository.scope === 'user')
+		if (user.length !== 1 || !user[0].viewerCanWrite)
+			throw new Error(`No unique writable User ${kind} repository`)
+		const repository = user[0]
+		const url = new URL(repository.cloneURL)
+		if (url.protocol !== 'https:' || url.username || url.password)
+			throw new Error('Expected an HTTPS clone URL without credentials')
+		return {
+			...repository,
+			kind,
+			directory: join(cache, `${url.host}-user-${kind}`),
+		}
+	})
+	for (const repository of repositories) {
+		if (!existsSync(repository.directory)) continue
+		if (
+			lstatSync(repository.directory).isSymbolicLink() ||
+			!existsSync(join(repository.directory, '.git'))
+		)
+			throw new Error(`Not a canonical clone: ${repository.directory}`)
+		assertClean(repository.directory)
+		if (
+			git(repository.directory, 'config', '--get', 'remote.origin.url') !==
+			repository.cloneURL
+		)
+			throw new Error(`Wrong origin: ${repository.directory}`)
+		if (git(repository.directory, 'branch', '--show-current') !== 'main')
+			throw new Error(`Clone must be on main: ${repository.directory}`)
+	}
+	const temporary = mkdtempSync(join(tmpdir(), 'dot-sync-amp-'))
+	try {
+		for (const kind of kinds) writeTree(join(temporary, kind), trees[kind])
+		const tests = [...trees.plugins.keys()].filter((path) =>
+			/\.(test|spec)\.[jt]s$/.test(path),
+		)
+		if (tests.length) {
+			run(join(temporary, 'plugins'), 'bun', [
+				'test',
+				...tests.map((path) => `./${path}`),
+			])
+			console.log(`Plugin tests passed (${tests.length} files).`)
+		}
+		for (const kind of kinds) {
+			if (changes(trees[kind], diskTree(join(temporary, kind))).length)
+				throw new Error(`Tests modified the ${kind} staging tree`)
+		}
+		for (const repository of repositories) {
+			if (!existsSync(repository.directory)) {
+				if (!repository.exists)
+					throw new Error(
+						`User ${repository.kind} is empty; initialize its canonical repository before syncing`,
+					)
+				run(source, 'amp', ['clone', repository.cloneRef, repository.directory])
+			}
+			assertClean(repository.directory)
+			git(
+				repository.directory,
+				'fetch',
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+			)
+			if (
+				git(
+					repository.directory,
+					'rev-list',
+					'--count',
+					'origin/main..HEAD',
+				) !== '0'
+			)
+				throw new Error(`Unpublished local commits: ${repository.directory}`)
+		}
+		for (const repository of repositories)
+			git(repository.directory, 'merge', '--ff-only', 'origin/main')
+		const changed = repositories.filter((repository) => {
+			const paths = changes(
+				diskTree(repository.directory),
+				trees[repository.kind],
+			)
+			console.log(
+				`${repository.kind}: ${paths.length ? [...new Set(paths.map((path) => path.split('/')[0]))].join(', ') : 'exact match'}`,
+			)
+			for (const path of paths) console.log(`  ${path}`)
+			return paths.length > 0
+		})
+		if (!changed.length) {
+			console.log('No update needed.')
+			return
+		}
+		if (!publish) {
+			console.log(
+				`Review plugin commands, credential access, network/install behavior, and bundled executables at the source revision above. Then run:\ndot-sync-amp --publish ${revision}`,
+			)
+			return
+		}
+		for (const repository of repositories) assertClean(repository.directory)
+		for (const repository of changed) {
+			for (const name of readdirSync(repository.directory)) {
+				if (name !== '.git')
+					rmSync(join(repository.directory, name), {
+						recursive: true,
+						force: true,
+					})
+			}
+			writeTree(repository.directory, trees[repository.kind])
+		}
+		for (const repository of repositories) {
+			if (
+				changes(diskTree(repository.directory), trees[repository.kind]).length
+			)
+				throw new Error(`Exact tree verification failed: ${repository.kind}`)
+		}
+		for (const repository of changed) {
+			git(repository.directory, 'add', '--all', '--force', '.')
+			git(
+				repository.directory,
+				'commit',
+				'-m',
+				`Sync User ${repository.kind} from dotfiles`,
+				'-m',
+				`Source: https://github.com/kylekthompson/dotfiles/commit/${revision}`,
+			)
+			if (
+				changes(
+					sourceTree(repository.directory, 'HEAD', ''),
+					trees[repository.kind],
+				).length
+			)
+				throw new Error(`Committed tree mismatch: ${repository.kind}`)
+		}
+		for (const repository of changed) {
+			git(repository.directory, 'push', 'origin', 'main')
+			if (
+				git(
+					repository.directory,
+					'ls-remote',
+					'origin',
+					'refs/heads/main',
+				).split(/\s/)[0] !== git(repository.directory, 'rev-parse', 'HEAD')
+			)
+				throw new Error(`Remote verification failed: ${repository.kind}`)
+			console.log(
+				`Pushed User ${repository.kind}. In the current Amp thread call reload_${repository.kind} and verify the synchronized entries. The CLI cannot reload an existing session.`,
+			)
+		}
+	} finally {
+		rmSync(temporary, { recursive: true, force: true })
+	}
+}
+
+if (import.meta.main) {
+	const args = process.argv.slice(2)
+	if (
+		args.length &&
+		!(
+			args.length === 2 &&
+			args[0] === '--publish' &&
+			/^[a-f0-9]{40}$/.test(args[1])
+		)
+	) {
+		console.log(
+			'Usage: dot-sync-amp [--publish <reviewed-origin-main-revision>]\nRequires Git, Bun (with Bun.YAML), and authenticated Amp. Default: validate, test, and compare without publishing.',
+		)
+		process.exit(args[0] === '--help' ? 0 : 1)
+	}
+	const cache = join(homedir(), '.cache', 'amp', 'repositories')
+	mkdirSync(cache, { recursive: true })
+	const lock = join(cache, '.dot-sync-amp.lock')
+	try {
+		mkdirSync(lock)
+	} catch {
+		console.error(
+			`Another sync may be running. If not, remove the stale lock: ${lock}`,
+		)
+		process.exit(1)
+	}
+	try {
+		reconcile(
+			resolve(dirname(realpathSync(import.meta.path)), '../..'),
+			cache,
+			args[1],
+		)
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : error)
+		console.error(
+			'Stopped. Inspect both canonical clones before retrying; pushes across two repositories are not atomic.',
+		)
+		process.exitCode = 1
+	} finally {
+		rmSync(lock, { recursive: true })
+	}
+}
