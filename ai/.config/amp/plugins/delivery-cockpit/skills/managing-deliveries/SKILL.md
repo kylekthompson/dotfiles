@@ -50,7 +50,9 @@ Workers call `delivery_report` only for:
 
 Each report supplies `ownerThread`, the explicit resulting `state`, a concise `summary`, and the `nextGate`. The plugin does not infer them. Include the invocation thread's owner ID in every worker prompt, then send the exact content prepared by `delivery_report` with Amp's core `send_thread_message` tool. The owner ID stays fixed for the full delivery.
 
-`delivery_report` reads only the connected worker transcript. It suppresses a normal retry with the same `eventId`; a reused ID with different content is an error. Sending the prepared content does not update the owner ledger.
+`delivery_report` reads only the connected worker transcript. A retry with the same `eventId` returns the same proposal; changing its content or destination is an error. Preparation is not proof of delivery. Send only if it has not been sent or the owner confirms it is missing. If the send outcome is unknown, ask the owner to check before resending. Do not resend a confirmed delivery. Sending does not update the owner ledger.
+
+Older proposals without a recorded destination remain readable, but cannot be retried through `delivery_report`. Inspect the original send and owner acceptance first. If a replacement is needed, use a new event ID only after reconciling the original proposal with the owner.
 
 When a proposal arrives, the owner must:
 

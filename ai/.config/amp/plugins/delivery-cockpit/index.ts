@@ -83,6 +83,7 @@ type MaterialEvent = {
 	summary: string
 	nextGate: string
 	sourceThread: string
+	ownerThread?: string
 	workerThread?: string
 	pullRequest?: string
 }
@@ -323,6 +324,7 @@ function isDeliveryEvent(value: unknown): value is DeliveryEvent {
 		typeof event.summary === 'string' &&
 		typeof event.nextGate === 'string' &&
 		typeof event.sourceThread === 'string' &&
+		(event.ownerThread === undefined || typeof event.ownerThread === 'string') &&
 		(event.workerThread === undefined || typeof event.workerThread === 'string') &&
 		(event.pullRequest === undefined || typeof event.pullRequest === 'string')
 	)
@@ -640,19 +642,25 @@ async function reportMaterial(
 	journal?: EventJournal,
 ): Promise<string> {
 	const ownerThreadId = threadIdentifier(input.ownerThread, 'ownerThread')
-	const event = normalizeMaterialInput(
-		{ ...(input as unknown as Record<string, unknown>), workerThread: ctx.thread.id },
-		ctx.thread.id,
-		CHILD_REPORT_KINDS,
-	)
+	const event: MaterialEvent = {
+		...normalizeMaterialInput(
+			{ ...(input as unknown as Record<string, unknown>), workerThread: ctx.thread.id },
+			ctx.thread.id,
+			CHILD_REPORT_KINDS,
+		),
+		ownerThread: ownerThreadId,
+	}
 	return withEvents(ctx.thread, WORKER_EVENT_TOOLS, journal, (events, remember) => {
-		if (assertNewEvent(events, event) === 'duplicate') {
-			return `Material event \`${event.eventId}\` was already prepared in this worker thread. No change; do not send it again.`
+		const previous = events.find((candidate) => candidate.eventId === event.eventId)
+		if (previous && !previous.ownerThread) {
+			fail('legacy proposal has no recorded destination. Verify its original send and owner acceptance before preparing a replacement with a new eventId.')
 		}
-		remember(event)
+		const duplicate = assertNewEvent(events, event) === 'duplicate'
+		if (!duplicate) remember(event)
 
 		return [
-			`Prepared material event \`${event.eventId}\`. Use Amp's core \`send_thread_message\` tool once with thread \`${ownerThreadId}\` and the exact content between the delimiters.`,
+			`${duplicate ? 'Recovered' : 'Prepared'} material event \`${event.eventId}\`. Preparation is not proof of delivery.`,
+			`Use Amp's core \`send_thread_message\` tool with thread \`${ownerThreadId}\` and the exact content between the delimiters only if not yet sent or confirmed missing. If the send outcome is unknown, ask the owner to check for this event before resending. Do not resend a confirmed delivery.`,
 			'',
 			'DELIVERY_COCKPIT_REPORT_BEGIN',
 			reportMessage(event),

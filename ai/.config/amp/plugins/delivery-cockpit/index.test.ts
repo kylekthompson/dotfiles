@@ -511,7 +511,7 @@ describe('delivery event ledger', () => {
 })
 
 describe('material child reports', () => {
-	test('prepares once from the worker transcript across a retry and reload', async () => {
+	test('recovers the same proposal after preparation without a confirmed send', async () => {
 		const messages: ThreadMessage[] = []
 		const ctx = {
 			thread: {
@@ -547,8 +547,18 @@ describe('material child reports', () => {
 		)
 
 		const afterRestart = await testables.reportMaterial(input, ctx)
-		expect(afterRestart).toContain('No change')
-		expect(afterRestart).toContain('do not send it again')
+		expect(testables.decodeEvents(afterRestart)).toEqual(testables.decodeEvents(prepared))
+		expect(afterRestart).toContain('DELIVERY_COCKPIT_REPORT_BEGIN')
+		expect(afterRestart).toContain('thread `T-owner`')
+		expect(afterRestart).toContain('Preparation is not proof of delivery')
+		expect(afterRestart).toContain('If the send outcome is unknown')
+		expect(afterRestart).toContain('confirmed missing')
+		expect(testables.decodeEvents(afterRestart)[0]).toMatchObject({ ownerThread: 'T-owner' })
+		messages.push(
+			toolUse('delivery_report', 'recovered-report'),
+			toolResult(afterRestart, 'recovered-report'),
+		)
+		expect(await testables.reportMaterial(input, ctx)).toBe(afterRestart)
 	})
 
 	test('rejects conflicting reuse of a prepared worker event ID', async () => {
@@ -574,6 +584,36 @@ describe('material child reports', () => {
 		await expect(
 			testables.reportMaterial({ ...input, summary: 'Different summary' }, ctx),
 		).rejects.toThrow('already has a different payload')
+		await expect(
+			testables.reportMaterial({ ...input, ownerThread: 'T-other-owner' }, ctx),
+		).rejects.toThrow('already has a different payload')
+	})
+
+	test('requires reconciliation before replacing a legacy proposal without a destination', async () => {
+		const input = {
+			eventId: 'legacy-api-ready',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind: 'ready_for_review' as const,
+			state: 'review' as const,
+			summary: 'Ready',
+			nextGate: 'Review',
+		}
+		const legacy = testables.encodeEvent({
+			...input,
+			version: 1,
+			sourceThread: 'T-worker',
+			workerThread: 'T-worker',
+		})
+		const messages = [runtimeToolResult('delivery_report', legacy, 'legacy-report')]
+		const ctx = {
+			thread: { id: 'T-worker', messages: async () => messages },
+		} as unknown as PluginToolContext
+
+		expect(testables.decodeEvents(legacy)).toHaveLength(1)
+		await expect(
+			testables.reportMaterial({ ...input, ownerThread: 'T-owner' }, ctx),
+		).rejects.toThrow('Verify its original send and owner acceptance')
 	})
 
 	test('owner promotion requires the worker already assigned to the item', async () => {
