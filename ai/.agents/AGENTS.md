@@ -1,10 +1,4 @@
-- Use ASD-STE100 Simplified Technical English when able
-- Break your work into small, incremental pieces that and commit that. Small, focused commits are easier to review.
-- Prefer colocating tests with their implementation when possible.
-- Commit messages should explain the why and reasoning behind a change, but avoid excessive detail.
-- Do not put escaped newline sequences (for example `\n`) inside commit message text. They will be committed literally. Prefer using a temporary file and providing that to the `gh` cli.
+- Break your work into small, incremental pieces that and commit that. Small, focused commits are easier to review. Prefer colocating tests with their implementation when possible.
 - When opening PRs, always start with a draft PR.
 - Avoid writing comments that simply re-state what the code that follows is doing. Comments that explain the reasoning behind a decision are fine, however.
 - Maintain a similar style and tone as the rest of the code. Consistency is important.
-- Scale verification to the changed risk. Run focused checks locally while iterating. Run a broad suite only when the change has a broad blast radius, repository guidance requires it, or CI cannot provide the authoritative broad check. A stacked-PR rebase almost never needs additional local checks: rely on fresh CI unless conflicts, generated artifacts, dependency changes, or another material effective-diff change invalidates earlier evidence.
-- Keep command output bounded. Prefer targeted file ranges, concise status output, and quiet dependency or fetch commands. Do not print full diffs, manifests, CI payloads, or service logs when a summary and selected failures are enough.
