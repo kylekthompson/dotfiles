@@ -41,7 +41,6 @@ Use a short `timeout_ms` for a long command. If `shell_command` returns `running
 3. Keep file reads, searches, edits, lightweight Git inspection, and RWX lifecycle commands on the host.
 4. If the config is absent, use the normal local workflow. Do not add sandbox configuration unless the user asks.
 5. If RWX is unavailable or cannot authenticate, report the blocker. Ask before running an environment-dependent command locally because its result might not represent the configured environment.
-6. Run only one `rwx sandbox` operation at a time for a worktree because sandbox commands share synchronized state.
 
 For a simple command:
 
