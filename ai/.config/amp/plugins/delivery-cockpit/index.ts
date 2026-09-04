@@ -819,7 +819,6 @@ export default async function (amp: PluginAPI) {
 
 	await amp.registerSkill({ path: 'skills/managing-deliveries' })
 	await amp.registerSkill({ path: 'skills/delivering-changes' })
-	await amp.registerSkill({ path: 'skills/coordinating-complex-rollouts' })
 }
 
 export const testables = {

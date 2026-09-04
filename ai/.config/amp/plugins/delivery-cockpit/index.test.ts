@@ -105,7 +105,6 @@ describe('plugin registration', () => {
 		expect(skills).toEqual([
 			'skills/managing-deliveries',
 			'skills/delivering-changes',
-			'skills/coordinating-complex-rollouts',
 		])
 	})
 
