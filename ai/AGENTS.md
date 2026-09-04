@@ -1,8 +1,10 @@
 # AI configuration maintenance
 
-Portable policy lives in `skills/`. Amp plugin skills own only their client-specific UI, credentials, and tool instructions. The shared planning and RWX sandbox policies are copied into each plugin's `reference/` directory so published plugins remain self-contained.
+This file governs maintenance of `ai/` in this repository. Keep it excluded from Stow; `ai/.agents/AGENTS.md` is the separate user-wide guidance installed into the home directory.
 
-From the dotfiles repository root, after changing either portable policy:
+Portable policy lives in `.agents/skills/`. The RWX sandbox policy is copied into the RWX plugin's `reference/` directory so the published plugin remains self-contained. Its skill owns the Amp-specific credentials and tool instructions.
+
+From the dotfiles repository root, after changing the portable RWX sandbox policy:
 
 ```sh
 bun ai/.agents/sync-plugin-skills.ts

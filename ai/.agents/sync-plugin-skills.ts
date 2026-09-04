@@ -7,7 +7,6 @@ if (process.argv.slice(2).some((argument) => argument !== '--check')) {
 }
 
 const copies = [
-	['grill-me', 'grill-me/skills/grilling-plans/reference/planning.md'],
 	['rwx-sandbox', 'rwx/skills/rwx/reference/sandbox.md'],
 ] as const
 

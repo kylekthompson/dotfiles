@@ -9,10 +9,8 @@ test('generates self-contained policies and detects drift without modifying file
 		const agents = join(root, '.agents')
 		mkdirSync(agents)
 		cpSync(join(import.meta.dir, 'sync-plugin-skills.ts'), join(agents, 'sync-plugin-skills.ts'))
-		for (const skill of ['grill-me', 'rwx-sandbox']) {
-			mkdirSync(join(agents, 'skills', skill), { recursive: true })
-			writeFileSync(join(agents, 'skills', skill, 'SKILL.md'), `---\nname: ${skill}\n---\n\n# Shared policy\n`)
-		}
+		mkdirSync(join(agents, 'skills/rwx-sandbox'), { recursive: true })
+		writeFileSync(join(agents, 'skills/rwx-sandbox/SKILL.md'), '---\nname: rwx-sandbox\n---\n\n# Shared policy\n')
 		const run = (...args: string[]) => Bun.spawnSync({
 			cmd: [process.execPath, join(agents, 'sync-plugin-skills.ts'), ...args],
 			cwd: root,
@@ -20,12 +18,12 @@ test('generates self-contained policies and detects drift without modifying file
 
 		expect(run().exitCode).toBe(0)
 		expect(run('--check').exitCode).toBe(0)
-		const generated = join(root, '.config/amp/plugins/grill-me/skills/grilling-plans/reference/planning.md')
+		const generated = join(root, '.config/amp/plugins/rwx/skills/rwx/reference/sandbox.md')
 		const original = readFileSync(generated, 'utf8')
 		expect(original).toContain('# Shared policy')
-		expect(original).not.toContain('name: grill-me')
+		expect(original).not.toContain('name: rwx-sandbox')
 
-		writeFileSync(join(agents, 'skills/grill-me/SKILL.md'), '---\nname: grill-me\n---\n\n# Changed policy\n')
+		writeFileSync(join(agents, 'skills/rwx-sandbox/SKILL.md'), '---\nname: rwx-sandbox\n---\n\n# Changed policy\n')
 		const stale = run('--check')
 		expect(stale.exitCode).not.toBe(0)
 		expect(stale.stderr.toString()).toContain('is stale')

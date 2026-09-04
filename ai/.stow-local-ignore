@@ -1,0 +1,2 @@
+# Repository maintenance guidance must not become ~/AGENTS.md.
+^/AGENTS\.md$
