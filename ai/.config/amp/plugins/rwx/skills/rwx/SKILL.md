@@ -21,7 +21,7 @@ After changing a run definition, validate it with `rwx lint .rwx/<name>.yml`.
 
 ## Execute RWX Commands
 
-Run the CLI from the active worktree root:
+Run the CLI on the host from the active worktree root. RWX operations—including docs, lint, results, logs, artifacts, identity, run submission, and sandbox lifecycle commands—must not be wrapped in `rwx sandbox exec`.
 
 - Results: `rwx results <run-id>`
 - Logs: `rwx logs <task-id>`
@@ -35,6 +35,8 @@ When `gh pr checks --watch` reports failed checks, extract the run ID from the R
 Use a short `timeout_ms` for a long command. If `shell_command` returns `running: true`, pass its PID to `shell_command_status` until the command finishes. Do not rerun the original command to get more output. Output can arrive in batches, and stdout and stderr share one stream. ANSI and carriage-return characters can be present in the output.
 
 ## Use RWX Sandboxes
+
+Keep file reads, searches, edits, and lightweight Git inspection on the host. When `.rwx/sandbox.yml` exists, run environment-dependent project commands—tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, and database commands—through `rwx sandbox exec -- <command>`. Invoke `rwx sandbox exec` on the host; only the project command after `--` runs in the sandbox.
 
 When `.rwx/sandbox.yml` exists, read [reference/sandbox.md](reference/sandbox.md) before running environment-dependent commands. It owns execution boundaries, synchronization, lifecycle, failure diagnosis, and reporting. Run its CLI examples through Amp's `shell_command` tool.
 
