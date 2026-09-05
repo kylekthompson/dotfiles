@@ -40,26 +40,8 @@ In an audit, inspect the requested scope and report exact occurrences. Do not re
 
 ## Maintain `DOMAIN.md`
 
-When the user asks to add or normalize terms, use the existing structure when it is clear. Otherwise, use concise records:
-
-```md
-### Canonical Term
-Definition: What the concept means and how it differs from nearby concepts.
-Aliases: Recognized synonyms, if any.
-Discouraged terms: Terms that cause ambiguity or drift, if any.
-Notes: Scope, lifecycle, or boundary details needed for correct use.
-```
-
-Keep unresolved decisions under `Open Questions`. Do not move a proposed term into the approved vocabulary until the user or project authority resolves it.
+When adding or normalizing glossary entries, read [glossary maintenance](reference/glossary-maintenance.md) for the template and approval rules. Use the existing structure when it is clear. Do not bootstrap a missing glossary without a request.
 
 ## Response Shape
 
-- During normal work, use canonical language and mention terminology only when it changes the recommendation or edit.
-- For an audit, emit one actionable record per issue:
-  - `type`: `drift` | `gap` | `exception`
-  - `location`: exact file, symbol, or prose occurrence
-  - `canonical`: approved term, if one exists
-  - `observed`: conflicting or new term
-  - `why`: one short explanation tied to the glossary meaning
-  - `action`: exact replacement or `DOMAIN.md` update to make
-- For a `gap`, include the proposed term, definition, aliases, discouraged terms, and open questions.
+During normal work, use canonical language and mention terminology only when it changes the recommendation or edit. For an explicit terminology audit, read [audit reporting](reference/audit-reporting.md) and return actionable findings within the requested scope.
