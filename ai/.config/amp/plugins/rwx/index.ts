@@ -31,7 +31,7 @@ const CLI_RELEASE_TAG = 'unstable'
 const CLI_RELEASE_URL = `https://api.github.com/repos/rwx-cloud/rwx/releases/tags/${CLI_RELEASE_TAG}`
 const CLI_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SANDBOX_GUIDANCE =
-	'This workspace has .rwx/sandbox.yml. Before running tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, or database commands, load the rwx:rwx skill and use rwx sandbox exec through shell_command. Keep inspection and editing on the host.'
+	'This workspace has .rwx/sandbox.yml. Before environment-dependent project commands, load the rwx:rwx skill for execution policy through shell_command. Inspection and editing stay on the host.'
 const RWX_RUN_URL = /https:\/\/cloud\.rwx\.com\/[^/\s]+\/[^/\s]+\/runs\/([a-zA-Z0-9_-]+)/
 
 type ReleaseAsset = {
