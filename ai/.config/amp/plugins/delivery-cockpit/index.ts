@@ -521,11 +521,7 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 			}
 		} else if (event.kind === 'superseded' && !event.workerThread) {
 			fail(`superseded event ${event.eventId} must name the assigned worker.`)
-		} else if (
-			event.workerThread &&
-			CHILD_REPORT_KINDS.includes(event.kind as ChildReportKind) &&
-			item.workerThread !== event.workerThread
-		) {
+		} else if (event.workerThread && item.workerThread !== event.workerThread) {
 			fail(
 				`item ${event.itemId} is assigned to ${item.workerThread ?? 'no worker'}, not ${event.workerThread}.`,
 			)
@@ -535,7 +531,7 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		item.lastKind = event.kind
 		item.lastSummary = event.summary
 		if (event.kind === 'superseded') delete item.workerThread
-		else if (event.workerThread) item.workerThread = event.workerThread
+		else if (event.kind === 'worker_started') item.workerThread = event.workerThread
 		if (event.pullRequest) item.pullRequest = event.pullRequest
 		ledger.eventCount += 1
 	}

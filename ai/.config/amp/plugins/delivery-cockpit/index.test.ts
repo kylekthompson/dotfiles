@@ -711,6 +711,50 @@ describe('material child reports', () => {
 		)
 	})
 
+	test.each([
+		'approval_recorded',
+		'merged',
+		'rollout_changed',
+		'decision_changed',
+		'manual_action_changed',
+		'completed',
+	] as const)('%s cannot assign or replace a worker', async (kind) => {
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => [] },
+		} as unknown as PluginToolContext
+		const journal = testables.createEventJournal()
+		await testables.startDelivery(
+			{ deliveryId: 'billing', outcome: startEvent.outcome, items: startEvent.items },
+			ctx,
+			journal,
+		)
+		const decision = {
+			eventId: 'api-decision',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind,
+			state: 'active' as const,
+			summary: 'Owner decision.',
+			nextGate: 'Review',
+			workerThread: 'T-replacement',
+		}
+		await expect(testables.recordMaterial(decision, ctx, journal)).rejects.toThrow(
+			'item api is assigned to no worker, not T-replacement',
+		)
+		await testables.recordMaterial(
+			{ ...decision, eventId: 'api-started', kind: 'worker_started', workerThread: 'T-worker' },
+			ctx,
+			journal,
+		)
+		await expect(testables.recordMaterial(decision, ctx, journal)).rejects.toThrow(
+			'item api is assigned to T-worker, not T-replacement',
+		)
+		await testables.recordMaterial({ ...decision, workerThread: 'T-worker' }, ctx, journal)
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx, journal)).toContain(
+			'| api — Add the API | T-worker |',
+		)
+	})
+
 	test('an exact promoted retry stays idempotent after worker reassignment', async () => {
 		const assignment = {
 			version: 1 as const,
