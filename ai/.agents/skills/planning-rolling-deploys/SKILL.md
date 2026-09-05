@@ -9,13 +9,10 @@ Make every reachable combination of code, schema, and persisted messages compati
 
 ## Establish the Deployment Model
 
-Inspect repository deployment configuration, migration tooling, queue behavior, and operational documentation. Determine only facts that can change the plan:
+Inspect repository deployment configuration and operational documentation for the changed contract. Determine only facts that can change the plan:
 
 - independently deployed web, API, worker, scheduler, and migration processes
 - rollout order, process overlap, rollback window, and migration timing
-- queue consumers and maximum scheduled, retry, dead-letter, or replay age
-- schema caches, prepared statements, generated models, and restart behavior
-- database engine, lock behavior, table size, and supported online DDL
 
 Ask for missing material facts. Do not assume short normal deploy time prevents overlap. Name code versions `current` and `target`; name schema states `current`, `expanded`, and `contracted`.
 
@@ -23,7 +20,7 @@ First establish exposure and plausible harm. Separate implementation, merge, act
 
 ## Inventory Persisted Contracts
 
-List each changed database object, job payload or type, queue, scheduled entry, outbox/event record, cache entry, serializer, and generated or cached schema. For each, record:
+Inventory only changed contracts and their affected dependencies, not every persistence mechanism in the system. For each, record:
 
 1. producers and writers
 2. consumers and readers
@@ -31,11 +28,16 @@ List each changed database object, job payload or type, queue, scheduled entry, 
 4. tolerance for missing or unknown fields
 5. rollback behavior
 
-Treat positional arguments, serialized class names, implicit defaults, and stale process caches as contract details.
+Read the applicable reference for contract-specific inventory, design, and checks:
+
+- [Database contracts](reference/database.md) when schema, storage, or schema-cached processes change.
+- [Jobs and persisted messages](reference/messages.md) when payloads, producers, consumers, queues, or delivery semantics change.
+
+Read both only when the change crosses both contract types, including delayed work that may execute against a changed schema.
 
 ## Prove Reachable Version Pairs
 
-For persisted messages, prove:
+For changed persisted-message contracts, prove:
 
 | Producer | Consumer | Requirement |
 | --- | --- | --- |
@@ -44,7 +46,7 @@ For persisted messages, prove:
 | target | current | current accepts target messages, or an enforced gate prevents the pair |
 | target | target | target behavior works |
 
-For each process type, prove:
+For changed database contracts, prove for each affected process type:
 
 | Code | Schema | Requirement |
 | --- | --- | --- |
@@ -56,29 +58,6 @@ For each process type, prove:
 | target | contracted | final behavior works |
 
 Add intermediate states when the real rollout has them. A pair is unreachable only when a mechanism prevents it, such as a completed gate, isolated queue, or disabled producer. Timing and operator intent are not mechanisms. Block the plan while a reachable pair is incompatible.
-
-## Design Compatible Changes
-
-### Database
-
-- Prefer expand, migrate, activate, observe, then contract.
-- Add compatible storage before code requires it unless target code tolerates its absence.
-- Check engine-specific lock, rewrite, replication, and online-index behavior. Additive does not mean cheap.
-- Treat renames as add-transition-remove. For incompatible types, use a shadow field, dual writes, backfill, read cutover, then contraction.
-- Make backfills resumable, idempotent, bounded, observable, and safe with concurrent writes.
-- Add required constraints only after existing and concurrent data satisfies them.
-- Before dropping storage, deploy code that does not read or write it, account for generated queries and caches, and close the rollback window.
-- Prefer compatibility that does not depend on coordinated cache invalidation. If restart is required, state what stops stale processes from receiving work.
-
-### Jobs and persisted messages
-
-- Deploy tolerant consumers before producers emit a new format.
-- Prefer named additive optional fields with explicit defaults, after verifying serializer behavior.
-- Do not change positional argument meaning in place. Use a payload version or new job type when meaning changes or readers are strict.
-- Do not enqueue a new job type while an incompatible worker can reserve it; wait for rollout or isolate its queue.
-- Retain old consumers until ready, scheduled, retry, dead-letter, replay, and rollback horizons have drained.
-- Make overlapping old/new jobs idempotent at a stable business boundary.
-- Test delayed jobs against the schema state in which they can execute.
 
 ## Build Measurable Phases
 
@@ -95,18 +74,7 @@ For each active phase, state the coexistence invariant, action, entry and exit g
 
 ## Verify the Risk
 
-Choose focused checks for the actual boundary:
-
-- deserialize current payloads with target consumers and the reverse when reachable
-- run current and target code against expanded schema
-- start a current process, apply the migration, then exercise that same stale-cache process
-- simulate rollback after expansion or activation
-- enqueue before deploy and execute after deploy
-- prove incompatible workers cannot reserve target jobs
-- test retries, delays, duplicate delivery, and replay when relevant
-- inspect generated SQL and measure migration locks when operational risk requires it
-
-Do not require every check for every change. State uncertainty when topology, retention, cache behavior, or DDL semantics remain unverified.
+Choose focused checks from the applicable contract reference to prove reachable pairs, activation gates, and rollback safety. Do not require every check for every change. State uncertainty when topology, retention, cache behavior, or DDL semantics remain unverified.
 
 ## Report
 
