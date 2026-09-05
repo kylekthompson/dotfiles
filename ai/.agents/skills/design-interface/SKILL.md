@@ -1,6 +1,6 @@
 ---
 name: design-interface
-description: Designs and reviews interfaces between modules, bounded contexts, services, adapters, and public APIs. Use when assigning responsibilities, comparing boundary options, reducing coupling, judging whether a boundary smell warrants refactoring, preserving domain language, or deciding whether workflows share an abstraction.
+description: Designs and reviews module and service boundaries. Use for responsibility placement, coupling or abstraction decisions, and interface design reviews.
 ---
 
 # Design Interfaces
@@ -11,7 +11,7 @@ Choose where knowledge, decisions, invariants, and effects belong so that change
 
 Treat a smell as evidence to inspect, not proof that the design must change.
 
-1. Inspect the surrounding behavior, callers, domain language, and likely change. Do not diagnose from a pattern in isolation.
+1. Inspect surrounding behavior, callers, implementations, domain language, and likely change. Do not diagnose from a pattern in isolation. Ask only about unknowns that can change the design.
 2. Name the concrete cost: an obscured invariant, unclear ownership, invalid state, difficult change, hidden effect, coupling, or excess conceptual weight.
 3. Find the smallest design that reduces that cost. Do not prescribe a pattern merely because it can fit.
 4. Decide whether improvement belongs in the current scope. Fix it when it protects correctness, enables the requested change, or materially simplifies the touched boundary. Otherwise, contain it and proceed.
@@ -20,16 +20,13 @@ Prefer correct behavior and explicit invariants, then locality of change, clear 
 
 ## Define the Boundary
 
-1. Inspect existing callers, implementations, domain terms, and change patterns before asking questions. Ask only about unknowns that can change the design.
-2. State the caller, the boundary, the business capability, and the key invariant. Assign each decision and effect to one owner.
-3. Name the change that the boundary must absorb. Separate changes that should stay local from changes that must cross the boundary.
-4. Sketch concrete contracts with names, inputs, outcomes, and failures. Use signatures, request and response shapes, or event schemas as appropriate.
-5. When responsibility placement is not clear, present 2-3 viable options. Vary what each side knows and owns; do not create options that differ only in syntax.
-6. Recommend one design. Explain the main tradeoff, the strongest rejected alternative, and the first safe migration step for an existing boundary.
+Frame the caller, boundary, business capability, and key invariant. Name the change the boundary must absorb and distinguish local changes from those that must cross it. Sketch concrete contracts with names, inputs, outcomes, and failures using signatures, request/response shapes, or event schemas as appropriate.
+
+When responsibility placement is unclear, compare 2-3 viable options that differ in what each side knows and owns, not merely syntax. Recommend the smallest useful design using the principles below.
 
 ## Place Responsibilities
 
-- Give each business invariant one owner. Do not make both sides coordinate the same rule.
+- Give each business invariant, decision, and effect one owner. Do not make both sides coordinate the same rule.
 - Keep contracts small and explicit. Accept inputs at the caller's level of knowledge. Let the boundary own call order, retries, timing, and lifecycle transitions that protect its invariant.
 - Use domain actions for commands, domain facts for events, and explicit business concepts for queries. Return business outcomes instead of internal state.
 - Keep policy and classification separate from I/O where practical. Put database, framework, transport, queue, and vendor details behind adapters at the edge.
@@ -55,11 +52,4 @@ Reject pass-through layers, ports, repositories, factories, or events that own n
 
 ## Response Shape
 
-- For a review, name each material smell, its concrete cost, the smallest useful improvement, and whether to fix it now. State when no smell warrants a change.
-- Frame the caller, boundary, owned decisions, owned effects, and key invariant in one short paragraph.
-- Present concrete options only when there is a material responsibility tradeoff.
-- Recommend one interface and explain why it best localizes change.
-- State what the caller knows, what the boundary owns, and what stays hidden.
-- Show the contract and relevant invariants, preconditions, postconditions, and failure behavior.
-- Name the most important rejected alternative and why it is worse.
-- For an existing boundary, end with the first safe refactor or migration step.
+Match the output to the decision. For a review, identify material smells, concrete costs, and the smallest useful improvement (or explain why no change is warranted). For a design, show enough of the contract, ownership, and failure behavior to make the recommendation usable. Include alternatives only for a material tradeoff and a safe migration step when recommending changes to an existing boundary. A small decision may need only a short paragraph, not a full design report.
