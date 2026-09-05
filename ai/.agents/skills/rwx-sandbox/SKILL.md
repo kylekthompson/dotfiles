@@ -1,6 +1,6 @@
 ---
 name: rwx-sandbox
-description: Routes environment-dependent commands through an existing RWX cloud sandbox. Before loading, check that `.rwx/sandbox.yml` exists. Use only when it exists and the task runs tests, checks, builds, package scripts, migrations, code generation, or database commands.
+description: Routes project commands through RWX. Use before environment-dependent commands only when `.rwx/sandbox.yml` exists.
 ---
 
 # RWX Sandbox
@@ -13,7 +13,7 @@ Run environment-dependent project commands in the repository's configured persis
 2. Use the sandbox for commands whose result depends on the configured runtime, dependencies, tools, services, or setup state. This includes tests, linters, formatters, type checks, builds, package scripts, migrations, schema or code generation, and database commands.
 3. Keep file reads, searches, edits, and lightweight Git inspection on the host. Run RWX lifecycle commands on the host too.
 4. If the config is absent, use the normal local workflow. Do not initialize or add sandbox configuration unless the user asks.
-5. If the config exists but RWX is unavailable or cannot authenticate, report the blocker. Ask before running an environment-dependent command locally because that result might not represent the configured environment.
+5. If RWX is unavailable or cannot authenticate, continue host-only inspection and editing. Ask before running environment-dependent commands locally; even an approved diagnostic fallback is not authoritative sandbox verification.
 
 ## Execute Commands
 
@@ -29,11 +29,11 @@ Before each command, RWX syncs staged, unstaged, and untracked local files into 
 
 Do not treat every nonzero exit as a sandbox failure.
 
-1. Read the command output first. If the project command ran and failed, fix the project issue and rerun the smallest relevant command in the same sandbox. Do not reset it.
+1. Read the command output first. Fix failures caused by the requested change and rerun the smallest relevant command in the same sandbox. Report unrelated failures rather than expanding the task. Do not reset for project test failures.
 2. If setup fails, use the diagnostic summary in the CLI output. Fix the config, dependency, or project input, then run `rwx sandbox exec --reset -- <command>` so setup runs again.
 3. Reset only when setup inputs changed or evidence shows stale or damaged sandbox state. Use `exec --reset` when a command is ready, or `rwx sandbox reset --wait` when only a fresh environment is needed.
 4. If the output supplies a run ID and more task detail is useful, inspect it with `rwx results <run-id>`. Do not reset for authentication, authorization, quota, or network errors.
-5. Retry once only when the failure can be transient. If the sandbox remains blocked, report the evidence and ask before any local fallback.
+5. Retry once only when the failure can be transient. If the sandbox remains blocked, report the evidence and continue only work allowed by the execution boundary above.
 
 ## Manage the Lifecycle
 
