@@ -1,6 +1,6 @@
 ---
 name: delivering-changes
-description: Delivers a settled multi-PR or parallel implementation plan in the invocation thread, including complex cross-repository rollouts. Use when the plan requires independently owned workstreams or the user explicitly requests delivery coordination. Do not use for ordinary single-PR implementation.
+description: Coordinates settled plans with independently owned implementation workstreams. Use for parallel delivery or explicit delivery coordination, not ordinary single-PR work.
 compatibility: Requires Amp thread tools; published pull-request checks require authenticated GitHub access.
 ---
 
@@ -35,7 +35,7 @@ Acceptance: <focused checks and observable result>
 Report: load delivery-cockpit:managing-deliveries; report material transitions for <delivery>/<item> to <owner thread ID> with a stable eventId.
 ```
 
-Use core `create_thread`, following its executor and mode rules. After creation, record `worker_started` with the returned thread ID and first gate. If creation has an unknown outcome, discover whether the child exists before retrying.
+Use core `create_thread`, following its executor and mode rules. Use `managing-deliveries` for assignment records and report reconciliation.
 
 For a stack, use the pushed direct predecessor when pushing is authorized. Otherwise transfer local work explicitly or keep dependent work in the same checkout; another thread cannot see an unpushed branch merely because its name was mentioned.
 
@@ -45,14 +45,7 @@ Let workers discover relevant skills. Include only item-specific hazards or requ
 
 ## Reconcile Evidence
 
-Ask workers to report material results, changed blockers, review readiness, or stop/supersession. Use the report preparation and recovery protocol in `managing-deliveries`. Raw messages are proposals, not accepted ledger state.
-
-Before promoting a report:
-
-1. Verify message attribution against the assigned worker, and confirm the proposal is addressed to this owner.
-2. Inspect the changed code or PR and relevant checks. Evaluate intent, boundaries, and risk without repeating the worker's full investigation.
-3. Record the verified result with its stable event ID and explicit next gate. If changes are needed, request a focused amendment from the same worker.
-4. Release only directly affected dependencies. Render status at a gate or on request, not after every tool call.
+Inspect changed code or PRs and relevant checks before accepting results. Evaluate intent, boundaries, and risk without repeating the worker's full investigation. Request focused amendments from the same worker, and release only directly affected dependencies after accepting evidence through `managing-deliveries`.
 
 Do not poll workers. Use their replies; check authoritative GitHub/CI state when a reported result reaches a gate or stale evidence could release a dependency. Scheduled monitoring requires an explicit user request.
 
@@ -66,13 +59,7 @@ Independent review or rollout verification deserves a separate worker only when 
 
 ## Complex Rollouts
 
-Use this section for cross-repository work, several production or infrastructure actions, or operator handoffs across days. It adds operational gates, not a second workflow or coordinator thread.
-
-- Maintain one compact brief with scope, invariants, dependency graph, approvals, active operators, and next gates. Supersede it when a material decision changes and notify affected workers.
-- Separate implementation, merge, activation, observation, and contraction. Use `planning-rolling-deploys` for changed persisted contracts and mixed-version safety.
-- Give each active phase measurable entry/exit gates, health evidence, a valid rollback or roll-forward action, and an operator when manual work is required.
-- Before releasing a dependency or requesting a shared action after inactivity, reconcile current PR heads, CI, merge, and rollout state. A missed callback does not justify restarting periodic polling.
-- Accept an existing merge-triggered rollout as evidence when it covers the required migration, health, and smoke checks. Do not trigger another deployment merely to obtain a fresh result.
+For cross-repository work, several production or infrastructure actions, or operator handoffs across days, read [complex rollouts](reference/rollouts.md). It adds operational gates, not another coordinator.
 
 ## Finish at the Requested Boundary
 
