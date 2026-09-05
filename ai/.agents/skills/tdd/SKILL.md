@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Guides explicit test-first work with red-green-refactor and characterization-first refactoring. Use when the user or plan requires TDD, a bug needs a failing regression, or test strategy is a material design decision. Routine implementation does not require loading it.
+description: Guides test-first implementation and characterization-first refactoring. Use for requested or planned TDD, or material test-strategy decisions—not routine bug fixes alone.
 ---
 
 # TDD
@@ -16,7 +16,7 @@ For new or changed behavior:
 3. **Refactor:** Improve names, duplication, and design without changing behavior. Keep tests green after each small step.
 4. Repeat with the next behavior.
 
-For a bug, first reproduce it with a failing regression test. Push back on production changes made before a meaningful red.
+For bugs, prefer a failing regression before the fix. When automation is impractical, capture diagnostic or characterization evidence and verify the same observation afterward. Disclose the limitation; this is not an automated red and does not satisfy an explicit test-first requirement.
 
 ## What to Test
 
@@ -38,4 +38,4 @@ A behavior-preserving refactor is green-green, not red-green:
 3. Refactor in small steps and run the focused tests after each step. Change tests only when structure, not behavior, requires it.
 4. If the desired outcome changes behavior, stop refactoring and start a red-green-refactor loop for that change.
 
-Before completion, run the relevant broader suite. State the next test and why its boundary is appropriate when the test sequence is not obvious.
+Use focused checks for affected boundaries. Run a broader local suite only for broad risk, repository requirements, or when CI cannot provide the authoritative check. Distinguish executed checks from pending CI and unverified risks.
