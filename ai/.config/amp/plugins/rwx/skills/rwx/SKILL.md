@@ -1,6 +1,6 @@
 ---
 name: rwx
-description: Runs authenticated RWX CLI commands, including results, logs, and cloud sandbox execution. Use for any RWX operation. When `.rwx/sandbox.yml` exists, load this skill before running environment-dependent project commands.
+description: Runs authenticated RWX commands. Use for RWX operations, or before environment-dependent project commands when `.rwx/sandbox.yml` exists.
 ---
 
 # RWX
@@ -11,11 +11,11 @@ Before the first RWX operation in a task, run `rwx whoami` to verify that the se
 
 ## Use Current RWX Documentation
 
-Before creating, modifying, or explaining files under `.rwx`, pull the current run-definition reference:
+When creating or changing run-definition semantics, or explaining semantics not established by the repository, pull the current reference:
 
 `rwx docs pull /migrating/rwx-reference`
 
-The output is already bounded. Do not truncate it. If the reference does not answer a question, run `rwx docs search "<query>"`, then use `rwx docs pull` for the relevant result.
+For a specific unresolved question, use `rwx docs search "<query>"` and pull the relevant result. Reuse documentation already read in the task; comment-only edits and straightforward file explanations do not require a reference fetch.
 
 After changing a run definition, validate it with `rwx lint .rwx/<name>.yml`.
 
@@ -32,12 +32,6 @@ For CI failures or branch status, start with `rwx results --help` to select the 
 
 When `gh pr checks --watch` reports failed checks, extract the run ID from the RWX URL in its output and run `rwx results <run-id>` before inspecting individual logs. Its default output gives an LLM-friendly summary for the complete run.
 
-Use a short `timeout_ms` for a long command. If `shell_command` returns `running: true`, pass its PID to `shell_command_status` until the command finishes. Do not rerun the original command to get more output. Output can arrive in batches, and stdout and stderr share one stream. ANSI and carriage-return characters can be present in the output.
-
 ## Use RWX Sandboxes
 
-Keep file reads, searches, edits, and lightweight Git inspection on the host. When `.rwx/sandbox.yml` exists, run environment-dependent project commands—tests, linters, formatters, type checks, builds, package scripts, migrations, code generation, and database commands—through `rwx sandbox exec -- <command>`. Invoke `rwx sandbox exec` on the host; only the project command after `--` runs in the sandbox.
-
-When `.rwx/sandbox.yml` exists, read [reference/sandbox.md](reference/sandbox.md) before running environment-dependent commands. It owns execution boundaries, synchronization, lifecycle, failure diagnosis, and reporting. Run its CLI examples through Amp's `shell_command` tool.
-
-Use `shell_command_kill` only when repeated status checks show no output and the process is not expected to run for a long time.
+When `.rwx/sandbox.yml` exists, read [reference/sandbox.md](reference/sandbox.md) before running environment-dependent commands. It owns execution boundaries, synchronization, lifecycle, failure diagnosis, and reporting. Invoke `rwx sandbox exec -- <command>` on the host through `shell_command`; only the project command after `--` runs in the sandbox.
