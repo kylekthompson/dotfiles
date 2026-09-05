@@ -11,7 +11,7 @@ From the dotfiles repository root, after changing the portable RWX sandbox polic
 ```sh
 bun ai/.agents/sync-plugin-skills.ts
 bun ai/.agents/sync-plugin-skills.ts --check
-bun test ./ai/.agents ./ai/.config/amp/plugins
+bun test ./ai/.agents/sync-plugin-skills.test.ts ./ai/.config/amp/plugins/rwx
 ```
 
 Commit the source and generated references together. Do not edit the generated copies. Push each changed global skill or plugin only when publication is authorized; changing this repository does not update Amp's global repositories.
