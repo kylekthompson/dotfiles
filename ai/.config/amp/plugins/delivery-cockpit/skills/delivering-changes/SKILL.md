@@ -76,7 +76,7 @@ Use this section for cross-repository work, several production or infrastructure
 
 ## Finish at the Requested Boundary
 
-Pushing, opening a PR, merging, deploying, publishing, production writes, and shared infrastructure changes each require authorization for that action. Implementation intent alone does not authorize publication; a recorded approval or green CI does not grant permission.
+Pushing, opening a PR, merging, deploying, publishing, production writes, and shared infrastructure changes each require authorization for that action. Implementation intent alone does not authorize publication. Ledger state and green CI do not confer authorization; continue within explicit user approval already granted, and ask only when the next action exceeds it.
 
 When context grows, replace the working checkpoint in this thread with the current ledger, heads, accepted evidence, approvals, blockers, and next gates. Preserve worker report routes rather than creating a continuation owner.
 
