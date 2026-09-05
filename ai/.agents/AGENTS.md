@@ -1,3 +1,2 @@
 - Make small, focused commits. Prefer colocating tests with their implementation.
 - When opening PRs, always start with a draft PR.
-- Edit skills and Amp plugins only in the dotfiles checkout's `ai/` directory; follow `ai/AGENTS.md` there. Locate the checkout or ask if unavailable. Installed/global copies are publication outputs, not editing locations. Publish only when explicitly authorized via the documented `dot-sync-amp` workflow.
