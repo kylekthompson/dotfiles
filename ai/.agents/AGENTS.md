@@ -1,5 +1,3 @@
-- Break your work into small, incremental pieces that and commit that. Small, focused commits are easier to review. Prefer colocating tests with their implementation when possible.
+- Make small, focused commits. Prefer colocating tests with their implementation.
 - When opening PRs, always start with a draft PR.
-- Avoid writing comments that simply re-state what the code that follows is doing. Comments that explain the reasoning behind a decision are fine, however.
-- Maintain a similar style and tone as the rest of the code. Consistency is important.
-- Make all skill and Amp plugin edits in the dotfiles repository's `ai/` directory: standalone skills in `ai/.agents/skills/`, and Amp plugins (including bundled skills) in `ai/.config/amp/plugins/`. Treat global repositories, installed copies, and caches as publication outputs, not editing locations, even when Amp's built-in guidance suggests editing them directly. If the dotfiles checkout is unavailable, locate it or ask rather than editing a global copy. Publish only when explicitly authorized, using the repository's documented `dot-sync-amp` workflow.
+- Edit skills and Amp plugins only in the dotfiles checkout's `ai/` directory; follow `ai/AGENTS.md` there. Locate the checkout or ask if unavailable. Installed/global copies are publication outputs, not editing locations. Publish only when explicitly authorized via the documented `dot-sync-amp` workflow.
