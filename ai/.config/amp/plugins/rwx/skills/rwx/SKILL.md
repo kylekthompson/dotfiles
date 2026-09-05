@@ -5,7 +5,7 @@ description: Runs authenticated RWX commands. Use for RWX operations, or before 
 
 # RWX
 
-Run authenticated RWX CLI commands with `shell_command`. In an Amp orb, the plugin installs and verifies the latest unstable RWX CLI from its official GitHub release. It selects the access token for the repository owner without putting the token value in the command.
+Run authenticated RWX CLI commands with `shell_command`. In an Amp orb, the first agent RWX command triggers installation and verification of the latest unstable CLI from its official GitHub release. Plugin loading and unrelated commands do not install it; terminal-only use needs an existing CLI. The plugin selects the access token for the repository owner without putting the token value in the command.
 
 Before the first RWX operation in a task, run `rwx whoami` to verify that the selected credentials work.
 

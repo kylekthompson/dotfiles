@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Installs the latest unstable RWX CLI in Amp orbs and authenticates RWX shell commands for the checkout owner.'
+	'Installs the latest unstable RWX CLI on first agent use in Amp orbs and authenticates RWX shell commands for the checkout owner.'
 
 const TOKEN_BY_OWNER: ReadonlyMap<string, string> = new Map([
 	['rwx-cloud', 'RWX_RWX_ACCESS_TOKEN'],
@@ -232,25 +232,30 @@ export default async function (amp: PluginAPI) {
 	const workspacePath = amp.helpers.filePathFromURI(workspaceRoot)
 	const owner = githubOwner(workspacePath)
 	const sourceVariable = tokenVariableForOwner(owner)
-	if (process.env.AMP_ORB === '1') {
-		try {
-			await installLatestRwxCli()
-		} catch (error) {
-			console.error(
-				`RWX CLI installation failed: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-		if (sourceVariable) installOrbTerminalHook(sourceVariable)
-	}
+	const isOrb = process.env.AMP_ORB === '1'
+	let cliInstall: Promise<string> | undefined
+	if (isOrb && sourceVariable) installOrbTerminalHook(sourceVariable)
 
-	amp.on('tool.call', (event) => {
+	amp.on('tool.call', async (event) => {
 		const shellCommand = amp.helpers.shellCommandFromToolCall(event)
-		if (!sourceVariable || !shellCommand || !RWX_EXECUTABLE.test(shellCommand.command)) {
+		if (!shellCommand || !RWX_EXECUTABLE.test(shellCommand.command)) {
 			return { action: 'allow' }
 		}
 
 		const key = commandInputKey(event.input)
 		if (!key) return { action: 'allow' }
+		if (isOrb) {
+			try {
+				await (cliInstall ??= installLatestRwxCli())
+			} catch (error) {
+				cliInstall = undefined
+				return {
+					action: 'reject-and-continue',
+					message: `RWX CLI installation failed: ${error instanceof Error ? error.message : String(error)}. The command did not run.`,
+				}
+			}
+		}
+		if (!sourceVariable) return { action: 'allow' }
 		const command = event.input[key] as string
 		return {
 			action: 'modify',

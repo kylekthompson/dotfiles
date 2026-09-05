@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -77,6 +77,86 @@ describe('sandbox guidance', () => {
 })
 
 describe('orb CLI installation', () => {
+	test('installs lazily for RWX calls, retries failed installation, and leaves non-orbs alone', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'rwx-lazy-'))
+		try {
+			const result = Bun.spawnSync({
+				cmd: [process.execPath, '-e', `
+					import assert from 'node:assert/strict';
+					import { execFileSync } from 'node:child_process';
+					import { createHash } from 'node:crypto';
+					import { existsSync, rmSync } from 'node:fs';
+					import { join } from 'node:path';
+					import rwx, { testables } from ${JSON.stringify(join(import.meta.dir, 'index.ts'))};
+					execFileSync('git', ['init', '-q']);
+					execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/kylekthompson/fixture']);
+					const binary = new TextEncoder().encode('fixture binary');
+					const digest = 'sha256:' + createHash('sha256').update(binary).digest('hex');
+					let requests = 0;
+					let unavailable = true;
+					globalThis.fetch = async (url) => {
+						requests++;
+						if (unavailable) return new Response('', { status: 503 });
+						return String(url).includes('/releases/tags/unstable')
+							? Response.json({assets: [{name: testables.cliAssetName(), digest, browser_download_url: 'https://example.test/rwx'}]})
+							: new Response(binary);
+					};
+					const hooks = new Map();
+					const amp = {
+						system: {workspaceRoot: process.cwd()},
+						helpers: {
+							filePathFromURI: (path) => path,
+							shellCommandFromToolCall: (event) => event.tool === 'shell_command'
+								? {command: event.input.command ?? event.input.cmd} : null,
+						},
+						on: (name, handler) => hooks.set(name, handler),
+						registerSkill: async () => {},
+					};
+					const call = (command) => hooks.get('tool.call')({tool: 'shell_command', input: {command}});
+					await rwx(amp);
+					assert.equal(requests, 0, 'plugin loading must not fetch a release');
+					assert.deepEqual(await call('git status'), {action: 'allow'});
+					assert.deepEqual(await hooks.get('tool.call')({tool: 'read_file', input: {path: 'rwx'}}), {action: 'allow'});
+					assert.equal(requests, 0, 'unrelated tools must not install RWX');
+					const blocked = await call('rwx whoami');
+					assert.equal(blocked.action, 'reject-and-continue');
+					assert.match(blocked.message, /503/);
+					assert.equal(requests, 1);
+					unavailable = false;
+					const results = await Promise.all([call('rwx whoami'), call('rwx results fixture')]);
+					assert.equal(requests, 3, 'concurrent calls must share one installation');
+					for (const result of results) {
+						assert.equal(result.action, 'modify');
+						assert.match(result.input.command, /SSC_RWX_ACCESS_TOKEN/);
+					}
+					assert.ok(existsSync(join(process.env.HOME, '.amp/bin/rwx')));
+					await call('rwx whoami');
+					assert.equal(requests, 3, 'later commands must reuse installation');
+					rmSync(join(process.env.HOME, '.amp'), {recursive: true});
+					process.env.AMP_ORB = '0';
+					await rwx(amp);
+					const local = await hooks.get('tool.call')({tool: 'shell_command', input: {cmd: 'rwx whoami'}});
+					assert.equal(local.action, 'modify');
+					assert.match(local.input.cmd, /SSC_RWX_ACCESS_TOKEN/);
+					assert.equal(requests, 3, 'non-orbs must not install RWX');
+					assert.ok(!existsSync(join(process.env.HOME, '.amp/bin/rwx')));
+					execFileSync('git', ['remote', 'set-url', 'origin', 'https://github.com/unknown/fixture']);
+					process.env.AMP_ORB = '1';
+					await rwx(amp);
+					assert.equal(requests, 3);
+					assert.deepEqual(await call('rwx whoami'), {action: 'allow'});
+					assert.equal(requests, 5, 'installation must not depend on a mapped token owner');
+				`],
+				cwd: directory,
+				env: { ...process.env, HOME: directory, AMP_ORB: '1' },
+			})
+			expect(result.stderr.toString()).toBe('')
+			expect(result.exitCode).toBe(0)
+		} finally {
+			rmSync(directory, { recursive: true, force: true })
+		}
+	})
+
 	test('selects official assets for supported Amp platforms', () => {
 		expect(testables.cliAssetName('linux', 'x64')).toBe('rwx-linux-x86_64')
 		expect(testables.cliAssetName('linux', 'arm64')).toBe('rwx-linux-aarch64')
