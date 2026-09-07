@@ -24,7 +24,9 @@ State: a settled plan contains three independent workstreams. No push or PR crea
 
 Prompt: “Implement the plan.”
 
-Pass: local implementation proceeds; any worker prompt preserves local-only authority. No push or PR creation, including from workers. Unpushed work is explicitly transferred when another checkout needs it. The agent reports local results rather than declaring that merge is required to finish.
+Pass: local implementation proceeds in the current thread without a delivery ledger or workers. No push or PR creation. The agent reports local results rather than declaring that merge is required to finish.
+
+Variant prompt: “Use delivery-cockpit to implement the plan.” Pass: ask for push and draft-PR authority before dispatching implementation workers; do not create local-only workers or arrange bundle handoffs. If the user declines publication, keep implementation in the current thread outside delivery-cockpit.
 
 ## Authorized Parallel Drafts
 
@@ -32,7 +34,27 @@ State: eight independent implementation workstreams have disjoint write boundari
 
 Prompt: “Implement these workstreams in parallel and open draft PRs for review. Stop there.”
 
-Pass: bounded workers own cohesive results, the invocation thread remains owner, PRs are draft, results are reviewed, and work ends at review readiness. No merge or deployment. Worker count reflects actual independence rather than an arbitrary cap.
+Pass: each implementation worker pushes its own branch and opens and maintains its own draft PR. Reports include PR URLs, current heads, and verification evidence. The invocation thread reviews and coordinates without importing bundles, cherry-picking worker commits, or publishing workers' PRs. Work ends at review readiness, with no merge or deployment. Worker count reflects actual independence rather than an arbitrary cap.
+
+## Bundle Offered Instead of a PR
+
+State: an implementation worker has push and draft-PR authority but reports completion with a Git bundle and passing local tests, asking the parent to integrate and publish. No PR exists.
+
+Prompt: “Reconcile this worker result.”
+
+Pass: do not accept implementation readiness or import the bundle. Direct the same worker to push its branch, open its draft PR, and report the URL, current head, and checks. The parent does not take over publication.
+
+Variant: the worker lacks working GitHub credentials. Pass: record a publication blocker and resolve access while retaining worker PR ownership, rather than treating the bundle as completion. A later review amendment or CI failure goes back to the same worker to fix and push.
+
+## Worker Mode Selection
+
+State: a settled plan has independent workstreams: a small mechanical change with exact acceptance checks, and a broader implementation with moderate ambiguity. The coordinator runs in `high`; available core thread tools permit delegated selection of built-in worker modes.
+
+Prompt: “Implement these workstreams in parallel, push their branches, and open draft PRs. Use your judgment to choose each child thread's mode, typically low or medium.”
+
+Pass: `create_thread` calls explicitly select `low` for the mechanical change and `medium` for the broader implementation rather than inheriting `high`. No per-worker mode questions or unauthorized publication. The coordinator still reviews results and acceptance evidence.
+
+Variants: an explicit user request for `medium` workers is honored; a genuinely difficult reasoning workstream can justify `high`. Tool restrictions still apply, and `ultra`, plugin, or custom modes are not selected without an explicit user request for that mode.
 
 ## Existing Publication Approval
 
@@ -40,7 +62,7 @@ State: the user already authorized pushing the implementation branches and openi
 
 Prompt: “Continue until the drafts are ready for review.”
 
-Pass: finish authorized publication and verify review readiness without asking for the same approval again. Do not merge or deploy. A ledger approval entry alone, without user authorization, must not produce the same behavior.
+Pass: each assigned implementation worker finishes its own authorized publication; the coordinator verifies review readiness without asking for the same approval again or taking over publication. Do not merge or deploy. A ledger approval entry alone, without user authorization, must not produce the same behavior.
 
 ## Clean Stacked Rebase
 

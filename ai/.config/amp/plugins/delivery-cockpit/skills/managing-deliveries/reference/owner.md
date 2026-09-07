@@ -6,6 +6,8 @@ Call `delivery_start` once after the outcome and item graph are settled. Give ea
 
 Use Amp's core `create_thread` for bounded workers, not a replacement coordinator or continuation owner. Include the delivery/item IDs, fixed owner thread ID, and instruction to load `delivery-cockpit:managing-deliveries` and follow its worker protocol. After creation succeeds, call `delivery_record` with a stable `eventId`, `kind: worker_started`, `state: active`, the returned `workerThread`, and the first `nextGate`.
 
+Every implementation worker owns its branch and draft PR, including review amendments, CI fixes, and restacking through the requested stopping point. Confirm push and draft-PR authority before dispatch. Require a PR URL, current head, and verification evidence before accepting implementation readiness; bundles, patches, and local commits are not substitutes. Route amendments or blocked publication back to that worker instead of integrating or publishing its work in the parent. Review-only and rollout-verification workers do not need their own PRs.
+
 If creation has an unknown outcome, discover whether the child exists before retrying; the ledger cannot deduplicate thread creation.
 
 ## Accept Reports
