@@ -1,5 +1,6 @@
 - Make small, focused commits. Prefer colocating tests with their implementation.
 - When opening PRs, always start with a draft PR.
+- Write code with the expectation that a human will read, review, and maintain it. Use clear naming, consistent formatting, and deliberate whitespace to make intent and structure easy to follow; prefer straightforward code over clever or unnecessarily compact expressions.
 
 ## Codebase consistency
 
