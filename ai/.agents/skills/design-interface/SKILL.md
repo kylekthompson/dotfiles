@@ -5,7 +5,15 @@ description: Designs and reviews module and service boundaries. Use for responsi
 
 # Design Interfaces
 
-Choose where knowledge, decisions, invariants, and effects belong so that change stays local.
+Keep independent concerns independently understandable. Choose where knowledge, decisions, invariants, and effects belong so that change stays local.
+
+## Prefer Simple Over Easy
+
+Simplicity means keeping concerns from being intertwined. Easy means familiar or convenient; it does not necessarily mean simple.
+
+Judge the resulting system, not the brevity of the code or convenience of the tool. Fewer lines, methods, files, or abstractions do not by themselves make a design simpler. Prefer designs that require fewer concepts to be held in mind at once; additional code or components are useful when they genuinely separate concerns.
+
+Identify what the design intertwines: policy with mechanism, information with behavior, or decisions with shared mutable state, timing, and call order. Remove unnecessary dependencies. Make necessary coordination explicit and give it a clear owner. Hiding complexity behind an interface can contain it without eliminating it.
 
 ## Assess Before Redesigning
 
@@ -16,7 +24,9 @@ Treat a smell as evidence to inspect, not proof that the design must change.
 3. Find the smallest design that reduces that cost. Do not prescribe a pattern merely because it can fit.
 4. Decide whether improvement belongs in the current scope. Fix it when it protects correctness, enables the requested change, or materially simplifies the touched boundary. Otherwise, contain it and proceed.
 
-Prefer correct behavior and explicit invariants, then locality of change, clear ownership, and conceptual simplicity. Accept duplication or a larger cohesive unit when either makes ownership clearer.
+Preserve correct behavior and explicit invariants. Prefer conceptual simplicity, supported by clear ownership and locality of change. Accept duplication or a larger cohesive unit when either makes ownership clearer.
+
+Make the change easy, then make the easy change: when intertwined concerns make the requested change difficult, first make the smallest behavior-preserving structural change that separates them, then implement the behavior. Verify existing behavior before and after the preparation, and verify the requested behavior separately. Judge the preparation by the complexity it removes, not merely by how easy it makes the next edit. If the change is already straightforward, make it directly.
 
 ## Define the Boundary
 
@@ -40,11 +50,12 @@ Prefer `Inventory.reserve(orderId, lines) -> ReservationOutcome` over `Inventory
 
 Evaluate options in this order:
 
-1. **Ease of change:** Which design keeps likely changes on one side?
-2. **Semantic clarity:** Does the contract use precise domain language instead of storage, transport, framework, or vendor terms?
-3. **Knowledge and coupling:** Does either side know field order, call order, timing, algorithms, or internal shapes that it should not know?
-4. **Invariant and failure ownership:** Is one side clearly responsible for valid transitions, partial failure, and recovery?
-5. **Abstraction fit:** Do shared cases have the same meaning and reasons to change?
+1. **Simplicity:** Which concerns can be understood independently? What unnecessary coupling does this design remove rather than hide?
+2. **Ease of change:** Which design keeps likely changes on one side?
+3. **Semantic clarity:** Does the contract use precise domain language instead of storage, transport, framework, or vendor terms?
+4. **Knowledge and coupling:** Does either side know field order, call order, timing, algorithms, or internal shapes that it should not know?
+5. **Invariant and failure ownership:** Is one side clearly responsible for valid transitions, partial failure, and recovery?
+6. **Abstraction fit:** Do shared cases have the same meaning and reasons to change?
 
 Reject generic names such as `Manager`, `Service`, `Processor`, or `Handler` when they hide behavior. Also challenge generic CRUD operations, wide DTOs, positional argument lists, vendor objects, and interfaces that make callers run a multi-step protocol.
 
