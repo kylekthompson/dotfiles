@@ -6,6 +6,8 @@ Use `delivery_report` for a draft PR, completed review changes, a materially cha
 
 Supply the assigned delivery/item IDs, fixed `ownerThread`, stable `eventId`, explicit resulting `state`, concise evidence in `summary`, and `nextGate`. Include `pullRequest` once your PR exists and identify the verified head in the evidence. The plugin reads only this worker's transcript and does not infer these fields or contact the owner.
 
+For implementation results, supply `revision: { head, base }` with full commit SHAs, `evidence.implementation` (`complete` or `incomplete`), and available `evidence.ci` (`result`, HTTPS check-set/run URL in `run`, and UTC ISO `observedAt`). Report `passed` only when all required checks passed. Use the time checks were actually read, not report preparation time. Never supply `ownerReview`: owner source review is a separate responsibility. Set `nextOwner` with the next gate. Readiness facts are snapshots, not permission to merge or deploy.
+
 Send the short prepared notification between the delimiters with Amp's core `send_thread_message` to that owner if it has not yet been sent. Do not copy the event marker; the owner retrieves it by reference from your tool results. Preparation is not proof of delivery, and sending does not update the owner ledger. Reuse the event ID and payload for retries; do not resend a confirmed delivery.
 
 If the send outcome is unknown or a legacy proposal lacks a destination, read [report recovery](recovery.md) before resending or replacing it.

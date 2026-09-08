@@ -79,6 +79,139 @@ function persistedToolResult(name: string, result: string, id: string): ThreadMe
 	} as unknown as ThreadMessage
 }
 
+describe('revision-bound readiness', () => {
+	const revision = { head: 'a'.repeat(40), base: 'b'.repeat(40) }
+	const ci = {
+		result: 'passed' as const,
+		run: 'https://ci.example/runs/1/attempt/1',
+		observedAt: '2026-09-08T12:00:00Z',
+	}
+	const decision = {
+		eventId: 'checks',
+		deliveryId: 'billing',
+		itemId: 'api',
+		kind: 'decision_changed' as const,
+		state: 'review' as const,
+		summary: 'Verified required checks',
+		nextGate: 'Source review',
+		nextOwner: 'owner' as const,
+		revision,
+		evidence: { implementation: 'complete' as const, ci },
+	}
+	test('keeps source review separate and clears evidence on either head or base change', async () => {
+		const messages = [
+			persistedToolResult('delivery_start', testables.encodeEvent(startEvent), 'start'),
+		]
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => messages },
+		} as unknown as PluginToolContext
+		messages.push(
+			persistedToolResult(
+				'delivery_record',
+				await testables.recordMaterial(decision, ctx),
+				'checks',
+			),
+		)
+		const status = await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)
+		expect(status).toContain('implementation: complete; CI: passed')
+		expect(status).toContain('owner source review: unverified')
+		expect(status).toContain('| Source review | T-owner |')
+		const review = await testables.recordMaterial(
+			{
+				...decision,
+				eventId: 'review',
+				evidence: { ownerReview: 'complete' },
+				nextGate: 'Request merge authorization',
+				nextOwner: 'user',
+			},
+			ctx,
+		)
+		messages.push(persistedToolResult('delivery_record', review, 'review'))
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)).toContain(
+			'owner source review: complete',
+		)
+		for (const key of ['head', 'base']) {
+			const changed = await testables.recordMaterial(
+				{
+					...decision,
+					eventId: `changed-${key}`,
+					revision: { ...revision, [key]: 'c'.repeat(40) },
+					evidence: undefined,
+				},
+				ctx,
+			)
+			const events = testables.eventsFromMessages(
+				[...messages, persistedToolResult('delivery_record', changed, key)],
+				['delivery_start', 'delivery_record'],
+			)
+			const item = testables.replay(events).get('billing')!.items[1]
+			expect(item.evidence).toBeUndefined()
+			expect(testables.renderLedger(testables.replay(events).get('billing')!)).toContain(
+				'CI: unverified',
+			)
+		}
+	})
+	test('replaces same-head CI snapshots and rejects older or ambiguous observations', async () => {
+		const journal = testables.createEventJournal()
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => [] },
+		} as unknown as PluginToolContext
+		await testables.startDelivery(startEvent, ctx, journal)
+		await testables.recordMaterial(decision, ctx, journal)
+		await testables.recordMaterial(
+			{
+				...decision,
+				eventId: 'failed',
+				evidence: { ci: { ...ci, result: 'failed', observedAt: '2026-09-08T12:01:00Z' } },
+			},
+			ctx,
+			journal,
+		)
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx, journal)).toContain(
+			'CI: failed',
+		)
+		await expect(
+			testables.recordMaterial({ ...decision, eventId: 'stale' }, ctx, journal),
+		).rejects.toThrow('CI observation')
+		await expect(
+			testables.recordMaterial(
+				{
+					...decision,
+					eventId: 'conflicting',
+					evidence: { ci: { ...ci, observedAt: '2026-09-08T12:01:00Z' } },
+				},
+				ctx,
+				journal,
+			),
+		).rejects.toThrow('CI observation')
+		await expect(
+			testables.recordMaterial(
+				{ ...decision, eventId: 'no-revision', revision: undefined },
+				ctx,
+				journal,
+			),
+		).rejects.toThrow('requires an exact head')
+		await expect(
+			testables.recordMaterial(
+				{ ...decision, eventId: 'short-sha', revision: { ...revision, head: 'abcdef' } },
+				ctx,
+				journal,
+			),
+		).rejects.toThrow('full lowercase')
+		await expect(
+			testables.reportMaterial(
+				{
+					...decision,
+					kind: 'ready_for_review',
+					ownerThread: 'T-owner',
+					evidence: { ownerReview: 'complete' },
+				},
+				ctx,
+			),
+		).rejects.toThrow('workers cannot attest')
+	})
+})
+
 describe('dependency changes', () => {
 	test('records explicit edge edits independently of stopping and replays after restart', async () => {
 		const messages = [
@@ -203,6 +336,46 @@ describe('proposal acceptance by reference', () => {
 				['delivery_accept'],
 			),
 		).toHaveLength(1)
+		const revision = { head: 'a'.repeat(40), base: 'b'.repeat(40) }
+		const ci = {
+			result: 'failed' as const,
+			run: 'https://ci.example/runs/1',
+			observedAt: '2026-09-08T12:01:00Z',
+		}
+		await testables.recordMaterial(
+			{ ...proposal, eventId: 'owner-checks', revision, evidence: { ci } },
+			ctx,
+			journal,
+		)
+		const stale = {
+			...proposal,
+			eventId: 'late',
+			revision,
+			evidence: { ci: { ...ci, result: 'pending' as const, observedAt: '2026-09-08T12:00:00Z' } },
+		}
+		messages = [persistedToolResult('delivery_report', testables.encodeEvent(stale), 'late')]
+		await expect(
+			testables.acceptMaterial({ ...input, eventId: 'late' }, ctx, threads, journal),
+		).rejects.toThrow('CI observation')
+		messages = [
+			persistedToolResult(
+				'delivery_report',
+				testables.encodeEvent({ ...stale, revision: { ...revision, base: 'c'.repeat(40) } }),
+				'late',
+			),
+		]
+		await expect(
+			testables.acceptMaterial({ ...input, eventId: 'late' }, ctx, threads, journal),
+		).rejects.toThrow('proposal revision differs')
+		await testables.recordMaterial(
+			{ ...proposal, eventId: 'replace', kind: 'superseded' },
+			ctx,
+			journal,
+		)
+		messages = []
+		expect(await testables.acceptMaterial(input, ctx, threads, journal)).toContain(
+			'already recorded',
+		)
 	})
 })
 

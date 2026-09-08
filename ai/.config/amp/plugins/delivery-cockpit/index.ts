@@ -53,6 +53,14 @@ type DeliveryState = (typeof DELIVERY_STATES)[number]
 type MaterialKind = (typeof MATERIAL_KINDS)[number]
 type ChildReportKind = (typeof CHILD_REPORT_KINDS)[number]
 
+type Revision = { head: string; base: string }
+type Evidence = {
+	implementation?: 'complete' | 'incomplete'
+	ci?: { result: 'pending' | 'passed' | 'failed'; run: string; observedAt: string }
+	ownerReview?: 'complete' | 'changes_requested' | 'pending'
+}
+type NextOwner = 'owner' | 'worker' | 'user' | 'external'
+
 type DeliveryItem = {
 	id: string
 	title: string
@@ -83,6 +91,9 @@ type MaterialEvent = {
 	workerThread?: string
 	pullRequest?: string
 	dependsOn?: string[]
+	revision?: Revision
+	evidence?: Evidence
+	nextOwner?: NextOwner
 }
 
 type DeliveryEvent = DeliveryStarted | MaterialEvent
@@ -94,6 +105,9 @@ type ItemLedger = DeliveryItem & {
 	pullRequest?: string
 	lastKind?: MaterialKind
 	lastSummary?: string
+	revision?: Revision
+	evidence?: Evidence
+	nextOwner?: NextOwner
 }
 
 type DeliveryLedger = {
@@ -121,6 +135,9 @@ type RecordInput = {
 	workerThread?: string
 	pullRequest?: string
 	dependsOn?: string[]
+	revision?: Revision
+	evidence?: Evidence
+	nextOwner?: NextOwner
 }
 
 type ReportInput = Omit<RecordInput, 'kind' | 'workerThread' | 'dependsOn'> & {
@@ -260,6 +277,13 @@ function normalizeMaterialInput(
 	} else if (input.dependsOn !== undefined) {
 		fail('dependsOn is only valid for dependencies_changed.')
 	}
+	const revision = normalizeRevision(input.revision)
+	const evidence = normalizeEvidence(input.evidence)
+	if (evidence && !revision) fail('evidence requires an exact head and base revision.')
+	const nextOwner =
+		input.nextOwner === undefined
+			? undefined
+			: enumValue(input.nextOwner, 'nextOwner', ['owner', 'worker', 'user', 'external'] as const)
 
 	return {
 		version: EVENT_VERSION,
@@ -274,7 +298,64 @@ function normalizeMaterialInput(
 		...(workerThread ? { workerThread } : {}),
 		...(pullRequest ? { pullRequest } : {}),
 		...(dependsOn ? { dependsOn } : {}),
+		...(revision ? { revision } : {}),
+		...(evidence ? { evidence } : {}),
+		...(nextOwner ? { nextOwner } : {}),
 	} as MaterialEvent
+}
+
+function normalizeRevision(value: unknown): Revision | undefined {
+	if (value === undefined) return
+	if (!value || typeof value !== 'object' || Array.isArray(value))
+		fail('revision must be an object.')
+	const revision = value as Record<string, unknown>
+	const commit = (key: string) => {
+		const sha = requiredString(revision[key], `revision.${key}`, 64)
+		if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha))
+			fail(`revision.${key} must be a full lowercase commit SHA.`)
+		return sha
+	}
+	return { head: commit('head'), base: commit('base') }
+}
+
+function normalizeEvidence(value: unknown): Evidence | undefined {
+	if (value === undefined) return
+	if (!value || typeof value !== 'object' || Array.isArray(value))
+		fail('evidence must be an object.')
+	const input = value as Record<string, unknown>
+	const evidence: Evidence = {}
+	if (input.implementation !== undefined)
+		evidence.implementation = enumValue(input.implementation, 'implementation', [
+			'complete',
+			'incomplete',
+		] as const)
+	if (input.ownerReview !== undefined)
+		evidence.ownerReview = enumValue(input.ownerReview, 'ownerReview', [
+			'complete',
+			'changes_requested',
+			'pending',
+		] as const)
+	if (input.ci !== undefined) {
+		if (!input.ci || typeof input.ci !== 'object' || Array.isArray(input.ci))
+			fail('ci must be an object.')
+		const ci = input.ci as Record<string, unknown>
+		const observedAt = requiredString(ci.observedAt, 'ci.observedAt')
+		if (
+			!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(observedAt) ||
+			!Number.isFinite(Date.parse(observedAt))
+		)
+			fail('ci.observedAt must be a UTC ISO timestamp.')
+		const run = requiredString(ci.run, 'ci.run')
+		if (!/^https:\/\/\S+$/.test(run))
+			fail('ci.run must be an HTTPS check-run URL (include attempt identity).')
+		evidence.ci = {
+			result: enumValue(ci.result, 'ci.result', ['pending', 'passed', 'failed'] as const),
+			run,
+			observedAt,
+		}
+	}
+	if (Object.keys(evidence).length === 0) fail('evidence must contain at least one readiness fact.')
+	return evidence
 }
 
 function stableValue(value: unknown): string {
@@ -546,6 +627,30 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		}
 		item.state = event.state
 		item.nextGate = event.nextGate
+		// Responsibility belongs to this next action, never a previous gate.
+		item.nextOwner = event.nextOwner
+		if (event.revision) {
+			if (!item.revision || stableValue(item.revision) !== stableValue(event.revision)) {
+				item.evidence = undefined
+			}
+			item.revision = event.revision
+		}
+		if (event.evidence) {
+			if (!event.revision) fail('evidence requires a revision.')
+			const previousCI = item.evidence?.ci
+			const nextCI = event.evidence.ci
+			if (
+				previousCI &&
+				nextCI &&
+				(Date.parse(nextCI.observedAt) < Date.parse(previousCI.observedAt) ||
+					(Date.parse(nextCI.observedAt) === Date.parse(previousCI.observedAt) &&
+						stableValue(nextCI) !== stableValue(previousCI)))
+			)
+				fail(
+					'CI observation is older than or conflicts with recorded evidence; reconcile current checks.',
+				)
+			item.evidence = { ...item.evidence, ...event.evidence }
+		}
 		item.lastKind = event.kind
 		item.lastSummary = event.summary
 		if (event.kind === 'superseded') delete item.workerThread
@@ -579,16 +684,25 @@ function renderLedger(ledger: DeliveryLedger): string {
 	const lines = [
 		`Delivery \`${ledger.deliveryId}\`: ${ledger.outcome}`,
 		'',
-		'| item | worker | PR | depends on | state | next gate |',
-		'| --- | --- | --- | --- | --- | --- |',
+		'| item | worker | PR | depends on | state | next gate | responsible |',
+		'| --- | --- | --- | --- | --- | --- | --- |',
 	]
 	for (const item of ledger.items) {
 		lines.push(
 			`| ${tableCell(`${item.id} — ${item.title}`)} | ${item.workerThread ?? '—'} | ${
 				item.pullRequest ?? '—'
-			} | ${item.dependsOn.join(', ') || '—'} | ${item.state} | ${tableCell(item.nextGate)} |`,
+			} | ${item.dependsOn.join(', ') || '—'} | ${item.state} | ${tableCell(item.nextGate)} | ${item.nextOwner === 'owner' ? ledger.ownerThread : item.nextOwner === 'worker' ? (item.workerThread ?? 'unassigned worker') : (item.nextOwner ?? 'unspecified')} |`,
 		)
 	}
+	for (const item of ledger.items) {
+		if (!item.revision) continue
+		const ci = item.evidence?.ci
+		lines.push(
+			'',
+			`${item.id}: head \`${item.revision.head}\`, base \`${item.revision.base}\`; implementation: ${item.evidence?.implementation ?? 'unverified'}; CI: ${ci ? `${ci.result} (${ci.run}, observed ${ci.observedAt})` : 'unverified'}; owner source review: ${item.evidence?.ownerReview ?? 'unverified'}.`,
+		)
+	}
+	lines.push('', 'Evidence is a recorded snapshot, not live CI or merge authorization.')
 	lines.push('', `${ledger.eventCount - 1} material event(s) recorded.`)
 	return lines.join('\n')
 }
@@ -617,6 +731,7 @@ async function recordMaterial(
 	input: RecordInput,
 	ctx: PluginToolContext,
 	journal?: EventJournal,
+	acceptingProposal = false,
 ): Promise<string> {
 	const event = normalizeMaterialInput(
 		input as unknown as Record<string, unknown>,
@@ -637,6 +752,15 @@ async function recordMaterial(
 		if (!item) {
 			fail(`item ${event.itemId} is not part of delivery ${event.deliveryId}.`)
 		}
+		if (acceptingProposal) {
+			if (event.evidence?.ownerReview !== undefined)
+				fail('workers cannot attest owner source review.')
+			if (item.revision && stableValue(item.revision) !== stableValue(event.revision)) {
+				fail(
+					'proposal revision differs from the owner ledger; verify and record the current revision before accepting.',
+				)
+			}
+		}
 		ledgerFor([...events, event], event.deliveryId)
 		remember(event)
 
@@ -656,10 +780,22 @@ async function acceptMaterial(
 	const workerThread = await withEvents(ctx.thread, OWNER_EVENT_TOOLS, journal, (events) => {
 		const ledger = ledgerFor(events, deliveryId)
 		if (ledger.ownerThread !== ctx.thread.id) fail('only the delivery owner may accept a proposal.')
+		const accepted = events.find((event) => event.eventId === eventId)
+		if (accepted) {
+			if (
+				accepted.kind === 'delivery_started' ||
+				accepted.deliveryId !== deliveryId ||
+				accepted.itemId !== itemId ||
+				!accepted.workerThread
+			)
+				fail('event ID is already used by a different owner event.')
+			return undefined
+		}
 		const item = ledger.items.find((candidate) => candidate.id === itemId)
 		if (!item?.workerThread) fail(`item ${itemId} has no assigned worker.`)
 		return item.workerThread
 	})
+	if (!workerThread) return `Material event \`${eventId}\` is already recorded. No change.`
 	const events = mergeEvents(
 		[],
 		await readEvents(threads.get(workerThread as `T-${string}`), WORKER_EVENT_TOOLS),
@@ -676,7 +812,7 @@ async function acceptMaterial(
 		!CHILD_REPORT_KINDS.includes(proposal.kind as ChildReportKind)
 	)
 		fail('proposal does not match the owner, item, or assigned worker.')
-	return recordMaterial(proposal, ctx, journal)
+	return recordMaterial(proposal, ctx, journal, true)
 }
 
 function reportMessage(event: MaterialEvent): string {
@@ -700,6 +836,7 @@ async function reportMaterial(
 		),
 		ownerThread: ownerThreadId,
 	}
+	if (event.evidence?.ownerReview !== undefined) fail('workers cannot attest owner source review.')
 	return withEvents(ctx.thread, WORKER_EVENT_TOOLS, journal, (events, remember) => {
 		const previous = events.find((candidate) => candidate.eventId === event.eventId)
 		if (previous && !previous.ownerThread) {
@@ -747,6 +884,48 @@ const materialProperties = {
 	},
 	summary: { type: 'string', description: 'Concise material change and evidence.' },
 	nextGate: { type: 'string', description: 'Next decision, check, or explicit approval gate.' },
+	nextOwner: {
+		type: 'string',
+		enum: ['owner', 'worker', 'user', 'external'],
+		description:
+			'Responsible party for this next action. External operator details belong in nextGate.',
+	},
+	revision: {
+		type: 'object',
+		description:
+			'Exact current head and base commit SHAs. Changing either clears previous readiness evidence.',
+		properties: { head: { type: 'string' }, base: { type: 'string' } },
+		required: ['head', 'base'],
+		additionalProperties: false,
+	},
+	evidence: {
+		type: 'object',
+		description:
+			'Readiness facts for revision, independent of state and authorization. Omitted facts persist only on the same revision. CI is a snapshot: verify current checks at consequential gates. Only the owner may record ownerReview.',
+		properties: {
+			implementation: { type: 'string', enum: ['complete', 'incomplete'] },
+			ownerReview: { type: 'string', enum: ['complete', 'changes_requested', 'pending'] },
+			ci: {
+				type: 'object',
+				properties: {
+					result: { type: 'string', enum: ['pending', 'passed', 'failed'] },
+					run: {
+						type: 'string',
+						description:
+							'HTTPS authoritative CI run/check-set URL, identifying the attempt. Passed means all required checks passed.',
+					},
+					observedAt: {
+						type: 'string',
+						description:
+							'UTC ISO timestamp when authoritative checks were read, not the report preparation time.',
+					},
+				},
+				required: ['result', 'run', 'observedAt'],
+				additionalProperties: false,
+			},
+		},
+		additionalProperties: false,
+	},
 	pullRequest: { type: 'string', description: 'HTTPS pull-request URL, when known.' },
 }
 

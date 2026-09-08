@@ -24,6 +24,18 @@ Acceptance verifies provenance, not code or live CI. If the proposal is stale or
 
 To replace a worker, first record `superseded` with the current `workerThread`, then `worker_started` for the replacement. Supersession clears the old assignment so later reports cannot use it.
 
+## Readiness Evidence
+
+Use `revision: { head, base }` with full commit SHAs and `evidence` for independent implementation, CI, and owner source-review facts. Facts merge only on the same revision; recording a different head or base clears all prior readiness facts. Missing facts are unverified, not passing. Re-attest after a restack only after the proportional effective-diff review described in `delivering-changes`.
+
+CI evidence includes `result` (`pending`, `passed`, or `failed`), an HTTPS `run` URL identifying the check set/attempt, and UTC ISO `observedAt` from the authoritative read. `passed` means all required checks passed, not one green job. Older observations and conflicting observations at the same timestamp are rejected. These are recorded snapshots: the plugin does not query GitHub or expire evidence on a timer. Verify current head, base, and required checks before releasing dependencies or merging, even on the same commit.
+
+`delivery_accept` rejects a proposal whose revision differs from the recorded owner revision. Verify a legitimate new revision and record it as an owner decision before accepting the worker's new evidence. Do not move the ledger backward just to accept a stale proposal. Legacy reports without revisions can be accepted only before a revision is recorded; otherwise reconcile them as owner decisions with fresh evidence.
+
+Only the owner records `evidence.ownerReview` (`pending`, `changes_requested`, or `complete`). Completing implementation and passing CI do not complete source review. Review against the repository's actual conventions and comparable implementations before marking it complete. `ready_for_review` means review can start, not that it passed. `approval_recorded` remains an audit of explicit user authorization, never an inferred consequence of any readiness fact.
+
+Set `nextOwner` (`owner`, `worker`, `user`, or `external`) alongside each `nextGate`; name an external operator in the gate. Responsibility is not carried forward from the previous action. This identifies who must act, not an automatic dispatch or approval.
+
 ## Record Decisions and Status
 
 Use `delivery_record` for the owner's material decisions and verified transitions, including approval, merge, rollout, completion, or abandonment. Recording approval does not perform the action or create user authorization.
