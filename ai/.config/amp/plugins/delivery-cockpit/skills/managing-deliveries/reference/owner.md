@@ -28,4 +28,6 @@ To replace a worker, first record `superseded` with the current `workerThread`, 
 
 Use `delivery_record` for the owner's material decisions and verified transitions, including approval, merge, rollout, completion, or abandonment. Recording approval does not perform the action or create user authorization.
 
+For a changed prerequisite, record `kind: dependencies_changed` on the dependent item with its complete replacement `dependsOn` list (`[]` removes all), the reason in `summary`, and the resulting state and next gate. References and cycles are validated. Deferring or removing scope uses `stopped`; it retains the audit history and does not remove dependency edges. Explicitly revise each affected dependent and notify only its worker. The graph is evidence, not authorization or an automatic dispatch mechanism.
+
 Call `delivery_status` at a material gate, before an approval request, or on a user status request—not as a polling loop.

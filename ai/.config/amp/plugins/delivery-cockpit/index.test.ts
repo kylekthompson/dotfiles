@@ -79,6 +79,60 @@ function persistedToolResult(name: string, result: string, id: string): ThreadMe
 	} as unknown as ThreadMessage
 }
 
+describe('dependency changes', () => {
+	test('records explicit edge edits independently of stopping and replays after restart', async () => {
+		const messages = [
+			persistedToolResult('delivery_start', testables.encodeEvent(startEvent), 'start'),
+		]
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => messages },
+		} as unknown as PluginToolContext
+		const decision = {
+			eventId: 'defer-schema',
+			deliveryId: 'billing',
+			itemId: 'schema',
+			kind: 'stopped' as const,
+			state: 'stopped' as const,
+			summary: 'Defer schema scope',
+			nextGate: 'No further work',
+		}
+		messages.push(
+			persistedToolResult('delivery_record', await testables.recordMaterial(decision, ctx), 'stop'),
+		)
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)).toContain(
+			'| schema | pending |',
+		)
+		const edit = {
+			...decision,
+			eventId: 'remove-prerequisite',
+			itemId: 'api',
+			kind: 'dependencies_changed' as const,
+			state: 'active' as const,
+			dependsOn: [],
+			summary: 'API uses existing schema',
+			nextGate: 'Implement API',
+		}
+		const result = await testables.recordMaterial(edit, ctx)
+		messages.push(persistedToolResult('delivery_record', result, 'edit'))
+		expect(await testables.deliveryStatus({ deliveryId: 'billing' }, ctx)).toContain(
+			'| — | active | Implement API |',
+		)
+		expect(await testables.recordMaterial(edit, ctx)).toContain('already recorded')
+		await expect(
+			testables.recordMaterial({ ...edit, eventId: 'unknown', dependsOn: ['missing'] }, ctx),
+		).rejects.toThrow('unknown item')
+		await expect(
+			testables.recordMaterial({ ...edit, eventId: 'cycle', dependsOn: ['api'] }, ctx),
+		).rejects.toThrow('cycle')
+		await expect(
+			testables.recordMaterial({ ...edit, eventId: 'missing', dependsOn: undefined }, ctx),
+		).rejects.toThrow('requires dependsOn')
+		await expect(
+			testables.recordMaterial({ ...edit, eventId: 'wrong-kind', kind: 'decision_changed' }, ctx),
+		).rejects.toThrow('only valid')
+	})
+})
+
 describe('proposal acceptance by reference', () => {
 	test('reads only assigned worker tool results and accepts idempotently', async () => {
 		const journal = testables.createEventJournal()

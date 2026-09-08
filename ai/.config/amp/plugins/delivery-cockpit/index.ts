@@ -32,6 +32,7 @@ const MATERIAL_KINDS = [
 	'merged',
 	'rollout_changed',
 	'decision_changed',
+	'dependencies_changed',
 	'manual_action_changed',
 	'completed',
 	'stopped',
@@ -81,6 +82,7 @@ type MaterialEvent = {
 	ownerThread?: string
 	workerThread?: string
 	pullRequest?: string
+	dependsOn?: string[]
 }
 
 type DeliveryEvent = DeliveryStarted | MaterialEvent
@@ -118,9 +120,10 @@ type RecordInput = {
 	nextGate: string
 	workerThread?: string
 	pullRequest?: string
+	dependsOn?: string[]
 }
 
-type ReportInput = Omit<RecordInput, 'kind' | 'workerThread'> & {
+type ReportInput = Omit<RecordInput, 'kind' | 'workerThread' | 'dependsOn'> & {
 	kind: ChildReportKind
 	ownerThread: string
 }
@@ -249,6 +252,14 @@ function normalizeMaterialInput(
 	if (pullRequest && !/^https:\/\/\S+$/.test(pullRequest)) {
 		fail('pullRequest must be an HTTPS URL.')
 	}
+	let dependsOn: string[] | undefined
+	if (input.kind === 'dependencies_changed') {
+		if (!Array.isArray(input.dependsOn))
+			fail('dependencies_changed requires dependsOn (use [] to remove all prerequisites).')
+		dependsOn = input.dependsOn.map((dependency) => identifier(dependency, 'dependsOn'))
+	} else if (input.dependsOn !== undefined) {
+		fail('dependsOn is only valid for dependencies_changed.')
+	}
 
 	return {
 		version: EVENT_VERSION,
@@ -262,6 +273,7 @@ function normalizeMaterialInput(
 		sourceThread,
 		...(workerThread ? { workerThread } : {}),
 		...(pullRequest ? { pullRequest } : {}),
+		...(dependsOn ? { dependsOn } : {}),
 	} as MaterialEvent
 }
 
@@ -507,6 +519,16 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 			fail(
 				`event ${event.eventId} has source thread ${event.sourceThread}; expected owner ${ledger.ownerThread}.`,
 			)
+		}
+		if (event.kind === 'dependencies_changed') {
+			if (!event.dependsOn) fail('dependencies_changed requires dependsOn.')
+			const items = normalizeItems(
+				ledger.items.map((candidate) => ({
+					...candidate,
+					dependsOn: candidate.id === item.id ? event.dependsOn : candidate.dependsOn,
+				})),
+			)
+			item.dependsOn = items.find((candidate) => candidate.id === item.id)!.dependsOn
 		}
 		if (event.kind === 'worker_started') {
 			if (!event.workerThread) fail(`worker_started event ${event.eventId} must name a worker.`)
@@ -782,6 +804,12 @@ export default async function (amp: PluginAPI) {
 					type: 'string',
 					enum: MATERIAL_KINDS,
 					description: 'Material transition or explicit owning-thread decision.',
+				},
+				dependsOn: {
+					type: 'array',
+					items: { type: 'string' },
+					description:
+						'For dependencies_changed only: replace this item’s prerequisites; [] removes all. Explain the decision in summary. Stopping an item does not remove dependency edges.',
 				},
 				workerThread: {
 					type: 'string',
