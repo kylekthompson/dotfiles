@@ -16,9 +16,11 @@ Before promoting a proposal:
 
 1. Confirm Amp message metadata identifies the assigned worker and the proposal names this owner as its destination.
 2. Verify the evidence and confirm the transition is material and its explicit state and next gate are correct.
-3. Call `delivery_record` with the same event ID, delivery fields, and assigned `workerThread`.
+3. Call `delivery_accept` with the delivery, item, and event IDs. It retrieves the proposal from the assigned worker's durable tool results, validates its source and destination, and copies its fields into an owner event. Do not copy markers or retype worker IDs.
 
 Only the owner tool result updates the ledger. Exact promotion retries report no change. For uncertain sends, use [report recovery](recovery.md).
+
+Acceptance verifies provenance, not code or live CI. If the proposal is stale or incorrect, do not accept it: record the current evidence as an owner decision with a new event ID, or request a corrected proposal. Use `delivery_record` for owner decisions, not as a fallback around rejected provenance. Older proposals without a destination require the legacy recovery procedure.
 
 To replace a worker, first record `superseded` with the current `workerThread`, then `worker_started` for the replacement. Supersession clears the old assignment so later reports cannot use it.
 

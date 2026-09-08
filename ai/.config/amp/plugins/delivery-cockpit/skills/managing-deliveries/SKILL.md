@@ -5,6 +5,7 @@ builtin-tools:
   - delivery_start
   - delivery_record
   - delivery_report
+  - delivery_accept
   - delivery_status
 ---
 

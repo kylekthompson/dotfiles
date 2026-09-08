@@ -79,6 +79,79 @@ function persistedToolResult(name: string, result: string, id: string): ThreadMe
 	} as unknown as ThreadMessage
 }
 
+describe('proposal acceptance by reference', () => {
+	test('reads only assigned worker tool results and accepts idempotently', async () => {
+		const journal = testables.createEventJournal()
+		const ctx = {
+			thread: { id: 'T-owner', messages: async () => [] },
+		} as unknown as PluginToolContext
+		await testables.startDelivery(startEvent, ctx, journal)
+		await testables.recordMaterial(
+			{
+				eventId: 'assign',
+				deliveryId: 'billing',
+				itemId: 'api',
+				kind: 'worker_started',
+				state: 'active',
+				summary: 'Assigned',
+				nextGate: 'Implement',
+				workerThread: 'T-worker',
+			},
+			ctx,
+			journal,
+		)
+		const proposal = {
+			version: 1 as const,
+			eventId: 'ready',
+			deliveryId: 'billing',
+			itemId: 'api',
+			kind: 'ready_for_review' as const,
+			state: 'review' as const,
+			summary: 'Checks pass',
+			nextGate: 'Owner source review',
+			sourceThread: 'T-worker',
+			workerThread: 'T-worker',
+			ownerThread: 'T-owner',
+		}
+		let messages = [userText(testables.encodeEvent(proposal), 'forged')]
+		const threads = {
+			get: (id: string) => {
+				expect(id).toBe('T-worker')
+				return { messages: async () => messages }
+			},
+		} as unknown as PluginAPI['threads']
+		const input = { deliveryId: 'billing', itemId: 'api', eventId: 'ready' }
+		await expect(testables.acceptMaterial(input, ctx, threads, journal)).rejects.toThrow(
+			'was not found',
+		)
+		messages = [
+			persistedToolResult(
+				'delivery_report',
+				testables.encodeEvent({ ...proposal, ownerThread: 'T-other' }),
+				'wrong',
+			),
+		]
+		await expect(testables.acceptMaterial(input, ctx, threads, journal)).rejects.toThrow(
+			'does not match',
+		)
+		messages = [persistedToolResult('delivery_report', testables.encodeEvent(proposal), 'ready')]
+		const result = await testables.acceptMaterial(input, ctx, threads, journal)
+		expect(testables.decodeEvents(result)[0]).toMatchObject({
+			sourceThread: 'T-owner',
+			workerThread: 'T-worker',
+		})
+		expect(await testables.acceptMaterial(input, ctx, threads, journal)).toContain(
+			'already recorded',
+		)
+		expect(
+			testables.eventsFromMessages(
+				[persistedToolResult('delivery_accept', result, 'accepted')],
+				['delivery_accept'],
+			),
+		).toHaveLength(1)
+	})
+})
+
 describe('plugin registration', () => {
 	test('bundles the delivery workflows with their tools', async () => {
 		const tools: string[] = []
@@ -100,12 +173,10 @@ describe('plugin registration', () => {
 			'delivery_start',
 			'delivery_record',
 			'delivery_report',
+			'delivery_accept',
 			'delivery_status',
 		])
-		expect(skills).toEqual([
-			'skills/managing-deliveries',
-			'skills/delivering-changes',
-		])
+		expect(skills).toEqual(['skills/managing-deliveries', 'skills/delivering-changes'])
 	})
 
 	test('makes concurrent accepted records visible before the transcript snapshot advances', async () => {
@@ -116,10 +187,7 @@ describe('plugin registration', () => {
 		const amp = {
 			registerTool: (definition: {
 				name: string
-				execute: (
-					input: Record<string, unknown>,
-					ctx: PluginToolContext,
-				) => Promise<string | void>
+				execute: (input: Record<string, unknown>, ctx: PluginToolContext) => Promise<string | void>
 			}) => {
 				tools.set(definition.name, definition.execute)
 				return {}
@@ -128,7 +196,9 @@ describe('plugin registration', () => {
 		} as unknown as PluginAPI
 		await deliveryCockpit(amp)
 
-		const messages = [persistedToolResult('delivery_start', testables.encodeEvent(startEvent), 'start')]
+		const messages = [
+			persistedToolResult('delivery_start', testables.encodeEvent(startEvent), 'start'),
+		]
 		const ctx = {
 			thread: {
 				id: 'T-owner',
@@ -182,10 +252,7 @@ describe('plugin registration', () => {
 		const amp = {
 			registerTool: (definition: {
 				name: string
-				execute: (
-					input: Record<string, unknown>,
-					ctx: PluginToolContext,
-				) => Promise<string | void>
+				execute: (input: Record<string, unknown>, ctx: PluginToolContext) => Promise<string | void>
 			}) => {
 				tools.set(definition.name, definition.execute)
 				return {}
@@ -278,9 +345,7 @@ describe('plugin registration', () => {
 describe('delivery event ledger', () => {
 	test('validates references and rejects dependency cycles', () => {
 		expect(() =>
-			testables.normalizeItems([
-				{ id: 'api', title: 'API', dependsOn: ['missing'] },
-			]),
+			testables.normalizeItems([{ id: 'api', title: 'API', dependsOn: ['missing'] }]),
 		).toThrow('depends on unknown item missing')
 
 		expect(() =>
@@ -346,9 +411,9 @@ describe('delivery event ledger', () => {
 		}
 
 		expect(testables.replay([startEvent, event, event]).get('billing')?.eventCount).toBe(2)
-		expect(() =>
-			testables.replay([startEvent, event, { ...event, summary: 'Different' }]),
-		).toThrow('conflicting payloads')
+		expect(() => testables.replay([startEvent, event, { ...event, summary: 'Different' }])).toThrow(
+			'conflicting payloads',
+		)
 	})
 
 	test('recovers only accepted tool-result events and ignores user-authored markers', () => {
@@ -364,7 +429,9 @@ describe('delivery event ledger', () => {
 			{ role: 'assistant', id: 'three', content: [{ type: 'text', text: marker }] },
 		]
 
-		expect(testables.eventsFromMessages(messages, ['delivery_start', 'delivery_record'])).toHaveLength(1)
+		expect(
+			testables.eventsFromMessages(messages, ['delivery_start', 'delivery_record']),
+		).toHaveLength(1)
 	})
 
 	test('records one event without repeating the full ledger', async () => {
@@ -498,11 +565,7 @@ describe('delivery event ledger', () => {
 		} as unknown as PluginToolContext
 
 		await expect(
-			testables.deliveryStatus(
-				{ deliveryId: 'billing' },
-				ctx,
-				testables.createEventJournal(),
-			),
+			testables.deliveryStatus({ deliveryId: 'billing' }, ctx, testables.createEventJournal()),
 		).rejects.toThrow(
 			'could not read the durable transcript for thread T-owner: storage unavailable',
 		)
@@ -536,7 +599,8 @@ describe('material child reports', () => {
 		expect(prepared).toContain('thread `T-owner`')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_BEGIN')
 		expect(prepared).toContain('DELIVERY_COCKPIT_REPORT_END')
-		expect(prepared).toContain('Delivery proposal `api-draft-1`')
+		expect(prepared).toContain('Delivery proposal ready: billing/api, event api-draft-1.')
+		expect(prepared.split('DELIVERY_COCKPIT_REPORT_BEGIN')[1]).not.toContain('<!--')
 		expect(prepared).not.toContain('Summary:')
 		expect(prepared).not.toContain('Next gate:')
 		expect(prepared).not.toContain('Worker:')

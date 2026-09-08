@@ -1,9 +1,4 @@
-import type {
-	PluginAPI,
-	PluginThread,
-	PluginToolContext,
-	ThreadMessage,
-} from '@ampcode/plugin'
+import type { PluginAPI, PluginThread, PluginToolContext, ThreadMessage } from '@ampcode/plugin'
 
 export const description =
 	'Maintains a thread-visible delivery ledger and reconciles owner-accepted material reports from assigned worker threads.'
@@ -11,7 +6,7 @@ export const description =
 const EVENT_PATTERN = /<!-- delivery-cockpit:event (\{[^\n]*\}) -->/g
 const EVENT_VERSION = 1
 const PAGE_SIZE = 20
-const OWNER_EVENT_TOOLS = ['delivery_start', 'delivery_record'] as const
+const OWNER_EVENT_TOOLS = ['delivery_start', 'delivery_record', 'delivery_accept'] as const
 const WORKER_EVENT_TOOLS = ['delivery_report'] as const
 
 const DELIVERY_STATES = [
@@ -131,6 +126,8 @@ type ReportInput = Omit<RecordInput, 'kind' | 'workerThread'> & {
 }
 
 type StatusInput = { deliveryId: string }
+
+type AcceptInput = StatusInput & { itemId: string; eventId: string }
 
 function fail(message: string): never {
 	throw new Error(`Delivery cockpit: ${message}`)
@@ -310,9 +307,7 @@ function isDeliveryEvent(value: unknown): value is DeliveryEvent {
 					typeof candidate.id === 'string' &&
 					typeof candidate.title === 'string' &&
 					Array.isArray(candidate.dependsOn) &&
-					candidate.dependsOn.every(
-						(dependency: unknown) => typeof dependency === 'string',
-					)
+					candidate.dependsOn.every((dependency: unknown) => typeof dependency === 'string')
 				)
 			})
 		)
@@ -488,7 +483,8 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 		seen.set(event.eventId, event)
 
 		if (event.kind === 'delivery_started') {
-			if (ledgers.has(event.deliveryId)) fail(`delivery ${event.deliveryId} was started more than once.`)
+			if (ledgers.has(event.deliveryId))
+				fail(`delivery ${event.deliveryId} was started more than once.`)
 			ledgers.set(event.deliveryId, {
 				deliveryId: event.deliveryId,
 				outcome: event.outcome,
@@ -542,7 +538,8 @@ function replay(events: DeliveryEvent[]): Map<string, DeliveryLedger> {
 function assertNewEvent(events: DeliveryEvent[], event: DeliveryEvent): 'new' | 'duplicate' {
 	const previous = events.find((candidate) => candidate.eventId === event.eventId)
 	if (!previous) return 'new'
-	if (!sameEvent(previous, event)) fail(`event ID ${event.eventId} already has a different payload.`)
+	if (!sameEvent(previous, event))
+		fail(`event ID ${event.eventId} already has a different payload.`)
 	return 'duplicate'
 }
 
@@ -585,7 +582,8 @@ async function startDelivery(
 		if (!duplicate && replay(events).has(event.deliveryId)) {
 			fail(`delivery ${event.deliveryId} already exists with a different start event.`)
 		}
-		if (duplicate) return `Delivery \`${event.deliveryId}\` already has this start event. No change.`
+		if (duplicate)
+			return `Delivery \`${event.deliveryId}\` already has this start event. No change.`
 
 		const ledger = ledgerFor([...events, event], event.deliveryId)
 		remember(event)
@@ -624,11 +622,45 @@ async function recordMaterial(
 	})
 }
 
+async function acceptMaterial(
+	input: AcceptInput,
+	ctx: PluginToolContext,
+	threads: PluginAPI['threads'],
+	journal?: EventJournal,
+): Promise<string> {
+	const deliveryId = identifier(input.deliveryId, 'deliveryId')
+	const itemId = identifier(input.itemId, 'itemId')
+	const eventId = eventIdentifier(input.eventId)
+	const workerThread = await withEvents(ctx.thread, OWNER_EVENT_TOOLS, journal, (events) => {
+		const ledger = ledgerFor(events, deliveryId)
+		if (ledger.ownerThread !== ctx.thread.id) fail('only the delivery owner may accept a proposal.')
+		const item = ledger.items.find((candidate) => candidate.id === itemId)
+		if (!item?.workerThread) fail(`item ${itemId} has no assigned worker.`)
+		return item.workerThread
+	})
+	const events = mergeEvents(
+		[],
+		await readEvents(threads.get(workerThread as `T-${string}`), WORKER_EVENT_TOOLS),
+	)
+	const proposal = events.find((event) => event.eventId === eventId)
+	if (!proposal || proposal.kind === 'delivery_started')
+		fail(`proposal ${eventId} was not found in the assigned worker's tool results.`)
+	if (
+		proposal.deliveryId !== deliveryId ||
+		proposal.itemId !== itemId ||
+		proposal.ownerThread !== ctx.thread.id ||
+		proposal.sourceThread !== workerThread ||
+		proposal.workerThread !== workerThread ||
+		!CHILD_REPORT_KINDS.includes(proposal.kind as ChildReportKind)
+	)
+		fail('proposal does not match the owner, item, or assigned worker.')
+	return recordMaterial(proposal, ctx, journal)
+}
+
 function reportMessage(event: MaterialEvent): string {
 	return [
-		encodeEvent(event),
-		'',
-		`Delivery proposal \`${event.eventId}\`: verify its Amp message attribution, then promote the marker fields with \`delivery_record\` in the owning thread.`,
+		`Delivery proposal ready: ${event.deliveryId}/${event.itemId}, event ${event.eventId}.`,
+		'Inspect the assigned worker result and current evidence, then use delivery_accept with these IDs. No acknowledgment is needed unless a decision or correction is required.',
 	].join('\n')
 }
 
@@ -649,13 +681,16 @@ async function reportMaterial(
 	return withEvents(ctx.thread, WORKER_EVENT_TOOLS, journal, (events, remember) => {
 		const previous = events.find((candidate) => candidate.eventId === event.eventId)
 		if (previous && !previous.ownerThread) {
-			fail('legacy proposal has no recorded destination. Verify its original send and owner acceptance before preparing a replacement with a new eventId.')
+			fail(
+				'legacy proposal has no recorded destination. Verify its original send and owner acceptance before preparing a replacement with a new eventId.',
+			)
 		}
 		const duplicate = assertNewEvent(events, event) === 'duplicate'
 		if (!duplicate) remember(event)
 
 		return [
 			`${duplicate ? 'Recovered' : 'Prepared'} material event \`${event.eventId}\`. Preparation is not proof of delivery.`,
+			encodeEvent(event),
 			`Use Amp's core \`send_thread_message\` tool with thread \`${ownerThreadId}\` and the exact content between the delimiters only if not yet sent or confirmed missing. If the send outcome is unknown, ask the owner to check for this event before resending. Do not resend a confirmed delivery.`,
 			'',
 			'DELIVERY_COCKPIT_REPORT_BEGIN',
@@ -749,10 +784,10 @@ export default async function (amp: PluginAPI) {
 					description: 'Material transition or explicit owning-thread decision.',
 				},
 				workerThread: {
-						type: 'string',
-						description:
-							'Amp worker thread ID. For a promoted worker proposal, this must match the item assignment.',
-					},
+					type: 'string',
+					description:
+						'Amp worker thread ID. For a promoted worker proposal, this must match the item assignment.',
+				},
 			},
 			required: ['eventId', 'deliveryId', 'itemId', 'kind', 'state', 'summary', 'nextGate'],
 			additionalProperties: false,
@@ -797,6 +832,25 @@ export default async function (amp: PluginAPI) {
 	})
 
 	amp.registerTool({
+		name: 'delivery_accept',
+		title: 'Accept verified worker proposal',
+		description:
+			'After owner verification, accept a proposal by event ID from the assigned worker’s durable tool results. Copies its fields without manual markers. Does not verify GitHub evidence or authorize actions.',
+		inputSchema: {
+			type: 'object',
+			properties: {
+				deliveryId: materialProperties.deliveryId,
+				itemId: materialProperties.itemId,
+				eventId: materialProperties.eventId,
+			},
+			required: ['deliveryId', 'itemId', 'eventId'],
+			additionalProperties: false,
+		},
+		execute: (input, ctx) =>
+			acceptMaterial(input as unknown as AcceptInput, ctx, amp.threads, journal),
+	})
+
+	amp.registerTool({
 		name: 'delivery_status',
 		title: 'Render delivery ledger',
 		transcriptGroup: { active: 'Reading delivery ledger', complete: 'Read delivery ledger' },
@@ -818,6 +872,7 @@ export default async function (amp: PluginAPI) {
 }
 
 export const testables = {
+	acceptMaterial,
 	createEventJournal: () => new EventJournal(),
 	decodeEvents,
 	deliveryStatus,
