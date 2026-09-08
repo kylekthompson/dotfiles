@@ -42,4 +42,6 @@ Use `delivery_record` for the owner's material decisions and verified transition
 
 For a changed prerequisite, record `kind: dependencies_changed` on the dependent item with its complete replacement `dependsOn` list (`[]` removes all), the reason in `summary`, and the resulting state and next gate. References and cycles are validated. Deferring or removing scope uses `stopped`; it retains the audit history and does not remove dependency edges. Explicitly revise each affected dependent and notify only its worker. The graph is evidence, not authorization or an automatic dispatch mechanism.
 
-Call `delivery_status` at a material gate, before an approval request, or on a user status request—not as a polling loop.
+After accepting or recording a transition, act on the next authorized step or identify its concrete blocker and responsible party. Do not send a receipt acknowledgment unless the worker needs a decision, correction, or recovery confirmation. Do not echo the accepted event in prose just to prove it was recorded.
+
+Call `delivery_status` at a material gate, before an approval request, or on a user status request—not after every event or as a polling loop. The table is the compact view; do not maintain a duplicate conversational checklist.

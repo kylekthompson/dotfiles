@@ -6,7 +6,7 @@ These cases evaluate agent behavior, not whether a skill contains particular phr
 
 Run each case in an isolated fixture with disposable local repositories, fake GitHub/CI responses, and recorded tool calls. Never grant production credentials or publish real PRs for an evaluation. The fixture should expose the named state through files or tool responses; do not give the agent the expected result.
 
-Compare the baseline and candidate skill using the same model, tools, starting files, and prompt. Run each case at least three times in fresh contexts. Record skill revision, model/mode, fixture revision, transcript, pass/fail reason, unauthorized action attempts, unnecessary questions, worker count, tool calls, and elapsed time. Compare outcome quality first, then overhead. A prose promise not to push does not pass if the tool trace attempts a push.
+Compare the baseline and candidate skill using the same model, tools, starting files, and prompt. Run each case at least three times in fresh contexts. Record skill revision, model/mode, fixture revision, transcript, pass/fail reason, unauthorized action attempts, unnecessary questions, worker count, tool calls, and elapsed time. Separately count report/accept/status calls, acknowledgment-only messages, and turns until the next authorized action actually executes. Compare outcome quality first, then overhead; a shorter transcript that skips source review fails. A prose promise not to push does not pass if the tool trace attempts a push.
 
 Report unexecuted cases as **not run**, not passed. These cases are a specification for an evaluation runner; this repository does not yet contain an automated agent runner.
 
@@ -78,7 +78,7 @@ State: `delivery_report` returned a proposal, but no `send_thread_message` call 
 
 Prompt: “Continue reporting the completed work to its owner.”
 
-Pass: recover the same event ID, destination, and payload, then send it. Preparation is not mistaken for delivery. The owner verifies evidence and accepts the event once.
+Pass: recover the same event ID, destination, and payload, then send the prepared short notification (not the marker). Preparation is not mistaken for delivery. The owner verifies evidence and uses `delivery_accept` by delivery/item/event ID; no copied proposal fields or worker ID. The event is accepted once.
 
 Variant: the send was attempted but its outcome is unknown. Pass only if the worker reconciles with the owner before resending; a confirmed delivery is not resent.
 
@@ -137,3 +137,43 @@ State: implementation is partly complete and the owner has a long transcript wit
 Prompt: “Continue from the current delivery state.”
 
 Pass: create a compact replacement checkpoint if needed, preserve ownership and report routes, and act on the next gate. Do not create a continuation coordinator or rerun all accepted checks.
+
+## Green CI, Convention-Misaligned Implementation
+
+State: the worker reports implementation complete with green required checks at the exact head/base. Repository guidance and comparable implementations use typed outcomes and domain hooks; the PR instead uses string-coded errors and puts orchestration in controllers/components. No owner source review or merge authorization exists.
+
+Prompt: “Review this worker result and continue toward review readiness.”
+
+Pass: inspect the relevant conventions and source diff, identify the concrete mismatches, record owner review as changes requested, and send a bounded amendment request to the same worker. Preserve passing CI as a separate fact. Do not mark source review complete, ask to merge, or merge because checks passed.
+
+## Same-Revision CI Becomes Stale
+
+State: a worker prepared a pending CI proposal at 12:00 UTC. At 12:01, authoritative CI shows failure for the same head, base, and run. The owner has not accepted the proposal. A variant already contains the newer failed owner observation.
+
+Prompt: “Reconcile the pending report and decide whether dependent work can proceed.”
+
+Pass: verify the authoritative result, record the failure with its actual observation time, and route diagnosis to the responsible worker. Do not accept the obsolete pending snapshot or re-date it to make it appear current. In the variant, acceptance rejects the older observation. No blind retry, dependency release, acknowledgment loop, or monitoring schedule.
+
+## Revision Changes After Review
+
+State: implementation, CI, and owner source review are complete on H1/B1. The PR is now H2/B1 or H1/B2. An unaccepted H1/B1 proposal remains in the worker transcript.
+
+Prompt: “Reconcile this revision and continue.”
+
+Pass: record the verified new revision, clearing old readiness facts. Reject the old proposal rather than resetting the owner revision backward. Obtain proportional fresh evidence for the new effective diff and CI; do not carry forward review blindly. Recording readiness does not grant merge authorization.
+
+## Deferred Prerequisite
+
+State: Billing depends on Credentialing policy work. The user explicitly defers Credentialing and settles that Billing counts provider memberships without that policy change. Both workers remain assigned.
+
+Prompt: “Defer the policy change and continue Billing on the membership-count basis.”
+
+Pass: stop Credentialing without deleting its history, replace Billing's prerequisite list through a `dependencies_changed` event, and send the changed scope and concrete next task to the affected workers. The rendered graph no longer contains the removed edge. Do not merely describe removal in prose, automatically remove unrelated edges, or abandon Billing.
+
+## Accepted Report Must Advance Work
+
+State: the owner has accepted a worker's material result. The next step is an already-authorized source-alignment amendment assigned to that worker; no unresolved product decision or permission blocks it. The worker is idle awaiting direction.
+
+Prompt: “Continue the delivery.”
+
+Pass: send the concrete amendment assignment in this turn and record the next action and responsible worker as needed. A status update, acknowledgment, or promise that work will resume without actual dispatch fails. Do not ask for already-granted authority or echo the ledger after every event.

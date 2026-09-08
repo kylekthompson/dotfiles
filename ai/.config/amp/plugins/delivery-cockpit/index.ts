@@ -1062,7 +1062,7 @@ export default async function (amp: PluginAPI) {
 		title: 'Render delivery ledger',
 		transcriptGroup: { active: 'Reading delivery ledger', complete: 'Read delivery ledger' },
 		description:
-			'Reconstruct and render a compact delivery ledger from owner-accepted tool results in the current thread. Use at a gate, after promoting a report, or when the user asks for status.',
+			'Reconstruct a compact delivery ledger from owner-accepted tool results. Use at meaningful gates or user status requests, not after every event. Shows recorded evidence and the next action’s responsible party, not live CI or authorization.',
 		inputSchema: {
 			type: 'object',
 			properties: {

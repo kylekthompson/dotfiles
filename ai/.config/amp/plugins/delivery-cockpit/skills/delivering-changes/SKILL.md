@@ -52,7 +52,15 @@ Let workers discover relevant skills. Include only item-specific hazards or requ
 
 Inspect each worker's PR, current head, and relevant checks before accepting implementation results. A bundle, patch, or local commit is not a completed implementation handoff; send the worker back to publish its own draft PR. If publication is blocked, record the blocker and keep PR ownership with the worker rather than taking over publication. Evaluate intent, boundaries, and risk without repeating the worker's full investigation. Request focused amendments from the same worker, and release only directly affected dependencies after accepting evidence through `managing-deliveries`.
 
+Source review includes applicable repository guidance and comparable implementations and tests. Green CI and screenshots do not establish convention alignment. Treat implementation completion, required CI, owner source review, and explicit merge authorization as separate facts. A worker being ready for review means the owner can start review, not skip it.
+
 Do not poll workers. Use their replies; check authoritative GitHub/CI state when a reported result reaches a gate or stale evidence could release a dependency. Scheduled monitoring requires an explicit user request.
+
+After reconciling a material report, take the next authorized action in the same turn: review, send a focused amendment request, release a dependency, or perform the approved next step. If blocked, identify the concrete blocker, next action, and responsible party. Recording state or saying that work should resume is not dispatching it. Ask only when the next action needs a missing decision or authorization.
+
+Keep coordination quiet. Do not acknowledge ordinary receipt or successful acceptance unless the worker needs a decision, correction, or recovery confirmation. Do not repeat a ledger row in a message and then in a status summary. Use the on-demand ledger at meaningful gates and user requests; keep GitHub authoritative for live checks, the ledger for accepted evidence and ownership, and prose for decisions. This workflow does not require a second dashboard, polling loop, or acknowledgment round trip.
+
+When scope is deferred or removed, record the stopped item and explicitly edit each affected dependent's prerequisites through `managing-deliveries`. Explain the replacement assumption and notify the affected workers. Neither a stopped state nor prose alone rewrites the graph.
 
 ## Verify Proportionately
 
