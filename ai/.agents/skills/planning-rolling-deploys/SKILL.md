@@ -18,6 +18,8 @@ Ask for missing material facts. Do not assume short normal deploy time prevents 
 
 First establish exposure and plausible harm. Separate implementation, merge, activation, and contraction gates. A deferred control needs an enforced protection and a clear re-trigger condition.
 
+Keep deployment prerequisites separate from runtime domain state. Document required configuration, rollout order, and unresolved product decisions in the PR or rollout plan; do not turn that checklist into a new runtime readiness framework. Before adding a runtime rollout guard, name the concrete incompatible version pair or unsafe operation it prevents and check whether an existing deployment or compatibility mechanism already prevents it. Documentation alone does not make an unsafe pair unreachable. Keep runtime guards focused on the demonstrated risk, and preserve domain lifecycle and recovery safeguards.
+
 ## Inventory Persisted Contracts
 
 Inventory only changed contracts and their affected dependencies, not every persistence mechanism in the system. For each, record:
