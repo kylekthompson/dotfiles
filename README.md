@@ -10,7 +10,7 @@ fish
 sudo dot-setup
 ```
 
-## Sync global Amp skills and plugins
+## Sync global Amp skills, plugins, and guidance
 
 Requires authenticated `amp`, Git, and Bun with `Bun.YAML` support (tested with
 Bun 1.3.10). From this checkout, run:
@@ -22,7 +22,9 @@ Bun 1.3.10). From this checkout, run:
 After stowing, the command is also available as `dot-sync-amp`. It fetches and
 pins the latest `origin/main`, without changing the dotfiles worktree. Only skills
 listed in `ai/.agents/amp-skills.json` and the complete `ai/.config/amp/plugins`
-tree are eligible for publication; settings and other configuration are excluded.
+tree are eligible for repository publication. `ai/.agents/AGENTS.md` is handed
+off to the syncing Amp thread for the personal Global AGENTS.md setting;
+`settings.json` and other configuration remain excluded.
 
 The default run validates skill frontmatter, plugin entrypoints and descriptions,
 and literal bundled-skill registrations, then runs colocated Bun plugin tests in a
@@ -53,6 +55,23 @@ After a push, use Amp's `reload_skills` and/or `reload_plugins` tools in the act
 thread and verify the synchronized entries load without errors. The script prints
 the required reloads; the CLI cannot reload an existing session. New threads pick
 up pushed global entries automatically.
+
+Every successful run also prints a single-line JSON handoff with type
+`amp-global-agent-guidance`, including when skills and plugins already match.
+It contains the exact `ai/.agents/AGENTS.md` content from the pinned source
+revision, the preview/publish mode, and arguments for Amp's `get_settings` and
+`update_setting` tools. The syncing thread should discover `amp.get_settings`
+and `amp.update_setting` with `tool_search`, then call them through `code_exec`:
+
+- **Preview:** compare personal `global_agent_guidance` with the supplied value
+  and report differences without writing. Review this guidance before publishing.
+- **Publish:** if different, replace the entire setting (not merge or append),
+  then read it back and verify exact equality. Skip the write if already equal.
+
+The CLI does not access these thread tools or claim the guidance is synchronized.
+Without a syncing thread that completes this handoff, guidance sync remains
+incomplete. The settings update and repository pushes are not atomic; report
+partial completion if the tools are unavailable or verification fails.
 
 Pushes across the two repositories are not atomic. On failure, inspect both
 canonical clones and remotes before retrying; the script never force-pushes or

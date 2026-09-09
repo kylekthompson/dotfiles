@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'bun:test'
+import { afterEach, expect, spyOn, test } from 'bun:test'
 import { execFileSync } from 'node:child_process'
 import {
 	chmodSync,
@@ -80,6 +80,10 @@ function fixture() {
 		'not a valid skill',
 	)
 	write(join(source, 'ai/.config/amp/settings.json'), 'do not publish')
+	write(
+		join(source, 'ai/.agents/AGENTS.md'),
+		'# Global guidance\n\nKeep "exact" whitespace.\n',
+	)
 	write(
 		join(source, 'ai/.config/amp/plugins/example/index.ts'),
 		"export const description = 'Tests sync.'\nexport default async function(amp) { await amp.registerSkill({ path: 'skills/testing-plugin' }) }\n",
@@ -217,6 +221,60 @@ test('preview does not publish; publish copies nested files and modes, removes s
 	expect(
 		f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD')),
 	).toEqual(heads)
+})
+
+test('guidance handoff uses pinned source, distinguishes preview and publish, and survives unchanged trees', () => {
+	const f = fixture()
+	write(join(f.source, 'ai/.agents/AGENTS.md'), 'Unpublished local guidance')
+	const output = spyOn(console, 'log').mockImplementation(() => {})
+	try {
+		for (const publish of [undefined, f.revision, f.revision]) {
+			output.mockClear()
+			reconcile(f.source, f.cache, publish)
+			const handoffs = output.mock.calls
+				.map(([line]) => String(line))
+				.filter((line) => line.startsWith('{'))
+				.map((line) => JSON.parse(line))
+			expect(handoffs).toHaveLength(1)
+			expect(handoffs[0]).toMatchObject({
+				type: 'amp-global-agent-guidance',
+				mode: publish ? 'publish' : 'preview',
+				source: `https://github.com/kylekthompson/dotfiles/blob/${f.revision}/ai/.agents/AGENTS.md`,
+				get_settings: { scope: 'user', keys: ['global_agent_guidance'] },
+				update_setting: {
+					key: 'global_agent_guidance',
+					value: '# Global guidance\n\nKeep "exact" whitespace.\n',
+				},
+			})
+			expect(handoffs[0].instructions).toContain(
+				publish ? 'read back' : 'Do not call update_setting',
+			)
+		}
+		output.mockClear()
+		expect(() => reconcile(f.source, f.cache, '0'.repeat(40))).toThrow()
+		expect(
+			output.mock.calls.some(([line]) => String(line).startsWith('{')),
+		).toBe(false)
+	} finally {
+		output.mockRestore()
+	}
+})
+
+test('empty or non-text global guidance blocks publication', () => {
+	const f = fixture()
+	const before = f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD'))
+	for (const guidance of [Buffer.from(' \n'), Buffer.from([0xff]), Buffer.from([0])]) {
+		writeFileSync(join(f.source, 'ai/.agents/AGENTS.md'), guidance)
+		git(f.source, 'add', '.')
+		git(f.source, 'commit', '-m', 'Invalid guidance')
+		git(f.source, 'push', 'origin', 'main')
+		expect(() =>
+			reconcile(f.source, f.cache, git(f.source, 'rev-parse', 'HEAD')),
+		).toThrow('Global guidance must be nonempty UTF-8 text')
+		expect(
+			f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD')),
+		).toEqual(before)
+	}
 })
 
 test('a dirty second clone blocks writes to both destinations', () => {
