@@ -15,5 +15,3 @@ bun test ./ai/.agents/sync-plugin-skills.test.ts ./ai/.config/amp/plugins/rwx
 ```
 
 Commit the source and generated references together. Do not edit the generated copies. Push each changed global skill or plugin only when publication is authorized; changing this repository does not update Amp's global repositories.
-
-Delivery behavior evaluations are specified in `ai/.config/amp/plugins/delivery-cockpit/skills/delivering-changes/reference/scenarios.md`. Unit tests verify plugin mechanics, not agent compliance or model-generation improvements.
