@@ -22,9 +22,16 @@ Bun 1.3.10). From this checkout, run:
 After stowing, the command is also available as `dot-sync-amp`. It fetches and
 pins the latest `origin/main`, without changing the dotfiles worktree. Only skills
 listed in `ai/.agents/amp-skills.json` and the complete `ai/.config/amp/plugins`
-tree are eligible for repository publication. `ai/.agents/AGENTS.md` is handed
-off to the syncing Amp thread for the personal Global AGENTS.md setting;
+tree are eligible for repository publication. `ai/.agents/AGENTS.md` (shared
+guidance) and `ai/.agents/amp-guidance.md` (Amp-only additions) are composed and
+handed off to the syncing Amp thread for the personal Global AGENTS.md setting;
 `settings.json` and other configuration remain excluded.
+
+Keep agent-independent policy in the shared base and Amp-specific instructions
+in the supplement. There is no checked-in generated copy. Claude and Codex keep
+using the shared base. The existing local Amp guidance symlink remains until the
+composed global setting is published and verified to load in local Amp; remove
+that symlink after verification to avoid loading the base twice.
 
 The default run validates skill frontmatter, plugin entrypoints and descriptions,
 and literal bundled-skill registrations, then runs colocated Bun plugin tests in a
@@ -58,9 +65,12 @@ up pushed global entries automatically.
 
 Every successful run also prints a single-line JSON handoff with type
 `amp-global-agent-guidance`, including when skills and plugins already match.
-It contains the exact `ai/.agents/AGENTS.md` content from the pinned source
-revision, the preview/publish mode, and arguments for Amp's `get_settings` and
-`update_setting` tools. The syncing thread should discover `amp.get_settings`
+It contains the exact shared base followed by two newlines, an
+`## Amp-specific guidance` heading, two newlines, and the exact Amp supplement.
+Both files must be nonempty UTF-8 text and come from the same pinned source
+revision. The handoff includes both source URLs, the preview/publish mode, and
+arguments for Amp's `get_settings` and `update_setting` tools.
+The syncing thread should discover `amp.get_settings`
 and `amp.update_setting` with `tool_search`, then call them through `code_exec`:
 
 - **Preview:** compare personal `global_agent_guidance` with the supplied value

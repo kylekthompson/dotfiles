@@ -1,0 +1,1 @@
+- When composing pull request descriptions, load and use the `explaining-code` skill. Lead with the changed behavior in plain technical prose, and use the smallest supporting view only when it makes the change easier to understand.
