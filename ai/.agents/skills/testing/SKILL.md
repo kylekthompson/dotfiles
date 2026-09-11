@@ -28,32 +28,14 @@ Choose tests that distinguish correct behavior from plausible mistakes. Match th
 
 ## Choose the Workflow
 
-- **Explicit TDD request:** Follow red-green-refactor below. Confirm a meaningful failure before implementing the behavior.
+- **Explicit TDD request:** Use red-green-refactor for one small behavior at a time. Confirm a failure caused by missing or wrong behavior, not setup or compilation. Implement the contract, not just the literal test examples, then refactor while green.
 - **New or changed behavior:** Prefer a focused test-first loop when the contract is clear. Resolve ambiguity before encoding an expectation; do not treat current output as the intended contract.
 - **Bug fix:** Prefer a failing regression before the fix. When automation is impractical, capture diagnostic or characterization evidence and verify the same observation afterward. Disclose the limitation; this is not an automated red and does not satisfy an explicit test-first requirement.
-- **Behavior-preserving refactor:** Characterize existing behavior, then stay green while changing structure.
-- **Assessing existing code or tests:** Identify unprotected risks and add discriminating checks. Do not manufacture a red-green ceremony for behavior that already works.
-
-### Red-Green-Refactor
-
-Use tests to control one small behavior change at a time:
-
-1. **Red:** Write a discriminating test for the next observable behavior. Run it and confirm that it fails because the behavior is missing or wrong. A setup or compilation error is not a useful red.
-2. **Green:** Make the smallest production change that implements the stated behavior and passes the test, not merely its literal examples. Do not add unrelated behavior.
-3. **Refactor:** Improve names, duplication, and design without changing behavior. Keep tests green after each small step.
-4. Repeat with the next behavior.
-
-### Refactoring Existing Behavior
-
-A behavior-preserving refactor is green-green, not red-green:
-
-1. Find tests at a stable boundary. If coverage is insufficient, add focused characterization tests that pass against current behavior, including quirks that are not approved to change.
-2. If protection is uncertain, use the deliberate-break check above before relying on it.
-3. Refactor in small steps and run the focused tests after each step. Change tests only when structure, not behavior, requires it.
-4. If the desired outcome changes behavior, stop refactoring and start a red-green-refactor loop for that change.
+- **Behavior-preserving refactor:** Use existing tests at a stable boundary; add characterization only where protection is missing, including quirks not approved to change. Stay green while changing structure. A behavior change needs its own expectation and verification, not a rewritten characterization assertion.
+- **Reviewing existing code or tests:** Report unprotected risks and recommend discriminating checks. Add them when implementation is in scope. Do not manufacture a red-green ceremony for behavior that already works.
 
 ## Verify the Protection
 
-After implementing, inspect for risks the initial tests missed, such as ordering, boundaries, state transitions, or feature interactions. Add focused checks where a plausible incorrect implementation could still pass; use a new red-green loop for any missing or incorrect behavior they expose. Keep assertions at stable observable boundaries even when implementation details reveal which cases to test.
+After implementing, add focused checks where a plausible incorrect implementation of the changed behavior could still pass. Keep assertions at stable observable boundaries even when implementation details reveal which cases to test.
 
 Use focused checks for affected boundaries. Run a broader local suite only for broad risk, repository requirements, or when CI cannot provide the authoritative check. Distinguish executed checks from pending CI and unverified risks.

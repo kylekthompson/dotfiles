@@ -59,7 +59,7 @@ For changed database contracts, prove for each affected process type:
 | current | contracted | impossible after contraction |
 | target | contracted | final behavior works |
 
-Add intermediate states when the real rollout has them. A pair is unreachable only when a mechanism prevents it, such as a completed gate, isolated queue, or disabled producer. Timing and operator intent are not mechanisms. Block the plan while a reachable pair is incompatible.
+Add intermediate states when the real rollout has them. A pair is unreachable only when a mechanism prevents it, such as a completed gate, isolated queue, or disabled producer. Timing and operator intent are not mechanisms. Mark the gate that would expose an incompatible pair as blocked. Continue in-scope implementation and verification that do not cross that gate; an activation or contraction blocker need not stop safe preparatory work.
 
 ## Build Measurable Phases
 
@@ -80,9 +80,9 @@ Choose focused checks from the applicable contract reference to prove reachable 
 
 ## Report
 
-Return a concise artifact:
+Match detail to the changed contract and risk. A narrow review may need only a verdict and its supporting evidence; a rollout plan should cover the applicable items below:
 
-1. verdict: `safe`, `safe with gates`, or `blocked`
+1. verdict: `safe`, `safe with gates`, or `blocked`, naming which gate is blocked
 2. deployment model and changed persisted contracts
 3. reachable compatibility pairs and mechanisms that prevent others
 4. rollout phases with measurable gates and rollback

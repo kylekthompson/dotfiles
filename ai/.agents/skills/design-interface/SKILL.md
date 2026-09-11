@@ -17,22 +17,17 @@ Identify what the design intertwines: policy with mechanism, information with be
 
 ## Assess Before Redesigning
 
-Treat a smell as evidence to inspect, not proof that the design must change.
+Treat a smell as evidence to inspect, not proof that the design must change. Ground it in affected behavior and callers, and name the concrete cost: an obscured invariant, unclear ownership, invalid state, hidden effect, coupling, or difficult change. Ask only about unknowns that can change the decision.
 
-1. Inspect surrounding behavior, callers, implementations, domain language, and likely change. Do not diagnose from a pattern in isolation. Ask only about unknowns that can change the design.
-2. Name the concrete cost: an obscured invariant, unclear ownership, invalid state, difficult change, hidden effect, coupling, or excess conceptual weight.
-3. Find the smallest design that reduces that cost. Do not prescribe a pattern merely because it can fit.
-4. Decide whether improvement belongs in the current scope. Fix it when it protects correctness, enables the requested change, or materially simplifies the touched boundary. Otherwise, contain it and proceed.
+Choose the smallest design that reduces that cost. Accept duplication or a larger cohesive unit when it makes ownership clearer. In implementation work, refactor only when it protects correctness, enables the requested change, or materially simplifies the touched boundary. In a review, recommend rather than silently implement changes.
 
-Preserve correct behavior and explicit invariants. Prefer conceptual simplicity, supported by clear ownership and locality of change. Accept duplication or a larger cohesive unit when either makes ownership clearer.
-
-Make the change easy, then make the easy change: when intertwined concerns make the requested change difficult, first make the smallest behavior-preserving structural change that separates them, then implement the behavior. Verify existing behavior before and after the preparation, and verify the requested behavior separately. Judge the preparation by the complexity it removes, not merely by how easy it makes the next edit. If the change is already straightforward, make it directly.
+When intertwined concerns obstruct the requested change, separate them with a small behavior-preserving refactor first. Verify preservation separately from the new behavior. If the change is already straightforward, make it directly.
 
 ## Define the Boundary
 
-Frame the caller, boundary, business capability, and key invariant. Name the change the boundary must absorb and distinguish local changes from those that must cross it. Sketch concrete contracts with names, inputs, outcomes, and failures using signatures, request/response shapes, or event schemas as appropriate.
+For a new or materially changed boundary, identify the caller, business capability, invariant, and change it must absorb. Sketch inputs, outcomes, and failures when that makes the decision concrete; a narrow review need not produce a new contract.
 
-When responsibility placement is unclear, compare 2-3 viable options that differ in what each side knows and owns, not merely syntax. Recommend the smallest useful design using the principles below.
+When responsibility placement has a material tradeoff, compare viable options by what each side knows and owns, not merely syntax. Prefer conceptual simplicity first, then locality of likely changes, using the principles below.
 
 ## Place Responsibilities
 
@@ -46,16 +41,7 @@ When responsibility placement is unclear, compare 2-3 viable options that differ
 
 Prefer `Inventory.reserve(orderId, lines) -> ReservationOutcome` over `InventoryService.updateStock(productId, delta)` when inventory owns the reservation rule.
 
-## Compare Options
-
-Evaluate options in this order:
-
-1. **Simplicity:** Which concerns can be understood independently? What unnecessary coupling does this design remove rather than hide?
-2. **Ease of change:** Which design keeps likely changes on one side?
-3. **Semantic clarity:** Does the contract use precise domain language instead of storage, transport, framework, or vendor terms?
-4. **Knowledge and coupling:** Does either side know field order, call order, timing, algorithms, or internal shapes that it should not know?
-5. **Invariant and failure ownership:** Is one side clearly responsible for valid transitions, partial failure, and recovery?
-6. **Abstraction fit:** Do shared cases have the same meaning and reasons to change?
+## Challenge Unnecessary Abstractions
 
 Reject generic names such as `Manager`, `Service`, `Processor`, or `Handler` when they hide behavior. Also challenge generic CRUD operations, wide DTOs, positional argument lists, vendor objects, and interfaces that make callers run a multi-step protocol.
 
