@@ -94,11 +94,12 @@ describe('orb CLI installation', () => {
 					const digest = 'sha256:' + createHash('sha256').update(binary).digest('hex');
 					let requests = 0;
 					let unavailable = true;
-					globalThis.fetch = async (url) => {
+					globalThis.fetch = async (url, init) => {
+						assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer gh-fixture');
 						requests++;
 						if (unavailable) return new Response('', { status: 503 });
 						return String(url).includes('/releases/tags/unstable')
-							? Response.json({assets: [{name: testables.cliAssetName(), digest, browser_download_url: 'https://example.test/rwx'}]})
+							? Response.json({assets: [{name: testables.cliAssetName(), digest, id: 123}]})
 							: new Response(binary);
 					};
 					const hooks = new Map();
@@ -148,7 +149,7 @@ describe('orb CLI installation', () => {
 					assert.equal(requests, 5, 'installation must not depend on a mapped token owner');
 				`],
 				cwd: directory,
-				env: { ...process.env, HOME: directory, AMP_ORB: '1' },
+				env: { ...process.env, HOME: directory, AMP_ORB: '1', GH_TOKEN: 'gh-fixture', GITHUB_TOKEN: 'github-fixture' },
 			})
 			expect(result.stderr.toString()).toBe('')
 			expect(result.exitCode).toBe(0)
@@ -164,6 +165,67 @@ describe('orb CLI installation', () => {
 		expect(testables.cliAssetName('win32', 'x64')).toBeUndefined()
 	})
 
+	test.each([
+		{ token: 'github-fixture', stored: 'stored-fixture', expected: 'Bearer github-fixture' },
+		{ token: '', stored: 'stored-fixture', expected: 'Bearer stored-fixture' },
+		{ token: '', stored: '', expected: null },
+	])('resolves GitHub authentication with %j', async ({ token, stored, expected }) => {
+		const directory = await mkdtemp(join(tmpdir(), 'rwx-credentials-'))
+		try {
+			writeFileSync(join(directory, 'gh'), [
+				'#!/bin/sh',
+				'[ "$*" = "auth token --hostname github.com" ] || exit 2',
+				'[ -n "$FIXTURE_STORED_TOKEN" ] || exit 1',
+				'printf "%s\\n" "$FIXTURE_STORED_TOKEN"',
+			].join('\n'), { mode: 0o755 })
+			const result = Bun.spawnSync({
+				cmd: [process.execPath, '-e', `
+					import assert from 'node:assert/strict';
+					import { testables } from ${JSON.stringify(join(import.meta.dir, 'index.ts'))};
+					let authorization;
+					await assert.rejects(testables.installLatestRwxCli(process.cwd(), async (url, init) => {
+						authorization = new Headers(init.headers).get('Authorization');
+						return new Response('', {status: 503});
+					}), /HTTP 503/);
+					assert.equal(authorization, ${JSON.stringify(expected)});
+				`],
+				cwd: directory,
+				env: { ...process.env, PATH: directory, GH_TOKEN: '', GITHUB_TOKEN: token, FIXTURE_STORED_TOKEN: stored },
+			})
+			expect(result.stderr.toString()).toBe('')
+			expect(result.exitCode).toBe(0)
+		} finally {
+			rmSync(directory, { recursive: true, force: true })
+		}
+	})
+
+	test('authenticates release lookup and asset download with the GitHub token', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'rwx-auth-'))
+		const binary = new TextEncoder().encode('authenticated binary')
+		const digest = `sha256:${createHash('sha256').update(binary).digest('hex')}`
+		const requests: { url: string; headers: Headers }[] = []
+		const fetchRelease = async (url: string | URL | Request, init?: RequestInit) => {
+			requests.push({ url: String(url), headers: new Headers(init?.headers) })
+			return requests.length === 1
+				? Response.json({ assets: [{ name: testables.cliAssetName(), digest, id: 123 }] })
+				: new Response(binary)
+		}
+		try {
+			await testables.installLatestRwxCli(directory, fetchRelease as typeof fetch, 1_000, 'fixture-token')
+			expect(requests.map(({ url }) => url)).toEqual([
+				'https://api.github.com/repos/rwx-cloud/rwx/releases/tags/unstable',
+				'https://api.github.com/repos/rwx-cloud/rwx/releases/assets/123',
+			])
+			expect(requests.map(({ headers }) => headers.get('Authorization'))).toEqual([
+				'Bearer fixture-token',
+				'Bearer fixture-token',
+			])
+			expect(requests[1].headers.get('Accept')).toBe('application/octet-stream')
+		} finally {
+			rmSync(directory, { recursive: true, force: true })
+		}
+	})
+
 	test('downloads, verifies, installs, and caches the latest unstable release', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'rwx-install-'))
 		const binary = new TextEncoder().encode('rwx binary')
@@ -177,7 +239,7 @@ describe('orb CLI installation', () => {
 							{
 								name: testables.cliAssetName(),
 								digest,
-								browser_download_url: 'https://example.test/rwx',
+								id: 123,
 							},
 						],
 					})
@@ -216,7 +278,7 @@ describe('orb CLI installation', () => {
 							{
 								name: testables.cliAssetName(),
 								digest,
-								browser_download_url: 'https://example.test/rwx',
+								id: 123,
 							},
 						],
 					})
@@ -252,7 +314,7 @@ describe('orb CLI installation', () => {
 							{
 								name: testables.cliAssetName(),
 								digest,
-								browser_download_url: 'https://example.test/rwx',
+								id: 123,
 							},
 						],
 					})
@@ -279,7 +341,7 @@ describe('orb CLI installation', () => {
 							{
 								name: testables.cliAssetName(),
 								digest: `sha256:${'0'.repeat(64)}`,
-								browser_download_url: 'https://example.test/rwx',
+								id: 123,
 							},
 						],
 					})

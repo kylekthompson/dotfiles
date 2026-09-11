@@ -35,9 +35,9 @@ const SANDBOX_GUIDANCE =
 const RWX_RUN_URL = /https:\/\/cloud\.rwx\.com\/[^/\s]+\/[^/\s]+\/runs\/([a-zA-Z0-9_-]+)/
 
 type ReleaseAsset = {
+	id: number
 	name: string
 	digest: string
-	browser_download_url: string
 }
 
 type InstallMetadata = {
@@ -88,10 +88,25 @@ function sha256(bytes: Uint8Array): string {
 	return `sha256:${createHash('sha256').update(bytes).digest('hex')}`
 }
 
+function githubToken(): string | undefined {
+	const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
+	if (token) return token
+
+	try {
+		return execFileSync('gh', ['auth', 'token', '--hostname', 'github.com'], {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		}).trim() || undefined
+	} catch {
+		return
+	}
+}
+
 async function installLatestRwxCli(
 	binDirectory = join(homedir(), '.amp', 'bin'),
 	fetchRelease: typeof fetch = fetch,
 	now = Date.now(),
+	token?: string,
 ): Promise<string> {
 	const assetName = cliAssetName()
 	if (!assetName)
@@ -113,9 +128,13 @@ async function installLatestRwxCli(
 		return executablePath
 	}
 
-	const releaseResponse = await fetchRelease(CLI_RELEASE_URL, {
-		headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'amp-rwx-plugin' },
+	const headers = new Headers({
+		Accept: 'application/vnd.github+json',
+		'User-Agent': 'amp-rwx-plugin',
 	})
+	const authenticationToken = token ?? githubToken()
+	if (authenticationToken) headers.set('Authorization', `Bearer ${authenticationToken}`)
+	const releaseResponse = await fetchRelease(CLI_RELEASE_URL, { headers })
 	if (!releaseResponse.ok) {
 		throw new Error(`GitHub release lookup failed with HTTP ${releaseResponse.status}.`)
 	}
@@ -126,7 +145,12 @@ async function installLatestRwxCli(
 	}
 
 	if (installedDigest !== asset.digest || metadata?.installedByPlugin !== true) {
-		const downloadResponse = await fetchRelease(asset.browser_download_url)
+		const downloadHeaders = new Headers(headers)
+		downloadHeaders.set('Accept', 'application/octet-stream')
+		const downloadResponse = await fetchRelease(
+			`https://api.github.com/repos/rwx-cloud/rwx/releases/assets/${asset.id}`,
+			{ headers: downloadHeaders },
+		)
 		if (!downloadResponse.ok) {
 			throw new Error(`RWX CLI download failed with HTTP ${downloadResponse.status}.`)
 		}
