@@ -30,6 +30,8 @@ Inventory only changed contracts and their affected dependencies, not every pers
 4. tolerance for missing or unknown fields
 5. rollback behavior
 
+For each PR in a staged rollout, record a compact inventory: persisted job/message type; producers that can still emit it; consumers that can reserve or execute it; execution dependencies that must remain (code, libraries, configuration, credentials, and external services); and what that PR adds, activates, retains, or removes. Include running old processes and already-persisted work, not just target call sites.
+
 Read the applicable reference for contract-specific inventory, design, and checks:
 
 - [Database contracts](reference/database.md) when schema, storage, or schema-cached processes change.
@@ -39,7 +41,7 @@ Read both only when the change crosses both contract types, including delayed wo
 
 ## Prove Reachable Version Pairs
 
-For changed persisted-message contracts, prove:
+For changed persisted-message contracts, apply the following matrix to every PR/deployment boundary, using the versions that can coexist at that boundary. Name the actual job types, producers, worker versions, and queue routing. Include work persisted before deployment and later retried or replayed. Prove each reachable pair can execute with its required dependencies, not merely deserialize:
 
 | Producer | Consumer | Requirement |
 | --- | --- | --- |
@@ -71,6 +73,8 @@ Use only phases the change needs:
 4. **Activate:** target writers, producers, jobs, or reads after their compatibility gates pass.
 5. **Observe and drain:** measure health, invalid data, queues, retries, schedules, and rollback window.
 6. **Contract:** remove compatibility only after no supported rollback or persisted work needs it.
+
+Do not substitute a service interruption or manual pre-deployment pause/drain for a compatible staged rollout without explicit user approval of that availability tradeoff. Default to cutting over new production while retained consumers finish old work. If an exceptional pause/drain is approved, identify how all relevant producers are stopped, how completion is measured (including running work and retries), and what prevents old work from reappearing during deployment or rollback. A documented instruction to drain is not itself a completed or enforced gate.
 
 For each active phase, state the coexistence invariant, action, entry and exit gates, signals and thresholds, and valid rollback or roll-forward action. Prefer roll-forward repair after a failed additive migration. Do not use a destructive down migration without proving data and mixed-version safety.
 

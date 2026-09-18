@@ -10,7 +10,7 @@ Inspect affected payloads and job types, queues, scheduled entries, outbox/event
 - Prefer named additive optional fields with explicit defaults, after verifying serializer behavior.
 - Do not change positional argument meaning in place. Use a payload version or new job type when meaning changes or readers are strict.
 - Do not enqueue a new job type while an incompatible worker can reserve it; wait for rollout or isolate its queue.
-- Retain old consumers until ready, scheduled, retry, dead-letter, replay, and rollback horizons have drained.
+- Separate producer activation from consumer contraction into distinct PRs/deployments for persisted-job replacements. First deploy support for the new job; then switch new production after incompatible workers can no longer reserve it, retaining the old consumer and all dependencies needed to execute old work. Remove them in a later cleanup PR only after evidence shows no queued, running, scheduled, retrying, dead-lettered, or replayable old work remains and no supported rollback can emit or require it. An intent to remove a feature describes the final state; it does not authorize deleting its persisted-work consumer during cutover.
 - Make overlapping old/new jobs idempotent at a stable business boundary.
 - Test delayed jobs against the schema state in which they can execute. If storage also changes, read [Database contracts](database.md).
 
