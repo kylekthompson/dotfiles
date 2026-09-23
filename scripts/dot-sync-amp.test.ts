@@ -224,6 +224,75 @@ test('preview does not publish; publish copies nested files and modes, removes s
 	).toEqual(heads)
 })
 
+test('skill Amp guidance is composed from pinned source, omitted as a resource, and removable', () => {
+	const f = fixture()
+	const relative = 'ai/.agents/skills/testing-sync/amp-guidance.md'
+	write(join(f.source, relative), 'Use Amp tools.\n')
+	git(f.source, 'add', '.')
+	git(f.source, 'commit', '-m', 'Add skill guidance')
+	git(f.source, 'push', 'origin', 'main')
+	const revision = git(f.source, 'rev-parse', 'HEAD')
+	write(join(f.source, relative), 'Unpublished local guidance')
+	const before = f.clones.map((directory) =>
+		git(directory, 'rev-parse', 'HEAD'),
+	)
+	reconcile(f.source, f.cache)
+	expect(
+		f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD')),
+	).toEqual(before)
+	reconcile(f.source, f.cache, revision)
+	const published = diskTree(f.clones[0])
+	expect(published.get('testing-sync/SKILL.md')?.bytes.toString()).toBe(
+		`${skill('testing-sync')}\n\n## Amp-specific guidance\n\nUse Amp tools.\n`,
+	)
+	expect(published.has('testing-sync/amp-guidance.md')).toBe(false)
+	expect(readFileSync(join(f.source, relative), 'utf8')).toBe(
+		'Unpublished local guidance',
+	)
+	expect(
+		readFileSync(
+			join(f.source, 'ai/.agents/skills/testing-sync/SKILL.md'),
+			'utf8',
+		),
+	).toBe(skill('testing-sync'))
+	const head = git(f.clones[0], 'rev-parse', 'HEAD')
+	reconcile(f.source, f.cache, revision)
+	expect(git(f.clones[0], 'rev-parse', 'HEAD')).toBe(head)
+	git(f.source, 'rm', '-f', relative)
+	git(f.source, 'commit', '-m', 'Remove skill guidance')
+	git(f.source, 'push', 'origin', 'main')
+	reconcile(f.source, f.cache, git(f.source, 'rev-parse', 'HEAD'))
+	expect(
+		diskTree(f.clones[0]).get('testing-sync/SKILL.md')?.bytes.toString(),
+	).toBe(skill('testing-sync'))
+})
+
+test('empty or non-text skill Amp guidance blocks publication', () => {
+	for (const content of [
+		Buffer.from('  \n'),
+		Buffer.from([0]),
+		Buffer.from([0xff]),
+	]) {
+		const f = fixture()
+		writeFileSync(
+			join(f.source, 'ai/.agents/skills/testing-sync/amp-guidance.md'),
+			content,
+		)
+		git(f.source, 'add', '.')
+		git(f.source, 'commit', '-m', 'Invalid skill guidance')
+		git(f.source, 'push', 'origin', 'main')
+		const before = f.clones.map((directory) =>
+			git(directory, 'rev-parse', 'HEAD'),
+		)
+		expect(() =>
+			reconcile(f.source, f.cache, git(f.source, 'rev-parse', 'HEAD')),
+		).toThrow('Skill Amp guidance must be nonempty UTF-8 text')
+		expect(
+			f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD')),
+		).toEqual(before)
+	}
+})
+
 test('guidance handoff uses pinned source, distinguishes preview and publish, and survives unchanged trees', () => {
 	const f = fixture()
 	write(join(f.source, 'ai/.agents/AGENTS.md'), 'Unpublished local guidance')

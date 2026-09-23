@@ -1,9 +1,9 @@
 ---
-name: design-interface
-description: Designs and reviews module and service boundaries. Use for responsibility placement, coupling or abstraction decisions, and interface design reviews.
+name: designing-software-boundaries
+description: Designs and reviews software boundaries and contracts between modules, services, and APIs. Use for responsibility and invariant ownership, coupling, abstraction decisions, and code architecture reviews, including frontend architecture; not for visual layout, styling, or user interaction design.
 ---
 
-# Design Interfaces
+# Designing Software Boundaries
 
 Keep independent concerns independently understandable. Choose where knowledge, decisions, invariants, and effects belong so that change stays local.
 

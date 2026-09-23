@@ -33,6 +33,18 @@ using the shared base. The existing local Amp guidance symlink remains until the
 composed global setting is published and verified to load in local Amp; remove
 that symlink after verification to avoid loading the base twice.
 
+Standalone skills can also have an optional `amp-guidance.md` beside `SKILL.md`,
+for example `ai/.agents/skills/designing-ui/amp-guidance.md`. Keep the portable
+skill self-contained; do not link it to the Amp supplement. During sync, the
+publisher appends two newlines, `## Amp-specific guidance`, two newlines, and the
+exact supplement to the published `SKILL.md`. It omits the companion file from
+the published resources. Both inputs come from the same pinned revision, and a
+present supplement must be nonempty UTF-8 text. Removing it restores publication
+of the portable skill alone. No generated copy is checked in or written over the
+source: Claude and Codex continue loading the portable `SKILL.md`. This convention
+applies to allowlisted standalone skills, not plugin-bundled skills. Skill-specific
+instructions load with that skill rather than entering the global AGENTS setting.
+
 The default run validates skill frontmatter, plugin entrypoints and descriptions,
 and literal bundled-skill registrations, then runs colocated Bun plugin tests in a
 temporary staging directory. It discovers writable User repositories through Amp,

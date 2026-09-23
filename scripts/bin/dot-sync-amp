@@ -286,11 +286,33 @@ export function reconcile(
 	)
 	const selectedSkills: Tree = new Map()
 	for (const name of names) {
-		for (const [path, file] of sourceTree(
+		const skill = sourceTree(
 			source,
 			revision,
 			`ai/.agents/skills/${name}`,
-		))
+		)
+		const supplement = skill.get('amp-guidance.md')
+		if (supplement) {
+			const content = supplement.bytes
+			if (
+				!content.toString().trim() ||
+				content.includes(0) ||
+				!Buffer.from(content.toString('utf8')).equals(content)
+			)
+				throw new Error(`Skill Amp guidance must be nonempty UTF-8 text: ${name}`)
+			const base = skill.get('SKILL.md')
+			if (!base) throw new Error(`Missing ${name}/SKILL.md`)
+			skill.set('SKILL.md', {
+				...base,
+				bytes: Buffer.concat([
+					base.bytes,
+					Buffer.from('\n\n## Amp-specific guidance\n\n'),
+					content,
+				]),
+			})
+			skill.delete('amp-guidance.md')
+		}
+		for (const [path, file] of skill)
 			selectedSkills.set(`${name}/${path}`, file)
 	}
 	const trees = {
