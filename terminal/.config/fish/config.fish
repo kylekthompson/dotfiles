@@ -35,6 +35,9 @@ end
 set -gx PKG_CONFIG_PATH "/opt/homebrew/bin/pkg-config:$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig"
 set -gx MACOSX_DEPLOYMENT_TARGET "$(sw_vers -productVersion)"
 
+# Use the SDK from the selected developer tools, not a newer Command Line Tools SDK.
+set -gx SDKROOT (xcrun --sdk macosx --show-sdk-path)
+
 # Setup mise
 if which mise &>/dev/null
   mise activate fish | source
