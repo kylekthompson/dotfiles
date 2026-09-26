@@ -84,6 +84,8 @@ Choose focused checks from the applicable contract reference to prove reachable 
 
 ## Report
 
+Keep the inventory, rollout plan, gate status, and verification evidence in the thread or PR by default. Instructions to record or document these do not require checked-in Markdown. Do not add per-PR rollout/status files or duplicate decision history in the repository. Update a durable operational runbook only when ongoing operation needs it, or add repository documentation when explicitly requested or required by repository guidance.
+
 Match detail to the changed contract and risk. A narrow review may need only a verdict and its supporting evidence; a rollout plan should cover the applicable items below:
 
 1. verdict: `safe`, `safe with gates`, or `blocked`, naming which gate is blocked

@@ -9,6 +9,11 @@
 - For new behavior or structural changes, inspect comparable implementations and their tests. Keep investigation proportional to the change.
 - Depart only when the task requires it or concrete evidence shows the existing pattern cannot meet the requirement. Explain material departures and keep them scoped; do not introduce a parallel approach or unrelated refactor.
 
+## Documentation scope
+
+- Keep decision history, implementation status, rollout plans, and verification reports in threads and pull requests by default. Do not create or update repository Markdown files merely to accompany a PR or duplicate that history.
+- Update repository documentation when it serves an enduring reader need, such as current behavior, setup instructions, or a reusable operational runbook, or when explicitly requested or required by repository guidance. Keep durable documentation focused on how the system works and is operated, not the progress of an individual change.
+
 ## UI design quality
 
 - Treat visual design and interaction quality as part of correctness; a working UI is not necessarily finished. Load and apply the `designing-ui` skill when creating, changing, or reviewing a visual interface, without waiting for an explicit design request. Keep effort proportional to the change.

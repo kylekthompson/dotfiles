@@ -19,6 +19,11 @@ Choose tests that distinguish correct behavior from plausible mistakes. Match th
 - Do not test private methods or incidental call sequences. Assert interactions only when the interaction or protocol is the behavior.
 - Keep cheap, deterministic collaborators real. Use fakes or mocks for nondeterminism and remote, slow, or unavailable boundaries.
 
+## Avoid Low-Value Infrastructure Tests
+
+- Do not write tests that restate declarative infrastructure or CI configuration. Prefer native validation, linting, and plan/dry-run checks; test independent behavior or policy, not copied literals.
+- Unless explicitly requested, verify thin infrastructure glue scripts by exercising them safely locally or in CI, not by adding dedicated tests. This overrides the test-first defaults below; substantive logic still warrants tests.
+
 ## Make Tests Challenge the Implementation
 
 - Derive expected results from the contract, a worked example, or an independent reference—not from the implementation's output or the same production helper being tested. Resolve disagreements against that source before changing an expectation. Characterization intentionally records current behavior; it establishes preservation, not correctness.
