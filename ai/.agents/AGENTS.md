@@ -9,12 +9,6 @@
 - For new behavior or structural changes, inspect comparable implementations and their tests. Keep investigation proportional to the change.
 - Depart only when the task requires it or concrete evidence shows the existing pattern cannot meet the requirement. Explain material departures and keep them scoped; do not introduce a parallel approach or unrelated refactor.
 
-## Concurrency tradeoffs
-
-- Conceivable races alone do not justify coordination. Identify credible overlapping callers and the specific observable harm or business invariant at risk; check existing guarantees before adding a mechanism. Existing locks need the same justification, not indiscriminate copying.
-- Weigh likelihood, severity, and recoverability against implementation and maintenance cost, contention, and deadlock risk. Accept benign, transient, or cheaply recoverable races when prevention costs more than the harm; low likelihood alone does not dismiss catastrophic harm.
-- Prefer the narrowest sufficient mechanism with clear ownership. Keep reasoning proportional to the risk; this is a decision rule, not a mandatory report or checklist for every change.
-
 ## Documentation scope
 
 - Keep decision history, implementation status, rollout plans, and verification reports in threads and pull requests by default. Do not create or update repository Markdown files merely to accompany a PR or duplicate that history.
