@@ -15,6 +15,12 @@ Judge the resulting system, not the brevity of the code or convenience of the to
 
 Identify what the design intertwines: policy with mechanism, information with behavior, or decisions with shared mutable state, timing, and call order. Remove unnecessary dependencies. Make necessary coordination explicit and give it a clear owner. Hiding complexity behind an interface can contain it without eliminating it.
 
+## Justify Coordination
+
+A conceivable race is not enough to justify coordination. Identify credible overlapping callers and the observable harm or business invariant at risk. Check existing guarantees; existing locks also need justification rather than being copied indiscriminately.
+
+Weigh likelihood, severity, and recoverability against implementation and maintenance cost, contention, and deadlock risk. Accept benign, transient, or cheaply recoverable races when prevention costs more than the harm; low likelihood alone does not dismiss catastrophic harm. When coordination is warranted, choose the narrowest sufficient mechanism and give its invariant one owner. Keep this reasoning proportional to the risk, not a mandatory report or checklist for every change.
+
 ## Assess Before Redesigning
 
 Treat a smell as evidence to inspect, not proof that the design must change. Ground it in affected behavior and callers, and name the concrete cost: an obscured invariant, unclear ownership, invalid state, hidden effect, coupling, or difficult change. Ask only about unknowns that can change the decision.
