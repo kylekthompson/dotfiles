@@ -336,7 +336,8 @@ fi
 
 # Install from .dotfiles brewfile
 log "Installing from ~/.dotfiles/brew/.Brewfile:"
-brew bundle check --file ~/.dotfiles/brew/.Brewfile &>/dev/null || brew bundle --file ~/.dotfiles/brew/.Brewfile
+# Always run Bundle to apply declared trust, even when packages are installed.
+brew bundle --file ~/.dotfiles/brew/.Brewfile
 logk
 
 scripts/bin/dot-stow

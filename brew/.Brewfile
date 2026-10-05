@@ -1,5 +1,8 @@
+# Third-party packages: use fully qualified names and trust only the needed item.
 tap "rwx-cloud/tap"
+brew "rwx-cloud/tap/rwx", trusted: true
 
+# Official Homebrew formulae and casks are trusted automatically.
 brew "awscli-local"
 brew "fish"
 brew "fzf"
@@ -19,7 +22,6 @@ brew "overmind"
 brew "pkg-config"
 brew "postgresql@17"
 brew "ripgrep"
-brew "rwx-cloud/tap/rwx"
 brew "stow"
 brew "terminal-notifier"
 brew "vim"

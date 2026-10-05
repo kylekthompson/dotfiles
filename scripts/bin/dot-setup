@@ -41,8 +41,9 @@ echo
 echo "==> Updating and upgrading brew..."
 echo
 
-sudo -u kylekthompson brew bundle check --global &>/dev/null || sudo -u kylekthompson brew bundle --global
 sudo -u kylekthompson brew update
+# Always run Bundle to apply declared trust, even when packages are installed.
+sudo -u kylekthompson brew bundle --global
 sudo -u kylekthompson brew upgrade
 
 echo
