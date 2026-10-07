@@ -5,7 +5,7 @@ export PATH="$HOME/.amp/bin:$HOME/.local/bin:$HOME/bin:$HOME/.bun/bin:$HOME/.orb
 
 # Build PostgreSQL with mise using the selected macOS developer tools.
 if [ "$(uname -s)" = Darwin ]; then
-  PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig"
+  PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix openssl@3)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig"
   MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
   SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
   export PKG_CONFIG_PATH MACOSX_DEPLOYMENT_TARGET SDKROOT
