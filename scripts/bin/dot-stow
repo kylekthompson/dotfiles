@@ -2,16 +2,22 @@
 
 set -euo pipefail
 
+[[ "$(id -u)" != 0 ]] || { echo "Run dot-stow as yourself, not with sudo." >&2; exit 1; }
+
 echo
 echo "==> Running stow..."
 echo
 
-pushd ~/.dotfiles &>/dev/null
-stow --restow ai brew editor git mise nvim psql ruby scripts ssh terminal
+pushd "$HOME/.dotfiles" &>/dev/null
+stow --restow --target "$HOME" ai brew editor git mise nvim psql ruby scripts ssh terminal
 
 # macOS can't follow symlinks for fonts, so we'll fake stowing them
-for font in $(ls fonts); do
-  cp "./fonts/${font}" "${HOME}/Library/Fonts/${font}"
-done
+if [[ "$(uname -s)" == Darwin ]]; then
+  mkdir -p "$HOME/Library/Fonts"
+  for font in fonts/*; do
+    [[ -f "$font" ]] || continue
+    cp "$font" "$HOME/Library/Fonts/"
+  done
+fi
 
 popd &>/dev/null

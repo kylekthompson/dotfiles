@@ -6,9 +6,28 @@ These are my dotfiles! They are an always-changing WIP, so feel free to use them
 git clone https://github.com/kylekthompson/dotfiles ~/.dotfiles
 cd ~/.dotfiles
 ./scripts/bin/dot-strap
-fish
-sudo dot-setup
+./scripts/bin/dot-setup
 ```
+
+Run both scripts as your login user, **not with sudo**, from a native macOS
+terminal (not Rosetta). They request sudo only for system configuration. If Git
+or developer tools are missing, run `xcode-select --install`, finish the installer,
+then retry. An existing full Xcode installation also works; resolve any license
+or first-launch prompts before continuing. After a macOS upgrade, review available
+developer-tool updates in System Settings > General > Software Update.
+
+`dot-strap` reuses existing Homebrew or Workbrew, or installs Homebrew with its
+official installer. It enables the application firewall and Apple's Touch ID
+sudo rule in `sudo_local` when the standard template is available. It does not
+install macOS updates or enable FileVault automatically. Check FileVault in
+System Settings > Privacy & Security, keep its recovery key in a secure place,
+and require a password immediately after sleep in System Settings > Lock Screen.
+
+Sign in to the Mac App Store before running `dot-setup`. It installs the declared
+packages, stows dotfiles and copies fonts, sets fish as your login shell, installs
+mise tools and Claude Code, and installs Amphetamine, Magnet, and Clocker. Open a
+new terminal afterward. Existing files that conflict with Stow must be reviewed
+and moved aside manually; the scripts do not overwrite or adopt them.
 
 ## Set up an Apple Silicon Mac as an Amp runner
 

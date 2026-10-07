@@ -2,64 +2,62 @@
 
 set -euo pipefail
 
-[ "$UID" -eq 0 ] || { echo "This script must be run as root."; exit 1;}
+[[ "$(uname -s)" == Darwin ]] || { echo "This script requires macOS." >&2; exit 1; }
+[[ "$(id -u)" != 0 ]] || { echo "Run dot-setup as yourself, not with sudo." >&2; exit 1; }
 
-dot-stow
+DOTFILES="$HOME/.dotfiles"
+export PATH="$HOME/.local/bin:$PATH"
+if [[ -x /opt/workbrew/bin/brew ]]; then
+  export PATH="/opt/workbrew/bin:$PATH"
+elif ! command -v brew >/dev/null 2>&1; then
+  for prefix in /opt/homebrew /usr/local; do
+    if [[ -x "$prefix/bin/brew" ]]; then
+      export PATH="$prefix/bin:$PATH"
+      break
+    fi
+  done
+fi
+command -v brew >/dev/null 2>&1 || { echo "Run dot-strap first to install Homebrew." >&2; exit 1; }
+HOMEBREW_SHELLENV="$(brew shellenv)"
+eval "$HOMEBREW_SHELLENV"
 
-echo
+echo "==> Installing from the Brewfile..."
+# Always run Bundle to apply declared trust, even when packages are installed.
+brew bundle --file "$DOTFILES/brew/.Brewfile"
+"$DOTFILES/scripts/bin/dot-stow"
+
 echo "==> Ensuring fish is the default shell..."
-echo
-
-if cat /etc/shells | grep /opt/homebrew/bin/fish &>/dev/null; then
+FISH_SHELL="$(brew --prefix)/bin/fish"
+[[ -x "$FISH_SHELL" ]] || { echo "fish is not installed at $FISH_SHELL." >&2; exit 1; }
+if grep -Fxq "$FISH_SHELL" /etc/shells; then
   echo "Fish is already in /etc/shells"
 else
   echo "Adding fish to /etc/shells..."
-  echo /opt/homebrew/bin/fish >> /etc/shells
+  printf '%s\n' "$FISH_SHELL" | sudo tee -a /etc/shells >/dev/null
 fi
 
-if [ "${SHELL}" == "/opt/homebrew/bin/fish" ]; then
-  echo "Fish is already your \$SHELL"
+LOGIN_SHELL="$(dscl . -read "/Users/$(id -un)" UserShell | awk '{print $2}')"
+if [[ "$LOGIN_SHELL" == "$FISH_SHELL" ]]; then
+  echo "Fish is already your login shell"
 else
-  echo "Making fish your current \$SHELL..."
-  sudo -u kylekthompson chsh -s /opt/homebrew/bin/fish
+  chsh -s "$FISH_SHELL"
 fi
 
-echo
-echo "==> Insalling Mac App Store apps..."
-echo
-
-echo "Installing Amphetamine..."
-sudo -u kylekthompson mas install 937984704
-
-echo "Installing Magnet..."
-sudo -u kylekthompson mas install 441258766
-
-echo "Installing Clocker..."
-sudo -u kylekthompson mas install 1056643111
-
-echo
-echo "==> Updating and upgrading brew..."
-echo
-
-sudo -u kylekthompson brew update
-# Always run Bundle to apply declared trust, even when packages are installed.
-sudo -u kylekthompson brew bundle --global
-sudo -u kylekthompson brew upgrade
-
-echo
 echo "==> Installing default tools via mise"
-echo
-
-pushd ~ &>/dev/null
-
-sudo -u kylekthompson mise install
+(
+  cd "$HOME"
+  mise install
+)
 
 if ! command -v claude &>/dev/null; then
-  echo
-  echo "==> Installing claude code"
-  echo
-
-  sudo -u kylekthompson curl -fsSL https://claude.ai/install.sh | sudo -u kylekthompson bash
+  echo "==> Installing Claude Code..."
+  CLAUDE_INSTALLER="$(curl -fsSL https://claude.ai/install.sh)"
+  /bin/bash -c "$CLAUDE_INSTALLER"
 fi
 
-popd &>/dev/null
+echo "==> Installing Mac App Store apps (sign in to the App Store first)..."
+mas install 937984704 # Amphetamine
+mas install 441258766 # Magnet
+mas install 1056643111 # Clocker
+
+echo "==> Setup finished. Open a new terminal to use fish."
