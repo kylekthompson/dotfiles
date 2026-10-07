@@ -24,10 +24,14 @@ System Settings > Privacy & Security, keep its recovery key in a secure place,
 and require a password immediately after sleep in System Settings > Lock Screen.
 
 Sign in to the Mac App Store before running `dot-setup`. It installs the declared
-packages, stows dotfiles and copies fonts, sets fish as your login shell, installs
-mise tools and Claude Code, and installs Amphetamine, Magnet, and Clocker. Open a
-new terminal afterward. Existing files that conflict with Stow must be reviewed
-and moved aside manually; the scripts do not overwrite or adopt them.
+packages, stows dotfiles and copies fonts, sets Homebrew Zsh as your login shell,
+installs mise tools and Claude Code, and installs Amphetamine, Magnet, and Clocker.
+Open a new terminal afterward. Existing files that conflict with Stow must be
+reviewed and moved aside manually; the scripts do not overwrite or adopt them.
+
+Zsh includes autosuggestions, syntax highlighting, fzf bindings, and a Git/Mercurial
+prompt. Put machine-local shell configuration in `~/.config/zsh/override.zsh`;
+Fish overrides and history are not imported automatically.
 
 ## Set up an Apple Silicon Mac as an Amp runner
 

@@ -1,6 +1,0 @@
-# This file contains fish universal variable definitions.
-# VERSION: 3.0
-SETUVAR __fish_init_2_3_0:\x1d
-SETUVAR __fish_initialized:4300
-SETUVAR fish_greeting:
-SETUVAR fish_user_paths:/Applications/Ghostty\x2eapp/Contents/MacOS

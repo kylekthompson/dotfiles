@@ -26,21 +26,21 @@ echo "==> Installing from the Brewfile..."
 brew bundle --file "$DOTFILES/brew/.Brewfile"
 "$DOTFILES/scripts/bin/dot-stow"
 
-echo "==> Ensuring fish is the default shell..."
-FISH_SHELL="$(brew --prefix)/bin/fish"
-[[ -x "$FISH_SHELL" ]] || { echo "fish is not installed at $FISH_SHELL." >&2; exit 1; }
-if grep -Fxq "$FISH_SHELL" /etc/shells; then
-  echo "Fish is already in /etc/shells"
+echo "==> Ensuring zsh is the default shell..."
+ZSH_SHELL="$(brew --prefix)/bin/zsh"
+[[ -x "$ZSH_SHELL" ]] || { echo "zsh is not installed at $ZSH_SHELL." >&2; exit 1; }
+if grep -Fxq "$ZSH_SHELL" /etc/shells; then
+  echo "Zsh is already in /etc/shells"
 else
-  echo "Adding fish to /etc/shells..."
-  printf '%s\n' "$FISH_SHELL" | sudo tee -a /etc/shells >/dev/null
+  echo "Adding zsh to /etc/shells..."
+  printf '%s\n' "$ZSH_SHELL" | sudo tee -a /etc/shells >/dev/null
 fi
 
 LOGIN_SHELL="$(dscl . -read "/Users/$(id -un)" UserShell | awk '{print $2}')"
-if [[ "$LOGIN_SHELL" == "$FISH_SHELL" ]]; then
-  echo "Fish is already your login shell"
+if [[ "$LOGIN_SHELL" == "$ZSH_SHELL" ]]; then
+  echo "Zsh is already your login shell"
 else
-  chsh -s "$FISH_SHELL"
+  chsh -s "$ZSH_SHELL"
 fi
 
 echo "==> Installing default tools via mise"
@@ -60,4 +60,4 @@ mas install 937984704 # Amphetamine
 mas install 441258766 # Magnet
 mas install 1056643111 # Clocker
 
-echo "==> Setup finished. Open a new terminal to use fish."
+echo "==> Setup finished. Open a new terminal to use zsh."

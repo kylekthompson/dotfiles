@@ -1,5 +1,7 @@
 /ssh/.ssh/known_hosts*
+# Keep old machine-local Fish overrides private after switching shells.
 /terminal/.config/fish/override.fish
+/terminal/.config/zsh/override.zsh
 /editor/.config/zed/prompts
 
 # Created by https://www.gitignore.io/api/macos,linux,windows
