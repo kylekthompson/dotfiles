@@ -35,8 +35,9 @@ This is a minimal alternative to `dot-strap` / `dot-setup`, not an additional
 workstation setup step. Run it in a native ARM terminal as the macOS user that
 will run Amp, **without sudo**. Homebrew's installer may request administrator
 credentials. It installs Git, GitHub CLI, mise, ripgrep, jq, tmux, and the
-self-updating Amp CLI; it does not stow dotfiles, install desktop apps, change
-your shell, or publish Amp configuration.
+self-updating Amp CLI, plus the 1Password desktop app for account setup; it does
+not stow dotfiles, install other desktop apps, change your shell, or publish Amp
+configuration.
 
 For a dedicated runner Mac, use one local administrator account for tool
 maintenance and running Amp. An Apple Account is not required for this setup;
@@ -66,6 +67,8 @@ Defaults are runner ID `m1-pro` and repository parent `~/src`. Override them wit
 or restart the service. Keep this checkout in place: the LaunchAgent invokes its
 runner wrapper directly. After stowing, setup is also available as
 `dot-runner-setup`.
+
+Open 1Password and sign in to access the credentials needed for account setup.
 
 Authenticate interactively as the same user:
 
