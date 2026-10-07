@@ -19,11 +19,19 @@ credentials. It installs Git, GitHub CLI, mise, ripgrep, jq, tmux, and the
 self-updating Amp CLI; it does not stow dotfiles, install desktop apps, change
 your shell, or publish Amp configuration.
 
+For a dedicated runner Mac, use one local administrator account for tool
+maintenance and running Amp. An Apple Account is not required for this setup;
+you can skip that sign-in during macOS setup. Keep personal iCloud syncing off,
+and give the machine only the development credentials it needs. Run Amp without
+sudo and do not configure passwordless sudo.
+
 On a fresh Mac, install Apple's developer tools and wait for them to finish:
 
 ```bash
 xcode-select --install
 ```
+
+Skip this if full Xcode is already installed and selected (see below).
 
 Then, in the default Zsh or Bash:
 
@@ -72,11 +80,16 @@ one. Prefer **New Worktree** for concurrent tasks.
 
 The LaunchAgent starts at login and restarts after exits. It prevents system
 sleep on AC power, but **does not prevent lid-close sleep**. Keep the Mac plugged
-in, ventilated, and the lid open; leave FileVault enabled and expect a local
-unlock after reboot. Amp cannot wake the Mac. Threads can access the macOS
-user's files and credentials: advertised directories are not a sandbox. Desktop
-sharing, workspace sharing, and Amp-managed environment injection are off by
-default.
+in, ventilated, and the lid open. Keep FileVault enabled and automatic login off;
+plan to unlock the disk and log into the runner account after reboot. Lock the
+screen rather than logging out to keep command-line work running. Apple Silicon
+Macs on macOS 26 or later also support
+[FileVault unlock over SSH](https://support.apple.com/guide/security/sec8447f5049/web)
+with Remote Login enabled and networking available. This is not automatic login;
+the LaunchAgent still requires a user login session. Amp cannot wake the Mac.
+Threads can access the macOS user's files and credentials: advertised directories
+are not a sandbox. Desktop sharing, workspace sharing, and Amp-managed environment
+injection are off by default.
 
 Inspect the service and logs:
 
@@ -90,6 +103,29 @@ After active work finishes, stop with
 changes, rerun setup and bootstrap again; setup alone does not reload a running
 service. To disable startup permanently, boot out the service and remove its
 plist. This does not remove code, credentials, or installed tools.
+
+### Optional: Xcode builds
+
+For Apple-platform app builds, install full Xcode separately; the Command Line
+Tools package alone is not sufficient. Use the version your projects expect and
+that your macOS version supports. You can use your existing Apple Account to
+download Xcode through the Mac App Store or Apple's developer downloads without
+signing into iCloud. No separate runner Apple Account is needed.
+
+Open Xcode once to finish setup and install the platform and Simulator runtimes
+you need. Then select it for command-line builds:
+
+```bash
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+xcodebuild -version
+```
+
+Adjust the path if Xcode is installed elsewhere. The runner uses this selection
+for `xcodebuild`; no runner configuration change or desktop sharing is needed for
+command-line builds. Ordinary Simulator builds/tests generally do not require
+signing into Xcode. Physical-device builds and distribution need appropriate
+developer signing credentials and provisioning, configured separately. Keep
+signing keys out of Git and install them only when needed.
 
 ## Sync global Amp skills, plugins, and guidance
 
