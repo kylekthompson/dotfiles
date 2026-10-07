@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ $(uname -s) != Darwin ]]; then
+  echo "The runner wrapper requires macOS." >&2
+  exit 1
+fi
+
+# launchd does not load shell profiles. Shims select tools per thread directory,
+# rather than pinning every thread to the starting directory's mise versions.
+export PATH="$HOME/.amp/bin:$HOME/.local/bin:$HOME/.bun/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# -s prevents system sleep only on AC power; it does not prevent lid-close sleep.
+exec caffeinate -s "$HOME/.amp/bin/amp" --no-tui \
+  --discover-dirs --no-serve-cwd --remote-control-terminal "$@"

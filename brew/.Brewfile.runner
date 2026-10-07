@@ -1,0 +1,7 @@
+# Minimal runner tools; project runtimes are installed separately with mise.
+brew "git"
+brew "gh"
+brew "mise"
+brew "ripgrep"
+brew "jq"
+brew "tmux"

@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Usage: dot-runner-setup [runner-id [absolute-code-directory]]
+
+set -euo pipefail
+
+if [[ ${1:-} == --help ]]; then
+  echo "Usage: dot-runner-setup [runner-id [absolute-code-directory]]"
+  echo "Defaults: m1-pro, \$HOME/code. Installs and configures; does not start the runner."
+  exit 0
+fi
+
+if [[ $(uname -s) != Darwin || $(uname -m) != arm64 ]]; then
+  echo "Runner setup requires native Apple Silicon macOS (not a Rosetta terminal)." >&2
+  exit 1
+fi
+
+if [[ $UID -eq 0 ]]; then
+  echo "Run this as the runner's macOS user, not with sudo." >&2
+  exit 1
+fi
+
+RUNNER_ID=${1:-m1-pro}
+CODE_DIR=${2:-$HOME/code}
+if [[ $# -gt 2 || ! $RUNNER_ID =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ || ${#RUNNER_ID} -gt 63 ]]; then
+  echo "Use a runner ID of 1–63 letters, digits, or hyphens, starting and ending with a letter or digit." >&2
+  exit 1
+fi
+if [[ $CODE_DIR != /* ]]; then
+  echo "The code directory must be an absolute path." >&2
+  exit 1
+fi
+
+# Resolve stow's symlink too, so this works both from the checkout and ~/bin.
+SCRIPT_PATH=${BASH_SOURCE[0]}
+while [[ -L $SCRIPT_PATH ]]; do
+  SCRIPT_DIR=$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)
+  SCRIPT_PATH=$(readlink "$SCRIPT_PATH")
+  [[ $SCRIPT_PATH == /* ]] || SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR=$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)
+REPO_DIR=$(cd "$SCRIPT_DIR/../.." && pwd -P)
+
+if ! xcode-select -p >/dev/null 2>&1; then
+  echo "Install Apple's developer tools with: xcode-select --install"
+  echo "Run this script again after installation finishes."
+  exit 1
+fi
+
+export PATH="$HOME/.amp/bin:$HOME/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+if [[ ! -x /opt/homebrew/bin/brew ]]; then
+  echo "==> Installing native Homebrew (may request administrator credentials)..."
+  HOMEBREW_INSTALLER=$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
+  /bin/bash -c "$HOMEBREW_INSTALLER"
+fi
+
+echo "==> Installing runner tools..."
+brew bundle --file "$REPO_DIR/brew/.Brewfile.runner"
+
+if [[ ! -x $HOME/.amp/bin/amp ]]; then
+  echo "==> Installing Amp..."
+  curl -fsSL https://ampcode.com/install.sh | /bin/bash
+fi
+
+LABEL=com.kylekthompson.amp-runner
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+LOG_DIR="$HOME/Library/Logs/amp-runner"
+mkdir -p "$CODE_DIR" "$(dirname "$PLIST")" "$LOG_DIR"
+CODE_DIR=$(cd "$CODE_DIR" && pwd -P)
+
+xml_escape() {
+  local value=$1
+  value=${value//&/\&amp;}
+  value=${value//</\&lt;}
+  value=${value//>/\&gt;}
+  value=${value//\"/\&quot;}
+  value=${value//\'/\&apos;}
+  printf '%s' "$value"
+}
+
+# Validate a complete new plist before replacing the installed one.
+umask 077
+TEMP_PLIST=$(mktemp "$PLIST.XXXXXX")
+trap 'rm -f "$TEMP_PLIST"' EXIT
+cat > "$TEMP_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$(xml_escape "$SCRIPT_DIR/dot-runner")</string>
+    <string>--runner-id</string>
+    <string>$(xml_escape "$RUNNER_ID")</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>$(xml_escape "$CODE_DIR")</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>$(xml_escape "$LOG_DIR/stdout.log")</string>
+  <key>StandardErrorPath</key>
+  <string>$(xml_escape "$LOG_DIR/stderr.log")</string>
+</dict>
+</plist>
+EOF
+plutil -lint "$TEMP_PLIST"
+mv "$TEMP_PLIST" "$PLIST"
+
+printf '\nRunner configured, but not started or restarted.\n'
+printf 'Authenticate as this macOS user:\n  %q login\n' "$HOME/.amp/bin/amp"
+printf '  /opt/homebrew/bin/gh auth login\n  /opt/homebrew/bin/gh auth setup-git\n'
+printf '\nStart after authentication (or your next login):\n  launchctl bootstrap gui/%s %q\n' "$UID" "$PLIST"
+printf '\nIf already loaded, stop it first after active work finishes:\n  launchctl bootout gui/%s/%s\n' "$UID" "$LABEL"
+printf '\nCheck status:\n  launchctl print gui/%s/%s\n' "$UID" "$LABEL"
+printf '  %q runner list\n' "$HOME/.amp/bin/amp"
+printf '\nLogs: %s\n' "$LOG_DIR"

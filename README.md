@@ -10,6 +10,86 @@ fish
 sudo dot-setup
 ```
 
+## Set up an Apple Silicon Mac as an Amp runner
+
+This is a minimal alternative to `dot-strap` / `dot-setup`, not an additional
+workstation setup step. Run it in a native ARM terminal as the macOS user that
+will run Amp, **without sudo**. Homebrew's installer may request administrator
+credentials. It installs Git, GitHub CLI, mise, ripgrep, jq, tmux, and the
+self-updating Amp CLI; it does not stow dotfiles, install desktop apps, change
+your shell, or publish Amp configuration.
+
+On a fresh Mac, install Apple's developer tools and wait for them to finish:
+
+```bash
+xcode-select --install
+```
+
+Then, in the default Zsh or Bash:
+
+```bash
+git clone https://github.com/kylekthompson/dotfiles ~/.dotfiles
+cd ~/.dotfiles
+./scripts/bin/dot-runner-setup
+```
+
+Defaults are runner ID `m1-pro` and repository parent `~/code`. Override them with
+`./scripts/bin/dot-runner-setup my-mac "$HOME/projects"`. The script creates
+`~/Library/LaunchAgents/com.kylekthompson.amp-runner.plist` but does **not** start
+or restart the service. Keep this checkout in place: the LaunchAgent invokes its
+runner wrapper directly. After stowing, setup is also available as
+`dot-runner-setup`.
+
+Authenticate interactively as the same user:
+
+```bash
+~/.amp/bin/amp login
+/opt/homebrew/bin/gh auth login
+/opt/homebrew/bin/gh auth setup-git
+```
+
+Clone the repositories you want under `~/code` (or your chosen parent), install
+their dependencies, and check that their tests work locally. For trusted
+repositories using mise, run `/opt/homebrew/bin/mise trust` and
+`/opt/homebrew/bin/mise install` in each checkout. Setup does not install any
+project runtimes. The runner supplies Homebrew, Amp, local binaries, and mise
+shims on PATH without loading interactive shell profiles. Shims select runtime
+versions per directory; use `mise exec -- <command>` when a task also needs
+mise-defined environment variables.
+
+Start the runner in your logged-in macOS session:
+
+```bash
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.kylekthompson.amp-runner.plist"
+~/.amp/bin/amp runner list
+```
+
+Select `m1-pro` in Amp's new-thread location picker. Repositories up to two levels
+below the parent are discovered automatically, including new clones and
+worktrees. An empty parent has no served repositories, so the runner will not
+appear until you clone one. Prefer **New Worktree** for concurrent tasks.
+
+The LaunchAgent starts at login and restarts after exits. It prevents system
+sleep on AC power, but **does not prevent lid-close sleep**. Keep the Mac plugged
+in, ventilated, and the lid open; leave FileVault enabled and expect a local
+unlock after reboot. Amp cannot wake the Mac. Threads can access the macOS
+user's files and credentials: advertised directories are not a sandbox. Desktop
+sharing, workspace sharing, and Amp-managed environment injection are off by
+default.
+
+Inspect the service and logs:
+
+```bash
+launchctl print "gui/$(id -u)/com.kylekthompson.amp-runner"
+tail -n 100 "$HOME/Library/Logs/amp-runner/stderr.log"
+```
+
+After active work finishes, stop with
+`launchctl bootout "gui/$(id -u)/com.kylekthompson.amp-runner"`. To apply setup
+changes, rerun setup and bootstrap again; setup alone does not reload a running
+service. To disable startup permanently, boot out the service and remove its
+plist. This does not remove code, credentials, or installed tools.
+
 ## Sync global Amp skills, plugins, and guidance
 
 Requires authenticated `amp`, Git, and Bun with `Bun.YAML` support (tested with
