@@ -1,26 +1,18 @@
-export EDITOR="zed --wait"
-
 # Keep PATH unique, including when opening nested shells.
 typeset -U path fpath
-export HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
+source "$HOME/.config/shell/development.sh"
 path=(
-  "$HOME/.local/bin"
-  "$HOME/bin"
-  "$HOMEBREW_PREFIX/opt/libpq/bin"
   "$HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin"
   "$HOMEBREW_PREFIX/opt/gnu-tar/libexec/gnubin"
-  "$HOMEBREW_PREFIX/bin"
-  "$HOMEBREW_PREFIX/sbin"
   /Applications/Ghostty.app/Contents/MacOS
   $path
 )
 fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
 
-# Build PostgreSQL with mise using the selected macOS developer tools.
-if [[ "$OSTYPE" == darwin* ]]; then
-  export PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig"
-  export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
-  export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+if command -v zed >/dev/null 2>&1; then
+  export EDITOR="zed --wait"
+else
+  export EDITOR="${EDITOR:-vi}"
 fi
 
 if command -v mise >/dev/null 2>&1; then
@@ -29,7 +21,9 @@ fi
 
 [[ -r "$HOME/.orbstack/shell/init.zsh" ]] && source "$HOME/.orbstack/shell/init.zsh"
 
-alias vim=nvim
+if command -v nvim >/dev/null 2>&1; then
+  alias vim=nvim
+fi
 alias l="ls -lhFG"
 alias la="ls -lahFG"
 alias sudo='sudo '

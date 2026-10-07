@@ -1,9 +1,15 @@
 # Minimal runner tools; project runtimes are installed separately with mise.
+brew "curl"
 brew "git"
 brew "gh"
+brew "icu4c"
+brew "libpq"
 brew "mise"
+brew "pkg-config"
 brew "ripgrep"
 brew "jq"
 brew "tmux"
+brew "zlib"
 
 cask "1password"
+cask "orbstack"

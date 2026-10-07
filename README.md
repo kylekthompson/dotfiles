@@ -33,15 +33,27 @@ Zsh includes autosuggestions, syntax highlighting, fzf bindings, and a Git/Mercu
 prompt. Put machine-local shell configuration in `~/.config/zsh/override.zsh`;
 Fish overrides and history are not imported automatically.
 
+`~/.config/shell/development.sh` owns the shared tool paths and PostgreSQL build
+environment. Interactive Zsh, workstation setup, and the Amp runner load it;
+prompts, aliases, completions, and interactive mise activation stay in `.zshrc`.
+The shared PATH includes Amp, Bun, OrbStack, local binaries, and mise shims before
+Homebrew's libpq tools. Workstation updates should rerun `dot-stow` to install
+the shared file before opening a new terminal.
+
 ## Set up an Apple Silicon Mac as an Amp runner
 
 This is a minimal alternative to `dot-strap` / `dot-setup`, not an additional
 workstation setup step. Run it in a native ARM terminal as the macOS user that
 will run Amp, **without sudo**. Homebrew's installer may request administrator
 credentials. It installs Git, GitHub CLI, mise, ripgrep, jq, tmux, and the
-self-updating Amp CLI, plus the 1Password desktop app for account setup; it does
-not stow dotfiles, install other desktop apps, change your shell, or publish Amp
-configuration.
+self-updating Amp CLI, plus 1Password for account setup and OrbStack for Docker
+support. It also installs PostgreSQL client tools (`libpq`) and build dependencies
+(`pkg-config`, ICU, curl, and zlib). It does not install a Homebrew PostgreSQL
+server, the full workstation dotfiles or app set, or publish Amp configuration.
+It links the shared development environment, `.zprofile`, and `.zshrc` for local
+and SSH terminals without changing your login shell; the macOS-provided Zsh is
+sufficient. Optional shell plugins load only when installed, and the editor
+falls back to `vi` when Zed is unavailable.
 
 For a dedicated runner Mac, use one local administrator account for tool
 maintenance and running Amp. An Apple Account is not required for this setup;
@@ -68,11 +80,32 @@ cd ~/.dotfiles
 Defaults are runner ID `m1-pro` and repository parent `~/src`. Override them with
 `./scripts/bin/dot-runner-setup my-mac "$HOME/projects"`. The script creates
 `~/Library/LaunchAgents/com.kylekthompson.amp-runner.plist` but does **not** start
-or restart the service. Keep this checkout in place: the LaunchAgent invokes its
-runner wrapper directly. After stowing, setup is also available as
-`dot-runner-setup`.
+or restart the service. Keep this checkout in place: the LaunchAgent and shell
+symlinks refer to it. Existing shell files or links to other configurations must
+be backed up and moved aside before setup; it checks all three links before
+installing anything and does not overwrite or adopt conflicting files. Preserve
+machine-local settings in `~/.config/zsh/override.zsh`. Open a new Zsh terminal
+after setup. After stowing, setup is also available as `dot-runner-setup`.
 
 Open 1Password and sign in to access the credentials needed for account setup.
+
+Open OrbStack once and finish its initial setup to start the Docker engine:
+
+```bash
+open -a OrbStack
+```
+
+After setup finishes, verify Docker from a new terminal:
+
+```bash
+docker context use orbstack
+docker info
+```
+
+OrbStack includes Docker CLI, Compose, and Buildx; no separate Docker package is
+needed. Enable OrbStack's **Start at login** setting so the engine is available
+after reboot and login. The runner includes `~/.orbstack/bin` on PATH without
+relying on shell profiles. Setup does not open OrbStack or start its engine.
 
 Authenticate interactively as the same user:
 
@@ -90,6 +123,13 @@ project runtimes. The runner supplies Homebrew, Amp, local binaries, and mise
 shims on PATH without loading interactive shell profiles. Shims select runtime
 versions per directory; use `mise exec -- <command>` when a task also needs
 mise-defined environment variables.
+
+The shared environment supplies Homebrew's `libpq` tools after mise shims on
+PATH and exports `PKG_CONFIG_PATH` for ICU, curl, and zlib,
+`MACOSX_DEPLOYMENT_TARGET` for the current macOS version, and `SDKROOT` from the
+selected developer tools. Runner threads and interactive Zsh terminals use the
+same settings without loading interactive shell features into the runner.
+PostgreSQL server versions remain project-managed through mise or Docker.
 
 Start the runner in your logged-in macOS session:
 

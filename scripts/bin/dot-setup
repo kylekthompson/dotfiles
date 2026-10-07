@@ -26,6 +26,10 @@ echo "==> Installing from the Brewfile..."
 brew bundle --file "$DOTFILES/brew/.Brewfile"
 "$DOTFILES/scripts/bin/dot-stow"
 
+# Noninteractive setup needs the same build environment as a new Zsh terminal.
+# shellcheck source=terminal/.config/shell/development.sh
+source "$HOME/.config/shell/development.sh"
+
 echo "==> Ensuring zsh is the default shell..."
 ZSH_SHELL="$(brew --prefix)/bin/zsh"
 [[ -x "$ZSH_SHELL" ]] || { echo "zsh is not installed at $ZSH_SHELL." >&2; exit 1; }

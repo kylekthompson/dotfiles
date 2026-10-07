@@ -4,6 +4,7 @@ brew "rwx-cloud/tap/rwx", trusted: true
 
 # Official Homebrew formulae and casks are trusted automatically.
 brew "awscli-local"
+brew "curl"
 brew "fzf"
 brew "gh"
 brew "git"
@@ -24,6 +25,7 @@ brew "ripgrep"
 brew "stow"
 brew "terminal-notifier"
 brew "vim"
+brew "zlib"
 brew "zsh"
 brew "zsh-autosuggestions"
 brew "zsh-syntax-highlighting"

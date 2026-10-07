@@ -40,6 +40,17 @@ done
 SCRIPT_DIR=$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)
 REPO_DIR=$(cd "$SCRIPT_DIR/../.." && pwd -P)
 
+# Check all shell links before installing tools or changing any configuration.
+SHELL_FILES=(.zprofile .zshrc .config/shell/development.sh)
+for file in "${SHELL_FILES[@]}"; do
+  target="$HOME/$file"
+  if [[ ( -e $target || -L $target ) && ! $target -ef "$REPO_DIR/terminal/$file" ]]; then
+    printf 'Shell configuration conflicts with %s.\n' "$target" >&2
+    echo "Back it up and move it aside, preserving local settings in ~/.config/zsh/override.zsh, then rerun setup." >&2
+    exit 1
+  fi
+done
+
 if ! xcode-select -p >/dev/null 2>&1; then
   echo "Install Apple's developer tools with: xcode-select --install"
   echo "Run this script again after installation finishes."
@@ -55,6 +66,15 @@ fi
 
 echo "==> Installing runner tools..."
 brew bundle --file "$REPO_DIR/brew/.Brewfile.runner"
+
+echo "==> Linking Zsh and shared development configuration..."
+for file in "${SHELL_FILES[@]}"; do
+  target="$HOME/$file"
+  mkdir -p "$(dirname "$target")"
+  if [[ ! $target -ef "$REPO_DIR/terminal/$file" ]]; then
+    ln -s "$REPO_DIR/terminal/$file" "$target"
+  fi
+done
 
 if [[ ! -x $HOME/.amp/bin/amp ]]; then
   echo "==> Installing Amp..."
@@ -114,6 +134,7 @@ plutil -lint "$TEMP_PLIST"
 mv "$TEMP_PLIST" "$PLIST"
 
 printf '\nRunner configured, but not started or restarted.\n'
+printf 'Open a new Zsh terminal to load the shared development environment.\n'
 printf 'Authenticate as this macOS user:\n  %q login\n' "$HOME/.amp/bin/amp"
 printf '  /opt/homebrew/bin/gh auth login\n  /opt/homebrew/bin/gh auth setup-git\n'
 printf '\nStart after authentication (or your next login):\n  launchctl bootstrap gui/%s %q\n' "$UID" "$PLIST"
