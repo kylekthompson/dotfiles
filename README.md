@@ -78,6 +78,33 @@ extra discovery depth. New clones and worktrees are discovered too. An empty
 parent has no served repositories, so the runner will not appear until you clone
 one. Prefer **New Worktree** for concurrent tasks.
 
+The wrapper uses these [Amp runner flags](https://ampcode.com/docs/cli/runners):
+
+| Flag | Purpose |
+| --- | --- |
+| `--no-tui` | Run a background runner, without an interactive Amp TUI. |
+| `--runner-id m1-pro` | Keep a stable runner ID (supplied by the LaunchAgent). |
+| `--discover-dirs` | Discover checkouts two levels beneath the working directory. |
+| `--no-serve-cwd` | Advertise discovered checkouts, not the `~/src` parent itself. |
+| `--remote-control-terminal` | Enable the web Terminal tab. |
+| `--desktop` | Enable the Desktop tab, sharing and controlling this Mac's display. |
+
+Desktop access is Amp's built-in remote desktop, **not a Microsoft RDP server**.
+On first startup, grant **Amp Desktop Helper** Screen Recording and Accessibility
+access in System Settings > Privacy & Security. Check readiness or request the
+permissions again with:
+
+```bash
+~/.amp/bin/amp runner desktop status
+~/.amp/bin/amp runner desktop allow screen-recording
+~/.amp/bin/amp runner desktop allow accessibility
+```
+
+All threads on this Mac share the same desktop, not isolated GUI sessions. Screen
+locking can affect GUI automation; verify desktop access in the state you plan
+to use. For independent remote access when Amp is offline, configure macOS Screen
+Sharing separately; this bootstrap does not enable it.
+
 The LaunchAgent starts at login and restarts after exits. It prevents system
 sleep on AC power, but **does not prevent lid-close sleep**. Keep the Mac plugged
 in, ventilated, and the lid open. Keep FileVault enabled and automatic login off;
@@ -88,8 +115,8 @@ Macs on macOS 26 or later also support
 with Remote Login enabled and networking available. This is not automatic login;
 the LaunchAgent still requires a user login session. Amp cannot wake the Mac.
 Threads can access the macOS user's files and credentials: advertised directories
-are not a sandbox. Desktop sharing, workspace sharing, and Amp-managed environment
-injection are off by default.
+are not a sandbox. Desktop and terminal access are enabled by the wrapper;
+workspace sharing and Amp-managed environment injection remain off by default.
 
 Inspect the service and logs:
 
