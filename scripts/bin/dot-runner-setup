@@ -5,7 +5,7 @@ set -euo pipefail
 
 if [[ ${1:-} == --help ]]; then
   echo "Usage: dot-runner-setup [runner-id [absolute-code-directory]]"
-  echo "Defaults: m1-pro, \$HOME/code. Installs and configures; does not start the runner."
+  echo "Defaults: m1-pro, \$HOME/src. Installs and configures; does not start the runner."
   exit 0
 fi
 
@@ -20,7 +20,7 @@ if [[ $UID -eq 0 ]]; then
 fi
 
 RUNNER_ID=${1:-m1-pro}
-CODE_DIR=${2:-$HOME/code}
+CODE_DIR=${2:-$HOME/src}
 if [[ $# -gt 2 || ! $RUNNER_ID =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ || ${#RUNNER_ID} -gt 63 ]]; then
   echo "Use a runner ID of 1–63 letters, digits, or hyphens, starting and ending with a letter or digit." >&2
   exit 1

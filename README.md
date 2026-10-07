@@ -33,7 +33,7 @@ cd ~/.dotfiles
 ./scripts/bin/dot-runner-setup
 ```
 
-Defaults are runner ID `m1-pro` and repository parent `~/code`. Override them with
+Defaults are runner ID `m1-pro` and repository parent `~/src`. Override them with
 `./scripts/bin/dot-runner-setup my-mac "$HOME/projects"`. The script creates
 `~/Library/LaunchAgents/com.kylekthompson.amp-runner.plist` but does **not** start
 or restart the service. Keep this checkout in place: the LaunchAgent invokes its
@@ -48,9 +48,9 @@ Authenticate interactively as the same user:
 /opt/homebrew/bin/gh auth setup-git
 ```
 
-Clone the repositories you want under `~/code` (or your chosen parent), install
-their dependencies, and check that their tests work locally. For trusted
-repositories using mise, run `/opt/homebrew/bin/mise trust` and
+Clone repositories into `~/src/<org>/<repo>` to mirror GitHub (or under your
+chosen parent), install their dependencies, and check that their tests work
+locally. For trusted repositories using mise, run `/opt/homebrew/bin/mise trust` and
 `/opt/homebrew/bin/mise install` in each checkout. Setup does not install any
 project runtimes. The runner supplies Homebrew, Amp, local binaries, and mise
 shims on PATH without loading interactive shell profiles. Shims select runtime
@@ -65,9 +65,10 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.kylekthompson
 ```
 
 Select `m1-pro` in Amp's new-thread location picker. Repositories up to two levels
-below the parent are discovered automatically, including new clones and
-worktrees. An empty parent has no served repositories, so the runner will not
-appear until you clone one. Prefer **New Worktree** for concurrent tasks.
+below the parent are discovered automatically, so `~/src/<org>/<repo>` needs no
+extra discovery depth. New clones and worktrees are discovered too. An empty
+parent has no served repositories, so the runner will not appear until you clone
+one. Prefer **New Worktree** for concurrent tasks.
 
 The LaunchAgent starts at login and restarts after exits. It prevents system
 sleep on AC power, but **does not prevent lid-close sleep**. Keep the Mac plugged
