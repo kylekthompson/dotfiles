@@ -1,1 +1,2 @@
 - Never merge pull requests.
+- Load and follow Amp's built-in `explaining-code` skill when writing pull request descriptions and commit message bodies.
