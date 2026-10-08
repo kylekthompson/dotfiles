@@ -1,3 +1,4 @@
 - Make small, focused commits.
 - When opening PRs, always start with a draft PR.
+- Never merge pull requests.
 - Never reply to GitHub comments or threads, or resolve GitHub discussions or review threads, unless the comment, discussion, or thread was authored by a bot.
