@@ -130,11 +130,12 @@ function fixture() {
 	}
 }
 
-test('rejects malformed, empty, duplicate, unsafe and non-string manifest names', () => {
+test('rejects malformed, duplicate, unsafe and non-string manifest names', () => {
 	for (const text of [
 		'{',
 		'{}',
-		'{"skills":[]}',
+		'{"skills":null}',
+		'{"skills":"a"}',
 		'{"skills":["a","a"]}',
 		'{"skills":["../a"]}',
 		'{"skills":[1]}',
@@ -222,6 +223,32 @@ test('preview does not publish; publish copies nested files and modes, removes s
 	expect(
 		f.clones.map((directory) => git(directory, 'rev-parse', 'HEAD')),
 	).toEqual(heads)
+})
+
+test('an empty skill list removes published standalone skills without changing plugins', () => {
+	const f = fixture()
+	reconcile(f.source, f.cache, f.revision)
+	const pluginHead = git(f.clones[1], 'rev-parse', 'HEAD')
+	const plugins = diskTree(f.clones[1])
+	write(join(f.source, 'ai/.agents/amp-skills.json'), '{"skills":[]}')
+	git(f.source, 'add', '.')
+	git(f.source, 'commit', '-m', 'Remove standalone skills')
+	git(f.source, 'push', 'origin', 'main')
+	const revision = git(f.source, 'rev-parse', 'HEAD')
+
+	reconcile(f.source, f.cache)
+	expect([...diskTree(f.clones[0]).keys()]).toEqual([
+		'testing-sync/SKILL.md',
+		'testing-sync/scripts/run.sh',
+	])
+	reconcile(f.source, f.cache, revision)
+	expect(diskTree(f.clones[0]).size).toBe(0)
+	expect(git(f.clones[0], 'ls-tree', '-r', '--name-only', 'HEAD')).toBe('')
+	expect(
+		git(f.clones[0], 'ls-remote', 'origin', 'refs/heads/main').split(/\s/)[0],
+	).toBe(git(f.clones[0], 'rev-parse', 'HEAD'))
+	expect(changes(plugins, diskTree(f.clones[1]))).toEqual([])
+	expect(git(f.clones[1], 'rev-parse', 'HEAD')).toBe(pluginHead)
 })
 
 test('skill Amp guidance is composed from pinned source, omitted as a resource, and removable', () => {

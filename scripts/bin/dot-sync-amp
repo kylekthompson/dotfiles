@@ -58,8 +58,8 @@ function safeName(name: unknown): asserts name is string {
 export function manifestNames(bytes: Buffer): string[] {
 	const manifest = JSON.parse(bytes.toString())
 	const names: unknown = manifest?.skills
-	if (!Array.isArray(names) || names.length === 0)
-		throw new Error('Manifest skills must be a nonempty array')
+	if (!Array.isArray(names))
+		throw new Error('Manifest skills must be an array')
 	for (const name of names) safeName(name)
 	if (new Set(names).size !== names.length)
 		throw new Error('Manifest contains duplicate skills')

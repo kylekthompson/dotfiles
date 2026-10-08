@@ -237,15 +237,18 @@ guidance) and `ai/.agents/amp-guidance.md` (Amp-only additions) are composed and
 handed off to the syncing Amp thread for the personal Global AGENTS.md setting;
 `settings.json` and other configuration remain excluded.
 
+An empty skill list removes previously published standalone skills on publication;
+plugin-bundled skills are unaffected. RWX remains bundled with its plugin.
+
 Keep agent-independent policy in the shared base and Amp-specific instructions
 in the supplement. There is no checked-in generated copy. Claude and Codex keep
 using the shared base. The existing local Amp guidance symlink remains until the
 composed global setting is published and verified to load in local Amp; remove
 that symlink after verification to avoid loading the base twice.
 
-Standalone skills can also have an optional `amp-guidance.md` beside `SKILL.md`,
-for example `ai/.agents/skills/designing-ui/amp-guidance.md`. Keep the portable
-skill self-contained; do not link it to the Amp supplement. During sync, the
+Standalone skills can also have an optional `amp-guidance.md` beside `SKILL.md`.
+Keep the portable skill self-contained; do not link it to the Amp supplement.
+During sync, the
 publisher appends two newlines, `## Amp-specific guidance`, two newlines, and the
 exact supplement to the published `SKILL.md`. It omits the companion file from
 the published resources. Both inputs come from the same pinned revision, and a
