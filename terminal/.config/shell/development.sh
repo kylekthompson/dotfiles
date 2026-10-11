@@ -1,5 +1,6 @@
 # Shared by interactive Zsh and the noninteractive Amp runner. Keep POSIX syntax
 # here; prompts, aliases, completions, and mise activation belong in .zshrc.
+export AMP_DISABLE_AMP_COAUTHOR_TRAILER=1
 export HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 export PATH="$HOME/.amp/bin:$HOME/.local/bin:$HOME/bin:$HOME/.bun/bin:$HOME/.orbstack/bin:$HOME/.local/share/mise/shims:$HOMEBREW_PREFIX/opt/libpq/bin:$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
