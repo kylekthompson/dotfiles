@@ -240,6 +240,15 @@ handed off to the syncing Amp thread for the personal Global AGENTS.md setting;
 An empty skill list removes previously published standalone skills on publication;
 plugin-bundled skills are unaffected. RWX remains bundled with its plugin.
 
+`accessing-scratch-aws` is a standalone personal Amp skill in
+`ai/.agents/skills/` and is included in the publication allowlist. It uses
+project-scoped Amp identity for SomeSoftwareCompany's Scratch account
+(`863518447294`). Stow installs the local skill source; publishing it to Amp
+still requires the reviewed `dot-sync-amp` workflow below after the source reaches
+`origin/main`. AWS profile configuration and short-lived authentication happen
+on demand, not during installation. Run its helper regression test with
+`bun test ./ai/.agents/accessing-scratch-aws.test.ts`.
+
 Keep agent-independent policy in the shared base and Amp-specific instructions
 in the supplement. There is no checked-in generated copy. Claude and Codex keep
 using the shared base. The existing local Amp guidance symlink remains until the
