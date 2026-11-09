@@ -1,37 +1,74 @@
 ---
 name: rwx
-description: Runs authenticated RWX commands. Use for RWX operations, or before environment-dependent project commands when `.rwx/sandbox.yml` exists.
+metadata:
+  version: "0.2.0"
+description: >-
+  Used to create, modify, or understand an RWX CI/CD config or any other file in
+  a `.rwx` directory. TRIGGER when: the user asks about RWX; wants to create or
+  modify an RWX config; says things like "CI failed", "CI is red", or "tests are
+  failing in CI"; asks "what's failing on my PR / branch / commit?"; wants to
+  run tests or build steps in a sandbox; wants to debug test failures, check a
+  run status, fetch logs/artifacts, or start a run loop.
+argument-hint: [optional description, e.g. "CI pipeline with tests and deploy"]
+allowed-tools:
+  Bash(rwx lint *), Bash(rwx docs *), Bash(rwx logs *), Bash(rwx artifacts *),
+  Bash(rwx results *), Bash(rwx whoami), Bash(rwx * --help)
 ---
 
-# RWX
+# Using RWX
 
-Run authenticated RWX CLI commands with `shell_command`. In an Amp orb, the first agent RWX command triggers installation and verification of the latest unstable CLI from its official GitHub release. Plugin loading and unrelated commands do not install it; terminal-only use needs an existing CLI. The plugin selects the access token for the repository owner without putting the token value in the command.
+Ensure the user is signed in and on the latest version of the RWX CLI before
+getting started: `rwx whoami`
 
-Before the first RWX operation in a task, run `rwx whoami` to verify that the selected credentials work.
+## RWX Run Definition Syntax
 
-## Use Current RWX Documentation
-
-When creating or changing run-definition semantics, or explaining semantics not established by the repository, pull the current reference:
+When working with RWX, it is extremely important to use the reference
+documentation. Run the following command to pull the reference documentation.
+The output is already constrained in size, and it is very important to not
+truncate the output of this command.
 
 `rwx docs pull /migrating/rwx-reference`
 
-For a specific unresolved question, use `rwx docs search "<query>"` and pull the relevant result. Reuse documentation already read in the task; comment-only edits and straightforward file explanations do not require a reference fetch.
+If you encounter a question not covered by these references, use
+`rwx docs search "<query>"` to find the relevant documentation page, then
+`rwx docs pull` the result.
 
-After changing a run definition, validate it with `rwx lint .rwx/<name>.yml`.
+## Executing Runs
 
-## Execute RWX Commands
+If the user chooses, you can kick off an actual run on RWX:
 
-Run the CLI on the host from the active worktree root. RWX operations—including docs, lint, results, logs, artifacts, identity, run submission, and sandbox lifecycle commands—must not be wrapped in `rwx sandbox exec`.
+`rwx run .rwx/<file>.yml --wait`
 
-- Results: `rwx results <run-id>`
-- Logs: `rwx logs <task-id>`
-- Artifacts: `rwx artifacts --help`
-- Identity: `rwx whoami`
+When the run finishes, results will be shown, and you can iterate until the run
+passes.
 
-For CI failures or branch status, start with `rwx results --help` to select the correct filters. If the user explicitly asks to start a run, use `rwx run .rwx/<file>.yml --wait` and iterate on failures. A run uses local changes to patch its Git clone, so it does not require a commit or push.
+You do not need to commit or push to invoke a run with RWX, even if the run
+definition references a commit sha. RWX will automatically patch the git clone
+with the local contents.
 
-When `gh pr checks --watch` reports failed checks, extract the run ID from the RWX URL in its output and run `rwx results <run-id>` before inspecting individual logs. Its default output gives an LLM-friendly summary for the complete run.
+## Check CI / run results or status of a branch
 
-## Use RWX Sandboxes
+If you have been asked to check on run failures or CI failures, or if you have
+been asked to check the current run status of the current branch or a given
+branch:
 
-When `.rwx/sandbox.yml` exists, read [reference/sandbox.md](reference/sandbox.md) before running environment-dependent commands. It owns execution boundaries, synchronization, lifecycle, failure diagnosis, and reporting. Invoke `rwx sandbox exec -- <command>` on the host through `shell_command`; only the project command after `--` runs in the sandbox.
+`rwx results -h`
+
+## Sandboxes
+
+If the user mentions using a sandbox:
+
+`rwx sandbox exec -- <command>`
+
+When the active worktree contains `.rwx/sandbox.yml`, run environment-dependent project commands through `rwx sandbox exec`; keep file inspection, editing, and Git inspection on the host. Invoke RWX on the host through `shell_command`, putting shell expressions inside the sandbox command rather than evaluating them on the host. If sandbox execution is blocked, ask before running those commands locally.
+
+Before first sandbox use, read `rwx docs pull /sandboxes` and `rwx docs pull /cli-reference/rwx-sandbox/exec` for execution, synchronization, and lifecycle details.
+
+## Generate or Modify RWX Config
+
+You may have been tasked with creating, modifying, or understanding/explaining
+an RWX CI/CD config for this project. Use the same aforementioned documentation.
+
+When making changes, you can run validation on the config:
+
+    rwx lint .rwx/<name>.yml
