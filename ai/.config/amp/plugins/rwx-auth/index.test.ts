@@ -102,7 +102,7 @@ test('preserves explicit generic credentials and fails closed when the selected 
 	`)
 })
 
-test('only modifies RWX shell calls and leaves unmapped or missing checkouts alone', () => {
+test('only modifies RWX shell calls', () => {
 	fixture(`
 		await load();
 		for (const [command, key, tool] of [
@@ -118,18 +118,43 @@ test('only modifies RWX shell calls and leaves unmapped or missing checkouts alo
 		assert.deepEqual(await call('git status'), {action: 'allow'});
 		assert.deepEqual(await call('rwx-other whoami'), {action: 'allow'});
 		assert.deepEqual(await call('rwx', 'path', 'read_file'), {action: 'allow'});
+	`)
+})
+
+test('defaults to RWX credentials for unmapped or missing checkouts and remotes', () => {
+	fixture(`
 		process.env.AMP_ORB = '1';
+		const assertFallback = async () => {
+			const result = await call('rwx whoami');
+			assert.equal(result.action, 'modify');
+			assert.ok(!result.input.command.includes('fixture-secret'));
+			const executed = shell(result.input.command);
+			assert.equal(executed.exitCode, 0);
+			assert.equal(executed.stdout.toString(), 'rwx-fixture-secret');
+			assert.equal(shell(result.input.command, {RWX_ACCESS_TOKEN: 'explicit-fixture'}).stdout.toString(), 'explicit-fixture');
+			const missing = shell(result.input.command, {RWX_RWX_ACCESS_TOKEN: ''});
+			assert.notEqual(missing.exitCode, 0);
+			assert.match(missing.stderr.toString(), /RWX_RWX_ACCESS_TOKEN is not set/);
+			const terminal = shell('source "$HOME/.bashrc"; rwx whoami');
+			assert.equal(terminal.exitCode, 0);
+			assert.equal(terminal.stdout.toString(), 'rwx-fixture-secret');
+		};
 		for (const remote of ['https://github.com/unknown/fixture', 'https://gitlab.com/rwx-cloud/fixture']) {
 			await load(remote);
-			assert.deepEqual(await call('rwx whoami'), {action: 'allow'});
-			assert.ok(!existsSync(bashrc));
+			await assertFallback();
 		}
 		execFileSync('git', ['remote', 'remove', 'origin']);
+		hooks.clear();
 		await rwxAuth(amp);
-		assert.deepEqual(await call('rwx whoami'), {action: 'allow'});
+		await assertFallback();
+		amp.system.workspaceRoot = join(process.cwd(), 'not-a-checkout');
+		hooks.clear();
+		await rwxAuth(amp);
+		await assertFallback();
 		amp.system.workspaceRoot = undefined;
+		hooks.clear();
 		await rwxAuth(amp);
-		assert.ok(!existsSync(bashrc));
+		await assertFallback();
 	`)
 })
 

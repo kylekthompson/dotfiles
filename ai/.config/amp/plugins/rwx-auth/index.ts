@@ -75,12 +75,8 @@ function tokenExportCommand(sourceVariable: string): string {
 
 export default async function (amp: PluginAPI) {
 	const workspaceRoot = amp.system.workspaceRoot
-	if (!workspaceRoot) return
-
-	const workspacePath = amp.helpers.filePathFromURI(workspaceRoot)
-	const owner = githubOwner(workspacePath)
-	const sourceVariable = owner ? TOKEN_BY_OWNER.get(owner) : undefined
-	if (!sourceVariable) return
+	const owner = workspaceRoot ? githubOwner(amp.helpers.filePathFromURI(workspaceRoot)) : undefined
+	const sourceVariable = (owner ? TOKEN_BY_OWNER.get(owner) : undefined) ?? 'RWX_RWX_ACCESS_TOKEN'
 
 	if (process.env.AMP_ORB === '1') installOrbTerminalHook(sourceVariable)
 
